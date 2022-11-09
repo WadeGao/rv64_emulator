@@ -6,7 +6,6 @@
 TEST(DRAMTest, GetSize) {
     auto dram = std::make_unique<rv64_emulator::dram::DRAM>(DRAM_SIZE);
     ASSERT_EQ(DRAM_SIZE, dram->GetSize());
-    EXPECT_EQ(1, 1);
 }
 
 TEST(DRAMTest, Load) {
@@ -15,6 +14,9 @@ TEST(DRAMTest, Load) {
         const uint8_t byte_val = static_cast<uint8_t>(dram->Load(DRAM_BASE + i, 8));
         ASSERT_EQ(byte_val, 0x00);
     }
+
+    // Abort if remove the following comment
+    // EXPECT_TRUE(dram->Load(DRAM_SIZE, 37) >= 0);
 }
 
 TEST(DRAMTest, Store) {

@@ -35,7 +35,7 @@ target("gmock")
     add_files("third_party/gtest/src/gmock-all.cc")
 
 target("rv64_emulator_test")
-    add_cxxflags("-fno-access-control -g -std=c++17")
+    add_cxxflags("-fno-access-control -g -std=c++17 -fprofile-arcs -ftest-coverage --coverage")
     set_kind("binary")
     set_targetdir("build")
     add_includedirs(".")
