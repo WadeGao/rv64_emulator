@@ -1,5 +1,5 @@
-#ifndef RV64_EMULATOR_SRC_DRAM_H_
-#define RV64_EMULATOR_SRC_DRAM_H_
+#ifndef RV64_EMULATOR_INCLUDE_DRAM_H_
+#define RV64_EMULATOR_INCLUDE_DRAM_H_
 
 #include <cstdint>
 #include <memory>

@@ -1,7 +1,7 @@
 #include "include/bus.h"
 #include "include/dram.h"
 
-#include <iostream>
+#include <cstdio>
 
 namespace rv64_emulator {
 namespace bus {

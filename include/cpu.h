@@ -1,8 +1,9 @@
-#ifndef RV64_EMULATOR_SRC_CPU_H_
-#define RV64_EMULATOR_SRC_CPU_H_
+#ifndef RV64_EMULATOR_INCLUDE_CPU_H_
+#define RV64_EMULATOR_INCLUDE_CPU_H_
 
 #include "include/bus.h"
 #include "include/conf.h"
+#include "include/decoder.h"
 
 #include <cstdint>
 #include <memory>
@@ -41,9 +42,20 @@ private:
     uint64_t Load(const uint64_t addr, const uint64_t bit_size) const;
     void     Store(const uint64_t addr, const uint64_t bit_size, const uint64_t val);
 
+    void Exec_ADDI(const uint32_t instruction);
+    void Exec_SLLI(const uint32_t instruction);
+    void Exec_SLTI(const uint32_t instruction);
+    void Exec_SLTIU(const uint32_t instruction);
+    void Exec_XORI(const uint32_t instruction);
+    void Exec_SRLI(const uint32_t instruction);
+    void Exec_SRAI(const uint32_t instruction);
+    void Exec_ORI(const uint32_t instruction);
+    void Exec_ANDI(const uint32_t instruction);
+
 public:
     CPU(std::unique_ptr<rv64_emulator::bus::Bus> bus);
     uint32_t Fetch() const;
+    uint64_t Execute(const uint32_t instruction);
     ~CPU();
 };
 

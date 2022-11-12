@@ -1,7 +1,7 @@
 #include "include/conf.h"
 #include "include/dram.h"
 #include "gtest/gtest.h"
-#include <iostream>
+#include <cstdio>
 
 TEST(DRAMTest, GetSize) {
     auto dram = std::make_unique<rv64_emulator::dram::DRAM>(DRAM_SIZE);

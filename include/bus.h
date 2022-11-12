@@ -1,5 +1,5 @@
-#ifndef RV64_EMULATOR_SRC_BUS_H_
-#define RV64_EMULATOR_SRC_BUS_H_
+#ifndef RV64_EMULATOR_INCLUDE_BUS_H_
+#define RV64_EMULATOR_INCLUDE_BUS_H_
 
 #include "include/dram.h"
 

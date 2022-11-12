@@ -3,8 +3,8 @@
 
 #include <cassert>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
-#include <iostream>
 #include <memory>
 
 namespace rv64_emulator {
