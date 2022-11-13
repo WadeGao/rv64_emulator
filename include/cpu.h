@@ -14,7 +14,7 @@ namespace cpu {
 class CPU {
 private:
     uint64_t m_pc;
-    uint64_t m_reg[RV64_REGISTER_NUM];
+    uint64_t m_reg[RV64_REGISTER_NUM] = {0};
 
     /*
 
@@ -51,6 +51,8 @@ private:
     void Exec_SRAI(const uint32_t instruction);
     void Exec_ORI(const uint32_t instruction);
     void Exec_ANDI(const uint32_t instruction);
+    void Exec_AUIPC(const uint32_t instruction);
+    void Exec_LUI(const uint32_t instruction);
 
 public:
     CPU(std::unique_ptr<rv64_emulator::bus::Bus> bus);

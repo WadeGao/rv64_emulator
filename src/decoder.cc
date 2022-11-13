@@ -2,6 +2,7 @@
 #include "include/conf.h"
 
 #include <cassert>
+#include <cstdint>
 #include <cstdio>
 
 namespace rv64_emulator {
@@ -76,13 +77,14 @@ uint32_t GetImm(const uint32_t instruction, const RV64InstructionFormatType type
     return imm;
 }
 
-uint32_t GetShamt(const uint32_t instruction) {
+uint8_t GetShamt(const uint32_t instruction) {
     // shamt[4:5] = imm[5:0]
-    return GetImm(instruction, RV64InstructionFormatType::I_Type) & SHAMT_IN_IMM_MASK;
+    const uint8_t shamt = static_cast<uint8_t>(GetImm(instruction, RV64InstructionFormatType::I_Type) & SHAMT_IN_IMM_MASK);
+    return shamt;
 }
 
-uint32_t GetCsr(const uint32_t instruction) {
-    const uint32_t csr = static_cast<uint32_t>((instruction & 0xfff00000) >> 20);
+uint16_t GetCsr(const uint32_t instruction) {
+    const uint16_t csr = static_cast<uint16_t>((instruction & 0xfff00000) >> 20);
     return csr;
 }
 

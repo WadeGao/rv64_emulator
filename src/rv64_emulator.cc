@@ -3,8 +3,6 @@
 #include "include/cpu.h"
 #include "include/dram.h"
 
-#include <algorithm>
-#include <cstdio>
 #include <memory>
 
 int main() {
@@ -12,7 +10,7 @@ int main() {
     auto bus  = std::make_unique<rv64_emulator::bus::Bus>(std::move(dram));
     auto cpu  = std::make_unique<rv64_emulator::cpu::CPU>(std::move(bus));
 
-    cpu->Execute(0x12350513);
+    cpu->Execute(0xdcd78793);
 
     return 0;
 }

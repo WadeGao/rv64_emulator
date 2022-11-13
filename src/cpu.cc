@@ -3,8 +3,8 @@
 #include "include/conf.h"
 #include "include/decoder.h"
 
+#include <cstdint>
 #include <cstdio>
-#include <cstdlib>
 #include <utility>
 
 namespace rv64_emulator {
@@ -13,7 +13,6 @@ namespace cpu {
 CPU::CPU(std::unique_ptr<rv64_emulator::bus::Bus> bus)
     : m_pc(DRAM_BASE)
     , m_bus(std::move(bus)) {
-    memset(m_reg, 0, sizeof(uint64_t) * RV64_REGISTER_NUM);
     m_reg[0] = 0;
     m_reg[2] = DRAM_BASE + DRAM_SIZE;
 #ifdef DEBUG
@@ -48,9 +47,9 @@ uint64_t CPU::Execute(const uint32_t instruction) {
 }
 
 void CPU::Exec_ADDI(const uint32_t instruction) {
-    const uint8_t  rd  = rv64_emulator::decoder::GetRd(instruction);
-    const uint8_t  rs1 = rv64_emulator::decoder::GetRs1(instruction);
-    const uint32_t imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
+    const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const int32_t imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
 
     m_reg[rd] = m_reg[rs1] + static_cast<uint64_t>(imm);
 #ifdef DEBUG
@@ -59,27 +58,97 @@ void CPU::Exec_ADDI(const uint32_t instruction) {
 }
 
 void CPU::Exec_SLLI(const uint32_t instruction) {
+    const uint8_t rd    = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1   = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t shamt = rv64_emulator::decoder::GetShamt(instruction);
+
+    m_reg[rd] = m_reg[rs1] << static_cast<uint64_t>(shamt);
+#ifdef DEBUG
+    printf("slli x%u, x%u, 0x%x\n", rd, rs1, shamt);
+#endif
 }
 
 void CPU::Exec_SLTI(const uint32_t instruction) {
+    const uint8_t  rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t  rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint32_t imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
+
+    m_reg[rd] = (int64_t(m_reg[rs1]) < int64_t(imm)) ? 1 : 0;
+#ifdef DEBUG
+    printf("slti x%u, x%u, 0x%x\n", rd, rs1, imm);
+#endif
 }
 
 void CPU::Exec_SLTIU(const uint32_t instruction) {
+    const uint8_t  rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t  rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint32_t imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
+
+    m_reg[rd] = (m_reg[rs1] < static_cast<uint64_t>(imm)) ? 1 : 0;
+#ifdef DEBUG
+    printf("sltiu x%u, x%u, 0x%x\n", rd, rs1, imm);
+#endif
 }
 
 void CPU::Exec_XORI(const uint32_t instruction) {
+    const uint8_t  rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t  rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint32_t imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
+
+    m_reg[rd] = m_reg[rs1] ^ imm;
+#ifdef DEBUG
+    printf("xori x%u, x%u, 0x%x\n", rd, rs1, imm);
+#endif
 }
 
 void CPU::Exec_SRLI(const uint32_t instruction) {
+    const uint8_t rd    = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1   = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t shamt = rv64_emulator::decoder::GetShamt(instruction);
+
+    m_reg[rd] = m_reg[rs1] >> static_cast<uint64_t>(shamt);
+#ifdef DEBUG
+    printf("srli x%u, x%u, 0x%x\n", rd, rs1, shamt);
+#endif
 }
 
 void CPU::Exec_SRAI(const uint32_t instruction) {
+    const uint8_t rd    = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1   = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t shamt = rv64_emulator::decoder::GetShamt(instruction);
+
+    m_reg[rd] = int64_t(m_reg[rs1]) >> shamt;
+#ifdef DEBUG
+    printf("srai x%u, x%u, 0x%x\n", rd, rs1, shamt);
+#endif
 }
 
 void CPU::Exec_ORI(const uint32_t instruction) {
+    const uint8_t  rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t  rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint32_t imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
+
+    m_reg[rd] = m_reg[rs1] | imm;
+#ifdef DEBUG
+    printf("ori x%u, x%u, 0x%x\n", rd, rs1, imm);
+#endif
 }
 
 void CPU::Exec_ANDI(const uint32_t instruction) {
+    const uint8_t  rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t  rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint32_t imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
+
+    m_reg[rd] = m_reg[rs1] & imm;
+#ifdef DEBUG
+    printf("andi x%u, x%u, 0x%x\n", rd, rs1, imm);
+#endif
+}
+
+void CPU::Exec_AUIPC(const uint32_t instruction) {
+}
+
+void CPU::Exec_LUI(const uint32_t instruction) {
 }
 
 CPU::~CPU() {
