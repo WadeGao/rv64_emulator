@@ -61,7 +61,7 @@ uint8_t GetRd(const uint32_t instruction);
 uint8_t GetRs1(const uint32_t instruction);
 uint8_t GetRs2(const uint32_t instruction);
 
-uint32_t GetImm(const uint32_t instruction, const RV64InstructionFormatType type);
+int32_t GetImm(const uint32_t instruction, const RV64InstructionFormatType type);
 uint8_t  GetShamt(const uint32_t instruction);
 uint16_t GetCsr(const uint32_t instruction);
 

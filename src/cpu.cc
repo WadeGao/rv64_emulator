@@ -71,7 +71,7 @@ void CPU::Exec_SLLI(const uint32_t instruction) {
 void CPU::Exec_SLTI(const uint32_t instruction) {
     const uint8_t  rd  = rv64_emulator::decoder::GetRd(instruction);
     const uint8_t  rs1 = rv64_emulator::decoder::GetRs1(instruction);
-    const uint32_t imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
+    const int32_t imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
 
     m_reg[rd] = (int64_t(m_reg[rs1]) < int64_t(imm)) ? 1 : 0;
 #ifdef DEBUG
@@ -82,7 +82,7 @@ void CPU::Exec_SLTI(const uint32_t instruction) {
 void CPU::Exec_SLTIU(const uint32_t instruction) {
     const uint8_t  rd  = rv64_emulator::decoder::GetRd(instruction);
     const uint8_t  rs1 = rv64_emulator::decoder::GetRs1(instruction);
-    const uint32_t imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
+    const int32_t  imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
 
     m_reg[rd] = (m_reg[rs1] < static_cast<uint64_t>(imm)) ? 1 : 0;
 #ifdef DEBUG
@@ -93,7 +93,7 @@ void CPU::Exec_SLTIU(const uint32_t instruction) {
 void CPU::Exec_XORI(const uint32_t instruction) {
     const uint8_t  rd  = rv64_emulator::decoder::GetRd(instruction);
     const uint8_t  rs1 = rv64_emulator::decoder::GetRs1(instruction);
-    const uint32_t imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
+    const int32_t  imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
 
     m_reg[rd] = m_reg[rs1] ^ imm;
 #ifdef DEBUG
@@ -126,7 +126,7 @@ void CPU::Exec_SRAI(const uint32_t instruction) {
 void CPU::Exec_ORI(const uint32_t instruction) {
     const uint8_t  rd  = rv64_emulator::decoder::GetRd(instruction);
     const uint8_t  rs1 = rv64_emulator::decoder::GetRs1(instruction);
-    const uint32_t imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
+    const int32_t  imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
 
     m_reg[rd] = m_reg[rs1] | imm;
 #ifdef DEBUG
@@ -137,7 +137,7 @@ void CPU::Exec_ORI(const uint32_t instruction) {
 void CPU::Exec_ANDI(const uint32_t instruction) {
     const uint8_t  rd  = rv64_emulator::decoder::GetRd(instruction);
     const uint8_t  rs1 = rv64_emulator::decoder::GetRs1(instruction);
-    const uint32_t imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
+    const int32_t  imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
 
     m_reg[rd] = m_reg[rs1] & imm;
 #ifdef DEBUG

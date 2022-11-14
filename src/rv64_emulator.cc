@@ -10,7 +10,8 @@ int main() {
     auto bus  = std::make_unique<rv64_emulator::bus::Bus>(std::move(dram));
     auto cpu  = std::make_unique<rv64_emulator::cpu::CPU>(std::move(bus));
 
-    cpu->Execute(0xdcd78793);
+    // edd78793   addi	a5,a5,-291 (0x123)
+    cpu->Execute(0xedd78793);
 
     return 0;
 }

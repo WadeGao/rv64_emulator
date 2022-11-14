@@ -38,8 +38,10 @@ uint8_t GetRs2(const uint32_t instruction) {
     return rd;
 }
 
-uint32_t GetImm(const uint32_t instruction, const RV64InstructionFormatType type) {
-    uint32_t imm = 0;
+int32_t GetImm(const uint32_t instruction, const RV64InstructionFormatType type) {
+    uint32_t imm       = 0;
+    uint8_t  imm_width = 12;
+
     switch (type) {
         case RV64InstructionFormatType::R_Type:
 #ifdef DEBUG
@@ -63,18 +65,32 @@ uint32_t GetImm(const uint32_t instruction, const RV64InstructionFormatType type
             break;
         case RV64InstructionFormatType::U_Type:
             // imm[31:12] = inst[31:12]
-            imm = static_cast<uint32_t>(instruction & 0xfffff000);
+            imm       = static_cast<uint32_t>(instruction & 0xfffff000);
+            imm_width = 20;
             break;
         case RV64InstructionFormatType::J_Type:
             // imm[20|10:1|11|19:12] = inst[31|30:21|20|19:12]
             imm = static_cast<uint32_t>(
                 ((instruction & 0x80000000) >> 11) | ((instruction & 0xff000)) | ((instruction >> 9) & 0x800) |
                 ((instruction >> 20) & 0x7fe));
+            imm_width = 20;
             break;
         default:
             break;
     }
-    return imm;
+
+    int32_t res         = 0;
+    bool    is_negative = (instruction >= 0x80000000);
+
+    if (is_negative && imm_width == 12) {
+        res = imm | 0xfffff000;
+    }
+
+    if (is_negative && type == RV64InstructionFormatType::J_Type) {
+        res = imm | 0xfff00000;
+    }
+
+    return res;
 }
 
 uint8_t GetShamt(const uint32_t instruction) {
