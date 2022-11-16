@@ -51,8 +51,32 @@ private:
     void Exec_SRAI(const uint32_t instruction);
     void Exec_ORI(const uint32_t instruction);
     void Exec_ANDI(const uint32_t instruction);
+
     void Exec_AUIPC(const uint32_t instruction);
     void Exec_LUI(const uint32_t instruction);
+
+    void Exec_JAL(const uint32_t instruction);
+    void Exec_JALR(const uint32_t instruction);
+
+    void Exec_BEQ(const uint32_t instruction);
+    void Exec_BNE(const uint32_t instruction);
+    void Exec_BLT(const uint32_t instruction);
+    void Exec_BGE(const uint32_t instruction);
+    void Exec_BLTU(const uint32_t instruction);
+    void Exec_BGEU(const uint32_t instruction);
+
+    void Exec_LB(const uint32_t instruction);
+    void Exec_LH(const uint32_t instruction);
+    void Exec_LW(const uint32_t instruction);
+    void Exec_LD(const uint32_t instruction);
+    void Exec_LBU(const uint32_t instruction);
+    void Exec_LHU(const uint32_t instruction);
+    void Exec_LWU(const uint32_t instruction);
+
+    void Exec_SB(const uint32_t instruction);
+    void Exec_SH(const uint32_t instruction);
+    void Exec_SW(const uint32_t instruction);
+    void Exec_SD(const uint32_t instruction);
 
 public:
     CPU(std::unique_ptr<rv64_emulator::bus::Bus> bus);
