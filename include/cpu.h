@@ -78,6 +78,17 @@ private:
     void Exec_SW(const uint32_t instruction);
     void Exec_SD(const uint32_t instruction);
 
+    void Exec_ADD(const uint32_t instruction);
+    void Exec_SUB(const uint32_t instruction);
+    void Exec_SLL(const uint32_t instruction);
+    void Exec_SLT(const uint32_t instruction);
+    void Exec_SLTU(const uint32_t instruction);
+    void Exec_XOR(const uint32_t instruction);
+    void Exec_SRL(const uint32_t instruction);
+    void Exec_SRA(const uint32_t instruction);
+    void Exec_OR(const uint32_t instruction);
+    void Exec_AND(const uint32_t instruction);
+
 public:
     CPU(std::unique_ptr<rv64_emulator::bus::Bus> bus);
     uint32_t Fetch() const;

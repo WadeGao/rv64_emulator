@@ -14,7 +14,7 @@ namespace cpu {
 static inline void AssertPC_Aligned(const uint64_t pc) {
     if (pc & 0b0011) {
 #ifdef DEBUG
-        printf("PC address misalligned, now it is %lu\n", pc);
+        printf("PC address misalligned, now it is %llu\n", pc);
 #endif
         assert(false);
     }
@@ -121,7 +121,7 @@ void CPU::Exec_SRLI(const uint32_t instruction) {
     const uint8_t rs1   = rv64_emulator::decoder::GetRs1(instruction);
     const uint8_t shamt = rv64_emulator::decoder::GetShamt(instruction);
 
-    m_reg[rd] = (int64_t)m_reg[rs1] >> (int64_t)shamt;
+    m_reg[rd] = m_reg[rs1] >> shamt;
 
 #ifdef DEBUG
     printf("srli x%u, x%u, 0x%x\n", rd, rs1, shamt);
@@ -133,7 +133,7 @@ void CPU::Exec_SRAI(const uint32_t instruction) {
     const uint8_t rs1   = rv64_emulator::decoder::GetRs1(instruction);
     const uint8_t shamt = rv64_emulator::decoder::GetShamt(instruction);
 
-    m_reg[rd] = int64_t(m_reg[rs1]) >> shamt;
+    m_reg[rd] = (int64_t)m_reg[rs1] >> shamt;
 
 #ifdef DEBUG
     printf("srai x%u, x%u, 0x%x\n", rd, rs1, shamt);
@@ -444,6 +444,143 @@ void CPU::Exec_SD(const uint32_t instruction) {
 
 #ifdef DEBUG
     printf("sw x%u, x%u, 0x%x\n", rs1, rs2, imm);
+#endif
+}
+
+void CPU::Exec_ADD(const uint32_t instruction) {
+    const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t rs2 = rv64_emulator::decoder::GetRs2(instruction);
+
+    const int64_t val = (int64_t)m_reg[rs1] + (int64_t)m_reg[rs2];
+
+    m_reg[rd] = val;
+
+#ifdef DEBUG
+    printf("add x%u, x%u, x%x\n", rd, rs1, rs2);
+#endif
+}
+
+void CPU::Exec_SUB(const uint32_t instruction) {
+    const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t rs2 = rv64_emulator::decoder::GetRs2(instruction);
+
+    const int64_t val = (int64_t)m_reg[rs1] - (int64_t)m_reg[rs2];
+
+    m_reg[rd] = val;
+
+#ifdef DEBUG
+    printf("sub x%u, x%u, x%x\n", rd, rs1, rs2);
+#endif
+}
+
+void CPU::Exec_SLL(const uint32_t instruction) {
+    const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t rs2 = rv64_emulator::decoder::GetRs2(instruction);
+
+    const int64_t val = (int64_t)m_reg[rs1] << (int64_t)m_reg[rs2];
+
+    m_reg[rd] = val;
+
+#ifdef DEBUG
+    printf("sll x%u, x%u, x%x\n", rd, rs1, rs2);
+#endif
+}
+
+void CPU::Exec_SLT(const uint32_t instruction) {
+    const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t rs2 = rv64_emulator::decoder::GetRs2(instruction);
+
+    m_reg[rd] = ((int64_t)m_reg[rs1] < (int64_t)m_reg[rs2]) ? 1 : 0;
+
+#ifdef DEBUG
+    printf("slt x%u, x%u, x%u\n", rd, rs1, rs2);
+#endif
+}
+
+void CPU::Exec_SLTU(const uint32_t instruction) {
+    const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t rs2 = rv64_emulator::decoder::GetRs2(instruction);
+
+    m_reg[rd] = ((uint64_t)m_reg[rs1] < (uint64_t)m_reg[rs2]) ? 1 : 0;
+
+#ifdef DEBUG
+    printf("sltu x%u, x%u, x%u\n", rd, rs1, rs2);
+#endif
+}
+
+void CPU::Exec_XOR(const uint32_t instruction) {
+    const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t rs2 = rv64_emulator::decoder::GetRs2(instruction);
+
+    const int64_t val = (int64_t)m_reg[rs1] ^ (int64_t)m_reg[rs2];
+
+    m_reg[rd] = val;
+
+#ifdef DEBUG
+    printf("xor x%u, x%u, x%x\n", rd, rs1, rs2);
+#endif
+}
+
+void CPU::Exec_SRL(const uint32_t instruction) {
+    const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t rs2 = rv64_emulator::decoder::GetRs2(instruction);
+
+    const int64_t val = m_reg[rs1] >> m_reg[rs2];
+
+    m_reg[rd] = val;
+
+#ifdef DEBUG
+    printf("srl x%u, x%u, x%x\n", rd, rs1, rs2);
+#endif
+}
+
+void CPU::Exec_SRA(const uint32_t instruction) {
+    const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t rs2 = rv64_emulator::decoder::GetRs2(instruction);
+
+    const int64_t val = (int64_t)m_reg[rs1] >> (int64_t)m_reg[rs2];
+
+    m_reg[rd] = val;
+
+#ifdef DEBUG
+    printf("sra x%u, x%u, x%x\n", rd, rs1, rs2);
+#endif
+}
+
+void CPU::Exec_OR(const uint32_t instruction) {
+    const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t rs2 = rv64_emulator::decoder::GetRs2(instruction);
+
+    const int64_t val = (int64_t)m_reg[rs1] | (int64_t)m_reg[rs2];
+
+    m_reg[rd] = val;
+
+#ifdef DEBUG
+    printf("or x%u, x%u, x%x\n", rd, rs1, rs2);
+#endif
+}
+
+void CPU::Exec_AND(const uint32_t instruction) {
+
+    const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t rs2 = rv64_emulator::decoder::GetRs2(instruction);
+
+    const int64_t val = (int64_t)m_reg[rs1] & (int64_t)m_reg[rs2];
+
+    m_reg[rd] = val;
+
+#ifdef DEBUG
+    printf("and x%u, x%u, x%x\n", rd, rs1, rs2);
 #endif
 }
 
