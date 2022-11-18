@@ -89,10 +89,26 @@ private:
     void Exec_OR(const uint32_t instruction);
     void Exec_AND(const uint32_t instruction);
 
+    void Exec_ADDIW(const uint32_t instruction);
+    void Exec_SLLIW(const uint32_t instruction);
+    void Exec_SRLIW(const uint32_t instruction);
+    void Exec_SRAIW(const uint32_t instruction);
+
+    void Exec_ADDW(const uint32_t instruction);
+    void Exec_SUBW(const uint32_t instruction);
+    void Exec_SLLW(const uint32_t instruction);
+    void Exec_SRLW(const uint32_t instruction);
+    void Exec_SRAW(const uint32_t instruction);
+
 public:
     CPU(std::unique_ptr<rv64_emulator::bus::Bus> bus);
     uint32_t Fetch() const;
     uint64_t Execute(const uint32_t instruction);
+
+#ifdef DEBUG
+    void Dump() const;
+#endif
+
     ~CPU();
 };
 

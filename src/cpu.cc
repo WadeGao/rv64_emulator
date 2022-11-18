@@ -14,7 +14,7 @@ namespace cpu {
 static inline void AssertPC_Aligned(const uint64_t pc) {
     if (pc & 0b0011) {
 #ifdef DEBUG
-        printf("PC address misalligned, now it is %llu\n", pc);
+        printf("PC address misalligned, now it is %lu\n", pc);
 #endif
         assert(false);
     }
@@ -532,7 +532,7 @@ void CPU::Exec_SRL(const uint32_t instruction) {
     const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
     const uint8_t rs2 = rv64_emulator::decoder::GetRs2(instruction);
 
-    const int64_t val = m_reg[rs1] >> m_reg[rs2];
+    const int64_t val = (int64_t)(m_reg[rs1] >> m_reg[rs2]);
 
     m_reg[rd] = val;
 
@@ -584,11 +584,146 @@ void CPU::Exec_AND(const uint32_t instruction) {
 #endif
 }
 
+void CPU::Exec_ADDIW(const uint32_t instruction) {
+    const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const int32_t imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::I_Type);
+
+    m_reg[rd] = (int64_t)((int32_t)m_reg[rs1] + imm);
+
+#ifdef DEBUG
+    printf("addiw x%u, x%u, x%x\n", rd, rs1, imm);
+#endif
+}
+
+void CPU::Exec_SLLIW(const uint32_t instruction) {
+    const uint8_t rd    = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1   = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t shamt = rv64_emulator::decoder::GetShamt(instruction, true);
+
+    m_reg[rd] = (int64_t)((int32_t)m_reg[rs1] << shamt);
+
+#ifdef DEBUG
+    printf("slliw x%u, x%u, x%x\n", rd, rs1, shamt);
+#endif
+}
+
+void CPU::Exec_SRLIW(const uint32_t instruction) {
+    const uint8_t rd    = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1   = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t shamt = rv64_emulator::decoder::GetShamt(instruction, true);
+
+    m_reg[rd] = (int64_t)(int32_t)(m_reg[rs1] >> shamt);
+
+#ifdef DEBUG
+    printf("srliw x%u, x%u, x%x\n", rd, rs1, shamt);
+#endif
+}
+
+void CPU::Exec_SRAIW(const uint32_t instruction) {
+    const uint8_t rd    = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1   = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t shamt = rv64_emulator::decoder::GetShamt(instruction, true);
+
+    m_reg[rd] = (int64_t)((int32_t)m_reg[rs1] >> shamt);
+
+#ifdef DEBUG
+    printf("sraiw x%u, x%u, x%x\n", rd, rs1, shamt);
+#endif
+}
+
+void CPU::Exec_ADDW(const uint32_t instruction) {
+    const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t rs2 = rv64_emulator::decoder::GetRs2(instruction);
+
+    const int64_t val = (int64_t)((int32_t)m_reg[rs1] + (int32_t)m_reg[rs2]);
+
+    m_reg[rd] = val;
+
+#ifdef DEBUG
+    printf("addw x%u, x%u, x%x\n", rd, rs1, rs2);
+#endif
+}
+
+void CPU::Exec_SUBW(const uint32_t instruction) {
+    const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t rs2 = rv64_emulator::decoder::GetRs2(instruction);
+
+    const int64_t val = (int64_t)((int32_t)m_reg[rs1] - (int32_t)m_reg[rs2]);
+
+    m_reg[rd] = val;
+
+#ifdef DEBUG
+    printf("subw x%u, x%u, x%x\n", rd, rs1, rs2);
+#endif
+}
+
+void CPU::Exec_SLLW(const uint32_t instruction) {
+    const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t rs2 = rv64_emulator::decoder::GetRs2(instruction);
+
+    const int64_t val = (int64_t)((int32_t)m_reg[rs1] << (int32_t)m_reg[rs2]);
+
+    m_reg[rd] = val;
+
+#ifdef DEBUG
+    printf("sllw x%u, x%u, x%x\n", rd, rs1, rs2);
+#endif
+}
+
+void CPU::Exec_SRLW(const uint32_t instruction) {
+    const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t rs2 = rv64_emulator::decoder::GetRs2(instruction);
+
+    const int64_t val = (int64_t)((uint32_t)m_reg[rs1] >> (uint32_t)m_reg[rs2]);
+
+    m_reg[rd] = val;
+
+#ifdef DEBUG
+    printf("srlw x%u, x%u, x%x\n", rd, rs1, rs2);
+#endif
+}
+
+void CPU::Exec_SRAW(const uint32_t instruction) {
+    const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
+    const uint8_t rs1 = rv64_emulator::decoder::GetRs1(instruction);
+    const uint8_t rs2 = rv64_emulator::decoder::GetRs2(instruction);
+
+    const int64_t val = (int64_t)((int32_t)m_reg[rs1] >> (int32_t)m_reg[rs2]);
+
+    m_reg[rd] = val;
+
+#ifdef DEBUG
+    printf("sraw x%u, x%u, x%x\n", rd, rs1, rs2);
+#endif
+}
+
 CPU::~CPU() {
 #ifdef DEBUG
     printf("destroy a cpu\n");
 #endif
 }
+
+#ifdef DEBUG
+void CPU::Dump() const {
+    // Application Binary Interface registers
+    const char* abi[] = {
+        "zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0",  "a1",  "a2", "a3", "a4", "a5",
+        "a6",   "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6",
+    };
+
+    for (int i = 0; i < 8; i++) {
+        printf("   %4s: %#-13.2lx  ", abi[i], m_reg[i]);
+        printf("   %2s: %#-13.2lx  ", abi[i + 8], m_reg[i + 8]);
+        printf("   %2s: %#-13.2lx  ", abi[i + 16], m_reg[i + 16]);
+        printf("   %3s: %#-13.2lx\n", abi[i + 24], m_reg[i + 24]);
+    }
+}
+#endif
 
 } // namespace cpu
 } // namespace rv64_emulator

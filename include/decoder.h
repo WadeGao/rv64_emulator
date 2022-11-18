@@ -50,8 +50,9 @@ enum class RV64Funct3 : uint8_t {
 constexpr uint32_t OPCODE_MASK = 0x7f;
 
 // masks
-constexpr uint32_t REG_MASK          = 0x1f;
-constexpr uint32_t SHAMT_IN_IMM_MASK = 0x1f;
+constexpr uint32_t REG_MASK            = 0x1f;
+constexpr uint32_t SHAMT_IN_IMM64_MASK = 0x3f;
+constexpr uint32_t SHAMT_IN_IMM32_MASK = 0x1f;
 
 uint8_t GetOpCode(const uint32_t instruction);
 uint8_t GetFunct3(const uint32_t instruction);
@@ -61,8 +62,8 @@ uint8_t GetRd(const uint32_t instruction);
 uint8_t GetRs1(const uint32_t instruction);
 uint8_t GetRs2(const uint32_t instruction);
 
-int32_t GetImm(const uint32_t instruction, const RV64InstructionFormatType type);
-uint8_t  GetShamt(const uint32_t instruction);
+int32_t  GetImm(const uint32_t instruction, const RV64InstructionFormatType type);
+uint8_t  GetShamt(const uint32_t instruction, const bool is_rv32_arch = false);
 uint16_t GetCsr(const uint32_t instruction);
 
 } // namespace decoder
