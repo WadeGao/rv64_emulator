@@ -14,7 +14,7 @@ namespace cpu {
 class CPU {
 private:
     uint64_t m_pc;
-    uint64_t m_reg[RV64_REGISTER_NUM] = {0};
+    uint64_t m_reg[RV64_REGISTER_NUM] = { 0 };
 
     /*
 
@@ -42,6 +42,7 @@ private:
     uint64_t Load(const uint64_t addr, const uint64_t bit_size) const;
     void     Store(const uint64_t addr, const uint64_t bit_size, const uint64_t val);
 
+    // RV32I Base Instruction Set
     void Exec_ADDI(const uint32_t instruction);
     void Exec_SLLI(const uint32_t instruction);
     void Exec_SLTI(const uint32_t instruction);
@@ -68,15 +69,12 @@ private:
     void Exec_LB(const uint32_t instruction);
     void Exec_LH(const uint32_t instruction);
     void Exec_LW(const uint32_t instruction);
-    void Exec_LD(const uint32_t instruction);
     void Exec_LBU(const uint32_t instruction);
     void Exec_LHU(const uint32_t instruction);
-    void Exec_LWU(const uint32_t instruction);
 
     void Exec_SB(const uint32_t instruction);
     void Exec_SH(const uint32_t instruction);
     void Exec_SW(const uint32_t instruction);
-    void Exec_SD(const uint32_t instruction);
 
     void Exec_ADD(const uint32_t instruction);
     void Exec_SUB(const uint32_t instruction);
@@ -89,26 +87,62 @@ private:
     void Exec_OR(const uint32_t instruction);
     void Exec_AND(const uint32_t instruction);
 
+    void Exec_FENCE(const uint32_t instruction);
+    void Exec_FENCE_I(const uint32_t instruction);
+    void Exec_ECALL(const uint32_t instruction);
+    void Exec_EBREAK(const uint32_t instruction);
+    void Exec_CSRRW(const uint32_t instruction);
+    void Exec_CSRRS(const uint32_t instruction);
+    void Exec_CSRRC(const uint32_t instruction);
+    void Exec_CSRRWI(const uint32_t instruction);
+    void Exec_CSRRSI(const uint32_t instruction);
+    void Exec_CSRRCI(const uint32_t instruction);
+
+    // RV64I Base Instruction Set (in addition to RV32I)
+    void Exec_LWU(const uint32_t instruction);
+    void Exec_LD(const uint32_t instruction);
+    void Exec_SD(const uint32_t instruction);
+
     void Exec_ADDIW(const uint32_t instruction);
     void Exec_SLLIW(const uint32_t instruction);
     void Exec_SRLIW(const uint32_t instruction);
     void Exec_SRAIW(const uint32_t instruction);
-
     void Exec_ADDW(const uint32_t instruction);
     void Exec_SUBW(const uint32_t instruction);
     void Exec_SLLW(const uint32_t instruction);
     void Exec_SRLW(const uint32_t instruction);
     void Exec_SRAW(const uint32_t instruction);
 
+    /*********************** TODO ***************************/
+
+    // RV32M Standard Extension
+    void Exec_MUL(const uint32_t instruction);
+    void Exec_MULH(const uint32_t instruction);
+    void Exec_MULHSU(const uint32_t instruction);
+    void Exec_MULHU(const uint32_t instruction);
+    void Exec_DIV(const uint32_t instruction);
+    void Exec_DIVU(const uint32_t instruction);
+    void Exec_REM(const uint32_t instruction);
+    void Exec_REMU(const uint32_t instruction);
+
+    //  RV64M Standard Extension (in addition to RV32M)
+    void Exec_MULW(const uint32_t instruction);
+    void Exec_DIVW(const uint32_t instruction);
+    void Exec_DIVUW(const uint32_t instruction);
+    void Exec_REMW(const uint32_t instruction);
+    void Exec_REMUW(const uint32_t instruction);
+
+    /*********************** TODO ***************************/
 public:
     CPU(std::unique_ptr<rv64_emulator::bus::Bus> bus);
-    uint32_t Fetch() const;
+    uint32_t Fetch();
     uint64_t Execute(const uint32_t instruction);
 
 #ifdef DEBUG
     void Dump() const;
 #endif
 
+    inline void IllegalInstructionHandler(const char* info, const uint32_t instruction) const;
     ~CPU();
 };
 

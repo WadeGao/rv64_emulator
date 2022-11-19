@@ -99,7 +99,8 @@ uint8_t GetShamt(const uint32_t instruction, const bool is_rv32_arch) {
     // rv32: shamt[4:0] = imm[4:0]
     const uint32_t shamt_mask = is_rv32_arch ? SHAMT_IN_IMM32_MASK : SHAMT_IN_IMM64_MASK;
     const uint8_t  shamt      = static_cast<uint8_t>(GetImm(instruction, RV64InstructionFormatType::I_Type) & shamt_mask);
-    assert(shamt <= 0b011111);
+    const uint8_t  max_shamt  = is_rv32_arch ? 0b11111 : 0b111111;
+    assert(shamt <= max_shamt);
     return shamt;
 }
 

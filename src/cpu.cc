@@ -30,8 +30,9 @@ CPU::CPU(std::unique_ptr<rv64_emulator::bus::Bus> bus)
 #endif
 }
 
-uint32_t CPU::Fetch() const {
+uint32_t CPU::Fetch() {
     uint32_t instruction = m_bus->Load(m_pc, RV64_INSTRUCTION_BIT_SIZE);
+    m_pc += 4;
     return instruction;
 }
 
@@ -48,11 +49,312 @@ uint64_t CPU::Execute(const uint32_t instruction) {
     const uint8_t funct7 = rv64_emulator::decoder::GetFunct7(instruction);
     const uint8_t funct3 = rv64_emulator::decoder::GetFunct3(instruction);
 
-    Exec_SLTIU(instruction);
-
     // in a emulator, there is not a GND hardwiring x0 to zero
     m_reg[0] = 0;
 
+    using RV64OpCode = rv64_emulator::decoder::RV64OpCode;
+    using RV64Funct7 = rv64_emulator::decoder::RV64Funct7;
+    using RV64Funct3 = rv64_emulator::decoder::RV64Funct3;
+
+    switch (opcode) {
+        case uint8_t(RV64OpCode::LUI):
+            Exec_LUI(instruction);
+            break;
+        case uint8_t(RV64OpCode::AUIPC):
+            Exec_AUIPC(instruction);
+            break;
+        case uint8_t(RV64OpCode::JAL):
+            Exec_JAL(instruction);
+            break;
+        case uint8_t(RV64OpCode::JALR):
+            Exec_JALR(instruction);
+            break;
+        case uint8_t(RV64OpCode::Branch):
+            switch (funct3) {
+                case uint8_t(RV64Funct3::BEQ):
+                    Exec_BEQ(instruction);
+                    break;
+                case uint8_t(RV64Funct3::BNE):
+                    Exec_BNE(instruction);
+                    break;
+                case uint8_t(RV64Funct3::BLT):
+                    Exec_BLT(instruction);
+                    break;
+                case uint8_t(RV64Funct3::BGE):
+                    Exec_BGE(instruction);
+                    break;
+                case uint8_t(RV64Funct3::BLTU):
+                    Exec_BLTU(instruction);
+                    break;
+                case uint8_t(RV64Funct3::BGEU):
+                    Exec_BGEU(instruction);
+                    break;
+                default:
+                    IllegalInstructionHandler("unknown branch instruction", instruction);
+                    break;
+            }
+            break;
+        case uint8_t(RV64OpCode::Load):
+            switch (funct3) {
+                case uint8_t(RV64Funct3::LB):
+                    Exec_LB(instruction);
+                    break;
+                case uint8_t(RV64Funct3::LH):
+                    Exec_LH(instruction);
+                    break;
+                case uint8_t(RV64Funct3::LW):
+                    Exec_LW(instruction);
+                    break;
+                case uint8_t(RV64Funct3::LBU):
+                    Exec_LBU(instruction);
+                    break;
+                case uint8_t(RV64Funct3::LHU):
+                    Exec_LHU(instruction);
+                    break;
+                case uint8_t(RV64Funct3::LWU):
+                    Exec_LWU(instruction);
+                    break;
+                case uint8_t(RV64Funct3::LD):
+                    Exec_LD(instruction);
+                    break;
+                default:
+                    IllegalInstructionHandler("unknown load instruction", instruction);
+                    break;
+            }
+            break;
+        case uint8_t(RV64OpCode::Store):
+            switch (funct3) {
+                case uint8_t(RV64Funct3::SB):
+                    Exec_SB(instruction);
+                    break;
+                case uint8_t(RV64Funct3::SH):
+                    Exec_SH(instruction);
+                    break;
+                case uint8_t(RV64Funct3::SW):
+                    Exec_SW(instruction);
+                    break;
+                case uint8_t(RV64Funct3::SD):
+                    Exec_SD(instruction);
+                    break;
+                default:
+                    IllegalInstructionHandler("unknown store instruction", instruction);
+                    break;
+            }
+            break;
+        case uint8_t(RV64OpCode::Imm):
+            switch (funct3) {
+                case uint8_t(RV64Funct3::ADDI):
+                    Exec_ADDI(instruction);
+                    break;
+                case uint8_t(RV64Funct3::SLTI):
+                    Exec_SLTI(instruction);
+                    break;
+                case uint8_t(RV64Funct3::SLTIU):
+                    Exec_SLTIU(instruction);
+                    break;
+                case uint8_t(RV64Funct3::XORI):
+                    Exec_XORI(instruction);
+                    break;
+                case uint8_t(RV64Funct3::ORI):
+                    Exec_ORI(instruction);
+                    break;
+                case uint8_t(RV64Funct3::ANDI):
+                    Exec_ANDI(instruction);
+                    break;
+                case uint8_t(RV64Funct3::SLLI):
+                    Exec_SLLI(instruction);
+                    break;
+                case uint8_t(RV64Funct3::SRLI_SRAI):
+                    switch (funct7) {
+                        case uint8_t(RV64Funct7::SRLI):
+                            Exec_SRLI(instruction);
+                            break;
+                        case uint8_t(RV64Funct7::SRAI):
+                            Exec_SRAI(instruction);
+                            break;
+                        default:
+                            IllegalInstructionHandler("unknown SRLI or SRAI instruction", instruction);
+                            break;
+                    }
+                    break;
+                default:
+                    IllegalInstructionHandler("unknown Imm instruction", instruction);
+                    break;
+            }
+            break;
+        case uint8_t(RV64OpCode::Imm32):
+            switch (funct3) {
+                case uint8_t(RV64Funct3::ADDIW):
+                    Exec_ADDIW(instruction);
+                    break;
+                case uint8_t(RV64Funct3::SLLIW):
+                    Exec_SLLIW(instruction);
+                    break;
+                case uint8_t(RV64Funct3::SRLIW_SRAIW):
+                    switch (funct7) {
+                        case uint8_t(RV64Funct7::SRLIW):
+                            Exec_SRLIW(instruction);
+                            break;
+                        case uint8_t(RV64Funct7::SRAIW):
+                            Exec_SRAIW(instruction);
+                            break;
+                        default:
+                            IllegalInstructionHandler("unknown SRLIW or SRAIW instruction", instruction);
+                            break;
+                    }
+                    break;
+                default:
+                    IllegalInstructionHandler("unknown Imm32 instruction", instruction);
+                    break;
+            }
+            break;
+        case uint8_t(RV64OpCode::Reg):
+            switch (funct3) {
+                case uint8_t(RV64Funct3::SLL):
+                    Exec_SLL(instruction);
+                    break;
+                case uint8_t(RV64Funct3::SLT):
+                    Exec_SLT(instruction);
+                    break;
+                case uint8_t(RV64Funct3::SLTU):
+                    Exec_SLTU(instruction);
+                    break;
+                case uint8_t(RV64Funct3::XOR):
+                    Exec_XOR(instruction);
+                    break;
+                case uint8_t(RV64Funct3::OR):
+                    Exec_OR(instruction);
+                    break;
+                case uint8_t(RV64Funct3::AND):
+                    Exec_AND(instruction);
+                    break;
+                case uint8_t(RV64Funct3::ADD_SUB):
+                    switch (funct7) {
+                        case uint8_t(RV64Funct7::ADD):
+                            Exec_ADD(instruction);
+                            break;
+                        case uint8_t(RV64Funct7::SUB):
+                            Exec_SUB(instruction);
+                            break;
+                        default:
+                            IllegalInstructionHandler("unknown ADD or SUB instruction", instruction);
+                            break;
+                    }
+                    break;
+                case uint8_t(RV64Funct3::SRL_SRA):
+                    switch (funct7) {
+                        case uint8_t(RV64Funct7::SRL):
+                            Exec_SRL(instruction);
+                            break;
+                        case uint8_t(RV64Funct7::SRA):
+                            Exec_SRA(instruction);
+                            break;
+                        default:
+                            IllegalInstructionHandler("unknown SRL or SRA instruction", instruction);
+                            break;
+                    }
+                    break;
+                default:
+                    IllegalInstructionHandler("unknown Reg instruction", instruction);
+                    break;
+            }
+            break;
+        case uint8_t(RV64OpCode::Reg32):
+            switch (funct3) {
+                case uint8_t(RV64Funct3::SLLW):
+                    Exec_SLLW(instruction);
+                    break;
+                case uint8_t(RV64Funct3::DIVW):
+                    Exec_DIVW(instruction);
+                    break;
+                case uint8_t(RV64Funct3::REMUW):
+                    Exec_REMUW(instruction);
+                    break;
+                case uint8_t(RV64Funct3::REMW):
+                    Exec_REMW(instruction);
+                    break;
+                case uint8_t(RV64Funct3::ADDW_MULW_SUBW):
+                    switch (funct7) {
+                        case uint8_t(RV64Funct7::ADDW):
+                            Exec_ADDW(instruction);
+                            break;
+                        case uint8_t(RV64Funct7::SUBW):
+                            Exec_SUBW(instruction);
+                            break;
+                        case uint8_t(RV64Funct7::MULW):
+                            Exec_MULW(instruction);
+                            break;
+                        default:
+                            IllegalInstructionHandler("unknown ADDW or MULW or SUBW instruction", instruction);
+                            break;
+                    }
+                    break;
+                case uint8_t(RV64Funct3::SRLW_SRAW_DIVUW):
+                    switch (funct7) {
+                        case uint8_t(RV64Funct7::SRLW):
+                            Exec_SRLW(instruction);
+                            break;
+                        case uint8_t(RV64Funct7::SRAW):
+                            Exec_SRAW(instruction);
+                            break;
+                        case uint8_t(RV64Funct7::DIVUW):
+                            Exec_DIVUW(instruction);
+                            break;
+                        default:
+                            IllegalInstructionHandler("unknown SRLW or SRAW or DIVUW instruction", instruction);
+                            break;
+                    }
+                    break;
+                default:
+                    IllegalInstructionHandler("unknown DIVW or REMW instruction", instruction);
+                    break;
+            }
+            break;
+        case uint8_t(RV64OpCode::FENCE):
+            switch (funct3) {
+                case uint8_t(RV64Funct3::FENCE):
+                    Exec_FENCE(instruction);
+                    break;
+                case uint8_t(RV64Funct3::FENCE_I):
+                    Exec_FENCE_I(instruction);
+                    break;
+                default:
+                    IllegalInstructionHandler("unknown FENCE or FENCE_I instruction", instruction);
+                    break;
+            }
+            break;
+        case uint8_t(RV64OpCode::CSR_Type):
+            switch (funct3) {
+                case uint8_t(RV64Funct3::ECALL_EBREAK):
+                    Exec_ECALL(instruction);
+                    break;
+                case uint8_t(RV64Funct3::CSRRW):
+                    Exec_CSRRW(instruction);
+                    break;
+                case uint8_t(RV64Funct3::CSRRS):
+                    Exec_CSRRS(instruction);
+                    break;
+                case uint8_t(RV64Funct3::CSRRC):
+                    Exec_CSRRC(instruction);
+                    break;
+                case uint8_t(RV64Funct3::CSRRWI):
+                    Exec_CSRRWI(instruction);
+                    break;
+                case uint8_t(RV64Funct3::CSRRSI):
+                    Exec_CSRRSI(instruction);
+                    break;
+                case uint8_t(RV64Funct3::CSRRCI):
+                    Exec_CSRRCI(instruction);
+                    break;
+                default:
+                    IllegalInstructionHandler("unknown ECALL or EBREAK instruction", instruction);
+                    break;
+            }
+            break;
+        default:
+            IllegalInstructionHandler("unknown instruction", instruction);
+            break;
+    }
     return 0;
 }
 
@@ -167,7 +469,7 @@ void CPU::Exec_AUIPC(const uint32_t instruction) {
     const uint8_t rd  = rv64_emulator::decoder::GetRd(instruction);
     const int32_t imm = rv64_emulator::decoder::GetImm(instruction, rv64_emulator::decoder::RV64InstructionFormatType::U_Type);
 
-    m_reg[rd] = (int64_t)m_pc + (int64_t)imm - 4;
+    m_reg[rd] = (int64_t)(m_pc - 4) + (int64_t)imm;
 
 #ifdef DEBUG
     printf("auipc x%u, 0x%x\n", rd, imm);
@@ -702,6 +1004,96 @@ void CPU::Exec_SRAW(const uint32_t instruction) {
 #endif
 }
 
+void CPU::Exec_MULW(const uint32_t instruction) {
+#ifdef DEBUG
+    printf("mulw not implement\n");
+#endif
+}
+
+void CPU::Exec_DIVW(const uint32_t instruction) {
+#ifdef DEBUG
+    printf("divw not implement\n");
+#endif
+}
+
+void CPU::Exec_DIVUW(const uint32_t instruction) {
+#ifdef DEBUG
+    printf("divuw not implement\n");
+#endif
+}
+
+void CPU::Exec_REMW(const uint32_t instruction) {
+#ifdef DEBUG
+    printf("remw not implement\n");
+#endif
+}
+
+void CPU::Exec_REMUW(const uint32_t instruction) {
+#ifdef DEBUG
+    printf("remuw not implement\n");
+#endif
+}
+
+void CPU::Exec_FENCE(const uint32_t instruction) {
+#ifdef DEBUG
+    printf("fence not implement\n");
+#endif
+}
+
+void CPU::Exec_FENCE_I(const uint32_t instruction) {
+#ifdef DEBUG
+    printf("fencei not implement\n");
+#endif
+}
+
+void CPU::Exec_ECALL(const uint32_t instruction) {
+#ifdef DEBUG
+    printf("ecall not implement\n");
+#endif
+}
+
+void CPU::Exec_EBREAK(const uint32_t instruction) {
+#ifdef DEBUG
+    printf("ebreak not implement\n");
+#endif
+}
+
+void CPU::Exec_CSRRW(const uint32_t instruction) {
+#ifdef DEBUG
+    printf("csrrw not implement\n");
+#endif
+}
+
+void CPU::Exec_CSRRS(const uint32_t instruction) {
+#ifdef DEBUG
+    printf("csrrs not implement\n");
+#endif
+}
+
+void CPU::Exec_CSRRC(const uint32_t instruction) {
+#ifdef DEBUG
+    printf("csrrc not implement\n");
+#endif
+}
+
+void CPU::Exec_CSRRWI(const uint32_t instruction) {
+#ifdef DEBUG
+    printf("csrrwi not implement\n");
+#endif
+}
+
+void CPU::Exec_CSRRSI(const uint32_t instruction) {
+#ifdef DEBUG
+    printf("csrrsi not implement\n");
+#endif
+}
+
+void CPU::Exec_CSRRCI(const uint32_t instruction) {
+#ifdef DEBUG
+    printf("csrrci not implement\n");
+#endif
+}
+
 CPU::~CPU() {
 #ifdef DEBUG
     printf("destroy a cpu\n");
@@ -716,6 +1108,9 @@ void CPU::Dump() const {
         "a6",   "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6",
     };
 
+    const uint32_t instruction = m_bus->Load(m_pc, RV64_INSTRUCTION_BIT_SIZE);
+    printf("%#-13.2lx -> %#-13.2lx\n", m_pc, instruction);
+
     for (int i = 0; i < 8; i++) {
         printf("   %4s: %#-13.2lx  ", abi[i], m_reg[i]);
         printf("   %2s: %#-13.2lx  ", abi[i + 8], m_reg[i + 8]);
@@ -724,6 +1119,14 @@ void CPU::Dump() const {
     }
 }
 #endif
+
+void CPU::IllegalInstructionHandler(const char* info, const uint32_t instruction) const {
+#ifdef DEBUG
+    printf("[0x%x]: %s\n", instruction, info);
+    Dump();
+#endif
+    assert(false);
+}
 
 } // namespace cpu
 } // namespace rv64_emulator
