@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 
 namespace rv64_emulator {
 namespace cpu {
@@ -14,7 +15,7 @@ namespace cpu {
 class CPU {
 private:
     uint64_t m_pc;
-    uint64_t m_reg[RV64_REGISTER_NUM] = { 0 };
+    uint64_t m_reg[RV64_GENERAL_PURPOSE_REG_NUM] = { 0 };
 
     /*
 
@@ -138,6 +139,9 @@ public:
     uint32_t Fetch();
     uint64_t Execute(const uint32_t instruction);
 
+    void     SetGeneralPurposeRegVal(const uint64_t reg_num, const uint64_t val);
+    uint64_t GetGeneralPurposeRegVal(const uint64_t reg_num) const;
+
 #ifdef DEBUG
     void Dump() const;
 #endif
@@ -145,6 +149,15 @@ public:
     inline void IllegalInstructionHandler(const char* info, const uint32_t instruction) const;
     ~CPU();
 };
+
+typedef struct Instruction {
+    uint32_t    m_mask;
+    uint32_t    m_data;
+    std::string m_name;
+
+    void (*Exec)(CPU* cpu, const uint32_t instruction);
+    // std::string Disassemble() const;
+} Instruction;
 
 } // namespace cpu
 } // namespace rv64_emulator

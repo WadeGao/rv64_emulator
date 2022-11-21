@@ -5,7 +5,9 @@ target("rv64_emulator")
     add_cxxflags("-fno-rtti", "-fno-exceptions")
     add_cxxflags("-ffunction-sections -fdata-sections")
     add_ldflags("-Wl,--gc-sections")
-    add_defines("DEBUG")
+    if is_mode("debug") then
+        add_defines("DEBUG")
+    end
     set_kind("binary")
     set_targetdir("build")
     add_includedirs(".")

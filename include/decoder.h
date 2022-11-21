@@ -125,6 +125,40 @@ enum class RV64Funct3 : uint8_t {
     CSRRCI       = 0b111,
 };
 
+typedef struct FormatR {
+    uint8_t rd;
+    uint8_t rs1;
+    uint8_t rs2;
+} FormatR;
+
+typedef struct FormatI {
+    uint8_t rd;
+    uint8_t rs1;
+    int32_t imm;
+} FormatI;
+
+typedef struct FormatS {
+    uint8_t rs1;
+    uint8_t rs2;
+    int32_t imm;
+} FormatS;
+
+typedef struct FormatB {
+    uint8_t rs1;
+    uint8_t rs2;
+    int32_t imm;
+} FormatB;
+
+typedef struct FormatU {
+    uint8_t rd;
+    int32_t imm;
+} FormatU;
+
+typedef struct FormatJ {
+    uint8_t rd;
+    int32_t imm;
+} FormatJ;
+
 // decoder config
 constexpr uint32_t OPCODE_MASK = 0x7f;
 
@@ -144,6 +178,13 @@ uint8_t GetRs2(const uint32_t instruction);
 int32_t  GetImm(const uint32_t instruction, const RV64InstructionFormatType type);
 uint8_t  GetShamt(const uint32_t instruction, const bool is_rv32_arch = false);
 uint16_t GetCsr(const uint32_t instruction);
+
+FormatR ParseFormatR(const uint32_t instruction);
+FormatI ParseFormatI(const uint32_t instruction);
+FormatS ParseFormatS(const uint32_t instruction);
+FormatB ParseFormatB(const uint32_t instruction);
+FormatU ParseFormatU(const uint32_t instruction);
+FormatJ ParseFormatJ(const uint32_t instruction);
 
 } // namespace decoder
 } // namespace rv64_emulator

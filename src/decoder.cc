@@ -109,5 +109,51 @@ uint16_t GetCsr(const uint32_t instruction) {
     return csr;
 }
 
+FormatR ParseFormatR(const uint32_t instruction) {
+    return {
+        .rd  = GetRd(instruction),
+        .rs1 = GetRs1(instruction),
+        .rs2 = GetRs2(instruction),
+    };
+}
+
+FormatI ParseFormatI(const uint32_t instruction) {
+    return {
+        .rd  = GetRd(instruction),
+        .rs1 = GetRs1(instruction),
+        .imm = GetImm(instruction, RV64InstructionFormatType::I_Type),
+    };
+}
+
+FormatS ParseFormatS(const uint32_t instruction) {
+    return {
+        .rs1 = GetRs1(instruction),
+        .rs2 = GetRs2(instruction),
+        .imm = GetImm(instruction, RV64InstructionFormatType::S_Type),
+    };
+}
+
+FormatB ParseFormatB(const uint32_t instruction) {
+    return {
+        .rs1 = GetRs1(instruction),
+        .rs2 = GetRs2(instruction),
+        .imm = GetImm(instruction, RV64InstructionFormatType::B_Type),
+    };
+}
+
+FormatU ParseFormatU(const uint32_t instruction) {
+    return {
+        .rd  = GetRd(instruction),
+        .imm = GetImm(instruction, RV64InstructionFormatType::U_Type),
+    };
+}
+
+FormatJ ParseFormatJ(const uint32_t instruction) {
+    return {
+        .rd  = GetRd(instruction),
+        .imm = GetImm(instruction, RV64InstructionFormatType::J_Type),
+    };
+}
+
 } // namespace decoder
 } // namespace rv64_emulator
