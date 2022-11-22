@@ -54,6 +54,14 @@ uint64_t CPU::GetGeneralPurposeRegVal(const uint64_t reg_num) const {
     return m_reg[reg_num];
 }
 
+void CPU::SetPC(const uint64_t new_pc) {
+    m_pc = new_pc;
+}
+
+uint64_t CPU::GetPC() const {
+    return m_pc;
+}
+
 uint64_t CPU::Execute(const uint32_t instruction) {
     const uint8_t opcode = rv64_emulator::decoder::GetOpCode(instruction);
     const uint8_t funct7 = rv64_emulator::decoder::GetFunct7(instruction);
@@ -1139,45 +1147,451 @@ void CPU::IllegalInstructionHandler(const char* info, const uint32_t instruction
 }
 
 const Instruction RV64I_Instructions[] = {
-    { .m_mask = 0xfe00707f,
-      .m_data = 0x00000033,
-      .m_name = "ADD",
-      .Exec   = [](CPU* cpu, const uint32_t instruction) -> void {
-          const rv64_emulator::decoder::FormatR& f = rv64_emulator::decoder::ParseFormatR(instruction);
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x00000033,
+        .m_name = "ADD",
+        .Exec   = [](CPU* cpu, const uint32_t instruction) -> void {
+            const auto& f = rv64_emulator::decoder::ParseFormatR(instruction);
 
-          const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
-          cpu->SetGeneralPurposeRegVal(f.rd, val);
-      } },
-    { .m_mask = 0x0000707f,
-      .m_data = 0x00000013,
-      .m_name = "ADDI",
-      .Exec =
-          [](CPU* cpu, const uint32_t instruction) {
-              const rv64_emulator::decoder::FormatI& f = rv64_emulator::decoder::ParseFormatI(instruction);
+            const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+            cpu->SetGeneralPurposeRegVal(f.rd, val);
+        },
+    },
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00000013,
+        .m_name = "ADDI",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
 
-              const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
-              cpu->SetGeneralPurposeRegVal(f.rd, val);
-          } },
-    { .m_mask = 0x0000707f,
-      .m_data = 0x0000001b,
-      .m_name = "ADDIW",
-      .Exec =
-          [](CPU* cpu, const uint32_t instruction) {
-              const rv64_emulator::decoder::FormatI& f = rv64_emulator::decoder::ParseFormatI(instruction);
+                const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
 
-              const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) + f.imm);
-              cpu->SetGeneralPurposeRegVal(f.rd, val);
-          } },
-    { .m_mask = 0xfe00707f,
-      .m_data = 0x0000003b,
-      .m_name = "ADDW",
-      .Exec =
-          [](CPU* cpu, const uint32_t instruction) {
-              const rv64_emulator::decoder::FormatR& f = rv64_emulator::decoder::ParseFormatR(instruction);
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x0000001b,
+        .m_name = "ADDIW",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
 
-              const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2));
-              cpu->SetGeneralPurposeRegVal(f.rd, val);
-          } },
+                const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) + f.imm);
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x0000003b,
+        .m_name = "ADDW",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatR(instruction);
+
+                const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2));
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x00007033,
+        .m_name = "AND",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatR(instruction);
+
+                const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) & (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00007013,
+        .m_name = "ANDI",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
+
+                const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) & (int64_t)f.imm;
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0x0000007f,
+        .m_data = 0x00000017,
+        .m_name = "AUIPC",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatU(instruction);
+
+                const int64_t val = (int64_t)(cpu->GetPC() - 4) + (int64_t)f.imm;
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00000063,
+        .m_name = "BEQ",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatB(instruction);
+
+                if ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) == (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
+                    const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
+                    cpu->SetPC(new_pc);
+                }
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00005063,
+        .m_name = "BGE",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatB(instruction);
+
+                if ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) >= (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
+                    const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
+                    cpu->SetPC(new_pc);
+                }
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00007063,
+        .m_name = "BGEU",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatB(instruction);
+
+                if ((uint64_t)cpu->GetGeneralPurposeRegVal(f.rs1) >= (uint64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
+                    const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
+                    cpu->SetPC(new_pc);
+                }
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00004063,
+        .m_name = "BLT",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatB(instruction);
+
+                if ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) < (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
+                    const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
+                    cpu->SetPC(new_pc);
+                }
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00006063,
+        .m_name = "BLTU",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatB(instruction);
+
+                if ((uint64_t)cpu->GetGeneralPurposeRegVal(f.rs1) < (uint64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
+                    const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
+                    cpu->SetPC(new_pc);
+                }
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00001063,
+        .m_name = "BNE",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatB(instruction);
+
+                if ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) != (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
+                    const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
+                    cpu->SetPC(new_pc);
+                }
+            },
+    },
+
+    {
+        .m_mask = 0x0000007f,
+        .m_data = 0x0000006f,
+        .m_name = "JAL",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatJ(instruction);
+
+                cpu->SetGeneralPurposeRegVal(f.rd, cpu->GetPC());
+                const uint64_t new_pc = (int64_t)cpu->GetPC() + (int64_t)f.imm - 4;
+                cpu->SetPC(new_pc);
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00000067,
+        .m_name = "JALR",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
+
+                const uint64_t saved_pc = cpu->GetPC();
+                const uint64_t new_pc   = ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm) & 0xfffffffe;
+
+                cpu->SetPC(new_pc);
+                cpu->SetGeneralPurposeRegVal(f.rd, saved_pc);
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00000003,
+        .m_name = "LB",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
+
+                const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
+                const int8_t   data = (int8_t)(cpu->Load(addr, 8));
+                cpu->SetGeneralPurposeRegVal(f.rd, (int64_t)data);
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00004003,
+        .m_name = "LBU",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
+
+                const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
+                const uint64_t data = cpu->Load(addr, 8);
+                cpu->SetGeneralPurposeRegVal(f.rd, data);
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00003003,
+        .m_name = "LD",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
+
+                const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
+                const int64_t  data = (int64_t)cpu->Load(addr, 64);
+                cpu->SetGeneralPurposeRegVal(f.rd, (int64_t)data);
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00001003,
+        .m_name = "LH",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
+
+                const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
+                const int16_t  data = (int16_t)cpu->Load(addr, 16);
+                cpu->SetGeneralPurposeRegVal(f.rd, (int64_t)data);
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00005003,
+        .m_name = "LHU",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
+
+                const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
+                const uint64_t data = cpu->Load(addr, 16);
+                cpu->SetGeneralPurposeRegVal(f.rd, data);
+            },
+    },
+
+    {
+        .m_mask = 0x0000007f,
+        .m_data = 0x00000037,
+        .m_name = "LUI",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatU(instruction);
+
+                cpu->SetGeneralPurposeRegVal(f.rd, (uint64_t)f.imm);
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00002003,
+        .m_name = "LW",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
+
+                const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
+                const int32_t  data = (int32_t)cpu->Load(addr, 32);
+                cpu->SetGeneralPurposeRegVal(f.rd, (int64_t)data);
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00006003,
+        .m_name = "LWU",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
+
+                const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
+                const uint64_t data = cpu->Load(addr, 32);
+                cpu->SetGeneralPurposeRegVal(f.rd, data);
+            },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x00006033,
+        .m_name = "OR",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatR(instruction);
+
+                const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) | (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00006013,
+        .m_name = "ORI",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
+
+                const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) | (int64_t)f.imm;
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00000023,
+        .m_name = "SB",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatS(instruction);
+
+                const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
+                cpu->Store(addr, 8, cpu->GetGeneralPurposeRegVal(f.rs2));
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00003023,
+        .m_name = "SD",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatS(instruction);
+
+                const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
+                cpu->Store(addr, 64, cpu->GetGeneralPurposeRegVal(f.rs2));
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00001023,
+        .m_name = "SH",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatS(instruction);
+
+                const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
+                cpu->Store(addr, 16, cpu->GetGeneralPurposeRegVal(f.rs2));
+            },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x00001033,
+        .m_name = "SLL",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatR(instruction);
+
+                const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) << (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0xfc00707f,
+        .m_data = 0x00001013,
+        .m_name = "SLLI",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
+
+                // TODO: add a member var to cpu class
+                const uint8_t shamt = rv64_emulator::decoder::GetShamt(instruction, false);
+
+                const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) << (int64_t)shamt;
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x0000101b,
+        .m_name = "SLLIW",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
+
+                // TODO: add a member var to cpu class
+                const uint8_t shamt = rv64_emulator::decoder::GetShamt(instruction, false);
+
+                const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) << shamt);
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x0000103b,
+        .m_name = "SLLW",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
+
+                // TODO: add a member var to cpu class
+                const uint8_t shamt = rv64_emulator::decoder::GetShamt(instruction, false);
+
+                const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) << (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2));
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
 };
+
 } // namespace cpu
 } // namespace rv64_emulator

@@ -177,6 +177,7 @@ uint8_t GetRs2(const uint32_t instruction);
 
 int32_t  GetImm(const uint32_t instruction, const RV64InstructionFormatType type);
 uint8_t  GetShamt(const uint32_t instruction, const bool is_rv32_arch = false);
+
 uint16_t GetCsr(const uint32_t instruction);
 
 FormatR ParseFormatR(const uint32_t instruction);

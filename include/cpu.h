@@ -40,9 +40,6 @@ private:
     */
     std::unique_ptr<rv64_emulator::bus::Bus> m_bus;
 
-    uint64_t Load(const uint64_t addr, const uint64_t bit_size) const;
-    void     Store(const uint64_t addr, const uint64_t bit_size, const uint64_t val);
-
     // RV32I Base Instruction Set
     void Exec_ADDI(const uint32_t instruction);
     void Exec_SLLI(const uint32_t instruction);
@@ -136,11 +133,18 @@ private:
     /*********************** TODO ***************************/
 public:
     CPU(std::unique_ptr<rv64_emulator::bus::Bus> bus);
+
+    uint64_t Load(const uint64_t addr, const uint64_t bit_size) const;
+    void     Store(const uint64_t addr, const uint64_t bit_size, const uint64_t val);
+
     uint32_t Fetch();
     uint64_t Execute(const uint32_t instruction);
 
     void     SetGeneralPurposeRegVal(const uint64_t reg_num, const uint64_t val);
     uint64_t GetGeneralPurposeRegVal(const uint64_t reg_num) const;
+
+    void     SetPC(const uint64_t new_pc);
+    uint64_t GetPC() const;
 
 #ifdef DEBUG
     void Dump() const;
