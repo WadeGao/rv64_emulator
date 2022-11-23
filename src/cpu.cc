@@ -1152,20 +1152,19 @@ const Instruction RV64I_Instructions[] = {
         .m_data = 0x00000033,
         .m_name = "ADD",
         .Exec   = [](CPU* cpu, const uint32_t instruction) -> void {
-            const auto& f = rv64_emulator::decoder::ParseFormatR(instruction);
-
+            const auto&   f   = rv64_emulator::decoder::ParseFormatR(instruction);
             const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
             cpu->SetGeneralPurposeRegVal(f.rd, val);
         },
     },
+
     {
         .m_mask = 0x0000707f,
         .m_data = 0x00000013,
         .m_name = "ADDI",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
-
+                const auto&   f   = rv64_emulator::decoder::ParseFormatI(instruction);
                 const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
@@ -1177,8 +1176,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "ADDIW",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
-
+                const auto&   f   = rv64_emulator::decoder::ParseFormatI(instruction);
                 const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) + f.imm);
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
@@ -1190,8 +1188,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "ADDW",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatR(instruction);
-
+                const auto&   f   = rv64_emulator::decoder::ParseFormatR(instruction);
                 const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2));
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
@@ -1203,8 +1200,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "AND",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatR(instruction);
-
+                const auto&   f   = rv64_emulator::decoder::ParseFormatR(instruction);
                 const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) & (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
@@ -1216,8 +1212,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "ANDI",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
-
+                const auto&   f   = rv64_emulator::decoder::ParseFormatI(instruction);
                 const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) & (int64_t)f.imm;
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
@@ -1229,8 +1224,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "AUIPC",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatU(instruction);
-
+                const auto&   f   = rv64_emulator::decoder::ParseFormatU(instruction);
                 const int64_t val = (int64_t)(cpu->GetPC() - 4) + (int64_t)f.imm;
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
@@ -1243,7 +1237,6 @@ const Instruction RV64I_Instructions[] = {
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
                 const auto& f = rv64_emulator::decoder::ParseFormatB(instruction);
-
                 if ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) == (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
                     const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
                     cpu->SetPC(new_pc);
@@ -1258,7 +1251,6 @@ const Instruction RV64I_Instructions[] = {
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
                 const auto& f = rv64_emulator::decoder::ParseFormatB(instruction);
-
                 if ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) >= (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
                     const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
                     cpu->SetPC(new_pc);
@@ -1273,7 +1265,6 @@ const Instruction RV64I_Instructions[] = {
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
                 const auto& f = rv64_emulator::decoder::ParseFormatB(instruction);
-
                 if ((uint64_t)cpu->GetGeneralPurposeRegVal(f.rs1) >= (uint64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
                     const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
                     cpu->SetPC(new_pc);
@@ -1288,7 +1279,6 @@ const Instruction RV64I_Instructions[] = {
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
                 const auto& f = rv64_emulator::decoder::ParseFormatB(instruction);
-
                 if ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) < (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
                     const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
                     cpu->SetPC(new_pc);
@@ -1303,7 +1293,6 @@ const Instruction RV64I_Instructions[] = {
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
                 const auto& f = rv64_emulator::decoder::ParseFormatB(instruction);
-
                 if ((uint64_t)cpu->GetGeneralPurposeRegVal(f.rs1) < (uint64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
                     const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
                     cpu->SetPC(new_pc);
@@ -1318,7 +1307,6 @@ const Instruction RV64I_Instructions[] = {
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
                 const auto& f = rv64_emulator::decoder::ParseFormatB(instruction);
-
                 if ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) != (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
                     const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
                     cpu->SetPC(new_pc);
@@ -1333,7 +1321,6 @@ const Instruction RV64I_Instructions[] = {
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
                 const auto& f = rv64_emulator::decoder::ParseFormatJ(instruction);
-
                 cpu->SetGeneralPurposeRegVal(f.rd, cpu->GetPC());
                 const uint64_t new_pc = (int64_t)cpu->GetPC() + (int64_t)f.imm - 4;
                 cpu->SetPC(new_pc);
@@ -1346,8 +1333,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "JALR",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
-
+                const auto&    f        = rv64_emulator::decoder::ParseFormatI(instruction);
                 const uint64_t saved_pc = cpu->GetPC();
                 const uint64_t new_pc   = ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm) & 0xfffffffe;
 
@@ -1362,8 +1348,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "LB",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
-
+                const auto&    f    = rv64_emulator::decoder::ParseFormatI(instruction);
                 const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
                 const int8_t   data = (int8_t)(cpu->Load(addr, 8));
                 cpu->SetGeneralPurposeRegVal(f.rd, (int64_t)data);
@@ -1376,8 +1361,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "LBU",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
-
+                const auto&    f    = rv64_emulator::decoder::ParseFormatI(instruction);
                 const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
                 const uint64_t data = cpu->Load(addr, 8);
                 cpu->SetGeneralPurposeRegVal(f.rd, data);
@@ -1390,8 +1374,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "LD",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
-
+                const auto&    f    = rv64_emulator::decoder::ParseFormatI(instruction);
                 const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
                 const int64_t  data = (int64_t)cpu->Load(addr, 64);
                 cpu->SetGeneralPurposeRegVal(f.rd, (int64_t)data);
@@ -1404,8 +1387,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "LH",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
-
+                const auto&    f    = rv64_emulator::decoder::ParseFormatI(instruction);
                 const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
                 const int16_t  data = (int16_t)cpu->Load(addr, 16);
                 cpu->SetGeneralPurposeRegVal(f.rd, (int64_t)data);
@@ -1418,8 +1400,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "LHU",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
-
+                const auto&    f    = rv64_emulator::decoder::ParseFormatI(instruction);
                 const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
                 const uint64_t data = cpu->Load(addr, 16);
                 cpu->SetGeneralPurposeRegVal(f.rd, data);
@@ -1433,7 +1414,6 @@ const Instruction RV64I_Instructions[] = {
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
                 const auto& f = rv64_emulator::decoder::ParseFormatU(instruction);
-
                 cpu->SetGeneralPurposeRegVal(f.rd, (uint64_t)f.imm);
             },
     },
@@ -1444,8 +1424,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "LW",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
-
+                const auto&    f    = rv64_emulator::decoder::ParseFormatI(instruction);
                 const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
                 const int32_t  data = (int32_t)cpu->Load(addr, 32);
                 cpu->SetGeneralPurposeRegVal(f.rd, (int64_t)data);
@@ -1458,8 +1437,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "LWU",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
-
+                const auto&    f    = rv64_emulator::decoder::ParseFormatI(instruction);
                 const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
                 const uint64_t data = cpu->Load(addr, 32);
                 cpu->SetGeneralPurposeRegVal(f.rd, data);
@@ -1472,8 +1450,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "OR",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatR(instruction);
-
+                const auto&   f   = rv64_emulator::decoder::ParseFormatR(instruction);
                 const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) | (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
@@ -1485,8 +1462,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "ORI",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
-
+                const auto&   f   = rv64_emulator::decoder::ParseFormatI(instruction);
                 const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) | (int64_t)f.imm;
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
@@ -1498,8 +1474,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "SB",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatS(instruction);
-
+                const auto&    f    = rv64_emulator::decoder::ParseFormatS(instruction);
                 const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
                 cpu->Store(addr, 8, cpu->GetGeneralPurposeRegVal(f.rs2));
             },
@@ -1511,8 +1486,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "SD",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatS(instruction);
-
+                const auto&    f    = rv64_emulator::decoder::ParseFormatS(instruction);
                 const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
                 cpu->Store(addr, 64, cpu->GetGeneralPurposeRegVal(f.rs2));
             },
@@ -1524,8 +1498,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "SH",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatS(instruction);
-
+                const auto&    f    = rv64_emulator::decoder::ParseFormatS(instruction);
                 const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
                 cpu->Store(addr, 16, cpu->GetGeneralPurposeRegVal(f.rs2));
             },
@@ -1537,8 +1510,7 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "SLL",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatR(instruction);
-
+                const auto&   f   = rv64_emulator::decoder::ParseFormatR(instruction);
                 const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) << (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
@@ -1551,11 +1523,9 @@ const Instruction RV64I_Instructions[] = {
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
                 const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
-
                 // TODO: add a member var to cpu class
                 const uint8_t shamt = rv64_emulator::decoder::GetShamt(instruction, false);
-
-                const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) << (int64_t)shamt;
+                const int64_t val   = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) << (int64_t)shamt;
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
     },
@@ -1567,11 +1537,9 @@ const Instruction RV64I_Instructions[] = {
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
                 const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
-
                 // TODO: add a member var to cpu class
                 const uint8_t shamt = rv64_emulator::decoder::GetShamt(instruction, false);
-
-                const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) << shamt);
+                const int64_t val   = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) << shamt);
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
     },
@@ -1582,12 +1550,206 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "SLLW",
         .Exec =
             [](CPU* cpu, const uint32_t instruction) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
+                const auto&   f   = rv64_emulator::decoder::ParseFormatR(instruction);
+                const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) << (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2));
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
 
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x00002033,
+        .m_name = "SLT",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto&   f   = rv64_emulator::decoder::ParseFormatR(instruction);
+                const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) < (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2) ? 1 : 0;
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00002013,
+        .m_name = "SLTI",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto&   f   = rv64_emulator::decoder::ParseFormatI(instruction);
+                const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) < (int64_t)f.imm ? 1 : 0;
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00003013,
+        .m_name = "SLTIU",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto&   f   = rv64_emulator::decoder::ParseFormatI(instruction);
+                const int64_t val = (uint64_t)cpu->GetGeneralPurposeRegVal(f.rs1) < (uint64_t)f.imm ? 1 : 0;
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x00003033,
+        .m_name = "SLTU",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto&   f   = rv64_emulator::decoder::ParseFormatR(instruction);
+                const int64_t val = (uint64_t)cpu->GetGeneralPurposeRegVal(f.rs1) < (uint64_t)cpu->GetGeneralPurposeRegVal(f.rs2) ? 1 : 0;
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x40005033,
+        .m_name = "SRA",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto&   f   = rv64_emulator::decoder::ParseFormatR(instruction);
+                const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) >> (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0xfc00707f,
+        .m_data = 0x40005013,
+        .m_name = "SRAI",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
                 // TODO: add a member var to cpu class
                 const uint8_t shamt = rv64_emulator::decoder::GetShamt(instruction, false);
+                const int64_t val   = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) >> shamt;
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
 
-                const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) << (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2));
+    {
+        .m_mask = 0xfc00707f,
+        .m_data = 0x4000501b,
+        .m_name = "SRAIW",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
+                // TODO: add a member var to cpu class
+                const uint8_t shamt = rv64_emulator::decoder::GetShamt(instruction, true);
+                const int64_t val   = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) >> shamt);
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x4000503b,
+        .m_name = "SRAW",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto&   f   = rv64_emulator::decoder::ParseFormatR(instruction);
+                const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) >> (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2));
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0xfc00707f,
+        .m_data = 0x00005013,
+        .m_name = "SRLI",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
+                // TODO: add a member var to cpu class
+                const uint8_t shamt = rv64_emulator::decoder::GetShamt(instruction, false);
+                const int64_t val   = cpu->GetGeneralPurposeRegVal(f.rs1) >> shamt;
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0xfc00707f,
+        .m_data = 0x0000501b,
+        .m_name = "SRLIW",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto& f = rv64_emulator::decoder::ParseFormatI(instruction);
+                // TODO: add a member var to cpu class
+                const uint8_t shamt = rv64_emulator::decoder::GetShamt(instruction, true);
+                const int64_t val   = (int64_t)(int32_t)(cpu->GetGeneralPurposeRegVal(f.rs1) >> shamt);
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x0000503b,
+        .m_name = "SRLW",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto&   f = rv64_emulator::decoder::ParseFormatR(instruction);
+                const int64_t val =
+                    (int64_t)((uint32_t)cpu->GetGeneralPurposeRegVal(f.rs1) >> (uint32_t)cpu->GetGeneralPurposeRegVal(f.rs2));
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x40000033,
+        .m_name = "SUB",
+        .Exec   = [](CPU* cpu, const uint32_t instruction) -> void {
+            const auto&   f   = rv64_emulator::decoder::ParseFormatR(instruction);
+            const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) - (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+            cpu->SetGeneralPurposeRegVal(f.rd, val);
+        },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x4000003b,
+        .m_name = "SUBW",
+        .Exec   = [](CPU* cpu, const uint32_t instruction) -> void {
+            const auto&   f   = rv64_emulator::decoder::ParseFormatR(instruction);
+            const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) - (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2));
+            cpu->SetGeneralPurposeRegVal(f.rd, val);
+        },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00002023,
+        .m_name = "SW",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto&    f    = rv64_emulator::decoder::ParseFormatS(instruction);
+                const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
+                cpu->Store(addr, 32, cpu->GetGeneralPurposeRegVal(f.rs2));
+            },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x00004033,
+        .m_name = "XOR",
+        .Exec   = [](CPU* cpu, const uint32_t instruction) -> void {
+            const auto&   f   = rv64_emulator::decoder::ParseFormatR(instruction);
+            const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) ^ (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+            cpu->SetGeneralPurposeRegVal(f.rd, val);
+        },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00004013,
+        .m_name = "XORI",
+        .Exec =
+            [](CPU* cpu, const uint32_t instruction) {
+                const auto&   f   = rv64_emulator::decoder::ParseFormatI(instruction);
+                const int64_t val = cpu->GetGeneralPurposeRegVal(f.rs1) ^ f.imm;
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
     },

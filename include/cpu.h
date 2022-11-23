@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <string>
 
 namespace rv64_emulator {
 namespace cpu {
@@ -157,7 +156,7 @@ public:
 typedef struct Instruction {
     uint32_t    m_mask;
     uint32_t    m_data;
-    std::string m_name;
+    const char* m_name;
 
     void (*Exec)(CPU* cpu, const uint32_t instruction);
     // std::string Disassemble() const;
