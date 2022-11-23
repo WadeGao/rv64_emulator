@@ -8,37 +8,36 @@
 namespace rv64_emulator {
 namespace decoder {
 
-uint8_t GetOpCode(const uint32_t instruction) {
-    const uint8_t opcode = static_cast<uint8_t>(instruction & OPCODE_MASK);
-    return opcode;
-}
+enum class RV64InstructionFormatType : uint8_t {
+    R_Type = 0,
+    I_Type,
+    S_Type,
+    B_Type,
+    U_Type,
+    J_Type
+};
 
-uint8_t GetFunct3(const uint32_t instruction) {
-    const uint8_t funct3 = static_cast<uint8_t>((instruction >> 12) & 0x7);
-    return funct3;
-}
+// masks
+static constexpr uint32_t REG_MASK            = 0x1f;
+static constexpr uint32_t SHAMT_IN_IMM64_MASK = 0x3f;
+static constexpr uint32_t SHAMT_IN_IMM32_MASK = 0x1f;
 
-uint8_t GetFunct7(const uint32_t instruction) {
-    const uint8_t funct7 = static_cast<uint8_t>((instruction >> 25) & 0x7f);
-    return funct7;
-}
-
-uint8_t GetRd(const uint32_t instruction) {
+static uint8_t GetRd(const uint32_t instruction) {
     const uint8_t rd = static_cast<uint8_t>(instruction >> 7 & REG_MASK);
     return rd;
 }
 
-uint8_t GetRs1(const uint32_t instruction) {
+static uint8_t GetRs1(const uint32_t instruction) {
     const uint8_t rd = static_cast<uint8_t>(instruction >> 15 & REG_MASK);
     return rd;
 }
 
-uint8_t GetRs2(const uint32_t instruction) {
+static uint8_t GetRs2(const uint32_t instruction) {
     const uint8_t rd = static_cast<uint8_t>(instruction >> 20 & REG_MASK);
     return rd;
 }
 
-int32_t GetImm(const uint32_t instruction, const RV64InstructionFormatType type) {
+static int32_t GetImm(const uint32_t instruction, const RV64InstructionFormatType type) {
     int32_t imm       = 0;
     uint8_t imm_width = 12;
 

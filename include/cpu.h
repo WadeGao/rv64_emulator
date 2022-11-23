@@ -4,6 +4,7 @@
 #include "include/bus.h"
 #include "include/conf.h"
 #include "include/decoder.h"
+#include "libs/LRU.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -37,99 +38,12 @@ private:
     +───────────+───────────+────────────────────────────────────+────────+
 
     */
+
     std::unique_ptr<rv64_emulator::bus::Bus> m_bus;
 
-    // RV32I Base Instruction Set
-    void Exec_ADDI(const uint32_t instruction);
-    void Exec_SLLI(const uint32_t instruction);
-    void Exec_SLTI(const uint32_t instruction);
-    void Exec_SLTIU(const uint32_t instruction);
-    void Exec_XORI(const uint32_t instruction);
-    void Exec_SRLI(const uint32_t instruction);
-    void Exec_SRAI(const uint32_t instruction);
-    void Exec_ORI(const uint32_t instruction);
-    void Exec_ANDI(const uint32_t instruction);
+    // decode cache, key: inst_word, val: inst_table_index
+    rv64_emulator::libs::LRUCache<uint32_t, int64_t> m_decode_cache;
 
-    void Exec_AUIPC(const uint32_t instruction);
-    void Exec_LUI(const uint32_t instruction);
-
-    void Exec_JAL(const uint32_t instruction);
-    void Exec_JALR(const uint32_t instruction);
-
-    void Exec_BEQ(const uint32_t instruction);
-    void Exec_BNE(const uint32_t instruction);
-    void Exec_BLT(const uint32_t instruction);
-    void Exec_BGE(const uint32_t instruction);
-    void Exec_BLTU(const uint32_t instruction);
-    void Exec_BGEU(const uint32_t instruction);
-
-    void Exec_LB(const uint32_t instruction);
-    void Exec_LH(const uint32_t instruction);
-    void Exec_LW(const uint32_t instruction);
-    void Exec_LBU(const uint32_t instruction);
-    void Exec_LHU(const uint32_t instruction);
-
-    void Exec_SB(const uint32_t instruction);
-    void Exec_SH(const uint32_t instruction);
-    void Exec_SW(const uint32_t instruction);
-
-    void Exec_ADD(const uint32_t instruction);
-    void Exec_SUB(const uint32_t instruction);
-    void Exec_SLL(const uint32_t instruction);
-    void Exec_SLT(const uint32_t instruction);
-    void Exec_SLTU(const uint32_t instruction);
-    void Exec_XOR(const uint32_t instruction);
-    void Exec_SRL(const uint32_t instruction);
-    void Exec_SRA(const uint32_t instruction);
-    void Exec_OR(const uint32_t instruction);
-    void Exec_AND(const uint32_t instruction);
-
-    void Exec_FENCE(const uint32_t instruction);
-    void Exec_FENCE_I(const uint32_t instruction);
-    void Exec_ECALL(const uint32_t instruction);
-    void Exec_EBREAK(const uint32_t instruction);
-    void Exec_CSRRW(const uint32_t instruction);
-    void Exec_CSRRS(const uint32_t instruction);
-    void Exec_CSRRC(const uint32_t instruction);
-    void Exec_CSRRWI(const uint32_t instruction);
-    void Exec_CSRRSI(const uint32_t instruction);
-    void Exec_CSRRCI(const uint32_t instruction);
-
-    // RV64I Base Instruction Set (in addition to RV32I)
-    void Exec_LWU(const uint32_t instruction);
-    void Exec_LD(const uint32_t instruction);
-    void Exec_SD(const uint32_t instruction);
-
-    void Exec_ADDIW(const uint32_t instruction);
-    void Exec_SLLIW(const uint32_t instruction);
-    void Exec_SRLIW(const uint32_t instruction);
-    void Exec_SRAIW(const uint32_t instruction);
-    void Exec_ADDW(const uint32_t instruction);
-    void Exec_SUBW(const uint32_t instruction);
-    void Exec_SLLW(const uint32_t instruction);
-    void Exec_SRLW(const uint32_t instruction);
-    void Exec_SRAW(const uint32_t instruction);
-
-    /*********************** TODO ***************************/
-
-    // RV32M Standard Extension
-    void Exec_MUL(const uint32_t instruction);
-    void Exec_MULH(const uint32_t instruction);
-    void Exec_MULHSU(const uint32_t instruction);
-    void Exec_MULHU(const uint32_t instruction);
-    void Exec_DIV(const uint32_t instruction);
-    void Exec_DIVU(const uint32_t instruction);
-    void Exec_REM(const uint32_t instruction);
-    void Exec_REMU(const uint32_t instruction);
-
-    //  RV64M Standard Extension (in addition to RV32M)
-    void Exec_MULW(const uint32_t instruction);
-    void Exec_DIVW(const uint32_t instruction);
-    void Exec_DIVUW(const uint32_t instruction);
-    void Exec_REMW(const uint32_t instruction);
-    void Exec_REMUW(const uint32_t instruction);
-
-    /*********************** TODO ***************************/
 public:
     CPU(std::unique_ptr<rv64_emulator::bus::Bus> bus);
 
@@ -137,6 +51,7 @@ public:
     void     Store(const uint64_t addr, const uint64_t bit_size, const uint64_t val);
 
     uint32_t Fetch();
+    int64_t  Decode(const uint32_t inst_word);
     uint64_t Execute(const uint32_t instruction);
 
     void     SetGeneralPurposeRegVal(const uint64_t reg_num, const uint64_t val);
