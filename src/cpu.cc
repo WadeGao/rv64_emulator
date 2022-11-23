@@ -640,12 +640,12 @@ void CPU::Store(const uint64_t addr, const uint64_t bit_size, const uint64_t val
 }
 
 void CPU::SetGeneralPurposeRegVal(const uint64_t reg_num, const uint64_t val) {
-    assert(reg_num < RV64_GENERAL_PURPOSE_REG_NUM - 1);
+    assert(reg_num <= RV64_GENERAL_PURPOSE_REG_NUM - 1);
     m_reg[reg_num] = val;
 }
 
 uint64_t CPU::GetGeneralPurposeRegVal(const uint64_t reg_num) const {
-    assert(reg_num < RV64_GENERAL_PURPOSE_REG_NUM - 1);
+    assert(reg_num <= RV64_GENERAL_PURPOSE_REG_NUM - 1);
     return m_reg[reg_num];
 }
 
@@ -691,6 +691,7 @@ uint64_t CPU::Execute(const uint32_t instruction) {
     int32_t instruction_index = Decode(instruction);
     if (instruction_index == -1) {
         printf("unknown instruction\n");
+        // assert(false);
         return 0;
     }
 
