@@ -3,7 +3,7 @@
 
 #include "include/bus.h"
 #include "include/conf.h"
-#include "include/decoder.h"
+#include "include/decode.h"
 #include "libs/LRU.hpp"
 
 #include <cstdint>
@@ -12,10 +12,13 @@
 namespace rv64_emulator {
 namespace cpu {
 
+constexpr uint64_t kGeneralPurposeRegNUM = 32;
+constexpr uint64_t kInstructionBits      = 32;
+
 class CPU {
 private:
     uint64_t m_pc;
-    uint64_t m_reg[RV64_GENERAL_PURPOSE_REG_NUM] = { 0 };
+    uint64_t m_reg[kGeneralPurposeRegNUM] = { 0 };
 
     /*
 
@@ -52,7 +55,7 @@ public:
 
     uint32_t Fetch();
     int64_t  Decode(const uint32_t inst_word);
-    uint64_t Execute(const uint32_t instruction);
+    uint64_t Execute(const uint32_t inst_word);
 
     void     SetGeneralPurposeRegVal(const uint64_t reg_num, const uint64_t val);
     uint64_t GetGeneralPurposeRegVal(const uint64_t reg_num) const;
@@ -64,7 +67,6 @@ public:
     void Dump() const;
 #endif
 
-    inline void IllegalInstructionHandler(const char* info, const uint32_t instruction) const;
     ~CPU();
 };
 
@@ -73,10 +75,11 @@ typedef struct Instruction {
     uint32_t    m_data;
     const char* m_name;
 
-    void (*Exec)(CPU* cpu, const uint32_t instruction);
+    void (*Exec)(CPU* cpu, const uint32_t inst_word);
     // std::string Disassemble() const;
 } Instruction;
 
 } // namespace cpu
 } // namespace rv64_emulator
+
 #endif

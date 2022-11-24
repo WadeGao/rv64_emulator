@@ -10,12 +10,14 @@ namespace libs {
 
 template <typename Tkey = uint64_t, typename Tval = int64_t> class LRUCache {
 private:
-    uint64_t m_current_size;
     uint64_t m_capacity;
 
+    // inline initialization need C++11 and above
+    uint64_t m_current_size = 0;
+
 #ifdef DEBUG
-    uint64_t m_hit_count;
-    uint64_t m_miss_count;
+    uint64_t m_hit_count  = 0;
+    uint64_t m_miss_count = 0;
 #endif
 
     std::list<std::pair<Tkey, Tval>>                                              m_list;
@@ -23,13 +25,7 @@ private:
 
 public:
     LRUCache(const uint64_t capacity)
-        : m_current_size(0)
-        , m_capacity(capacity)
-#ifdef DEBUG
-        , m_hit_count(0)
-        , m_miss_count(0)
-#endif
-    {
+        : m_capacity(capacity) {
     }
 
     bool Get(Tkey key, Tval& ret_val) {
