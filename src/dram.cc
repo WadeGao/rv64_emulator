@@ -35,7 +35,7 @@ uint64_t DRAM::Load(const uint64_t addr, const uint64_t bit_size) const {
             const uint64_t byte_size = bit_size >> 3;
             uint8_t        mask      = 0;
             for (uint64_t i = 0; i < byte_size; i++) {
-                res |= static_cast<uint64_t>(m_memory[addr - DRAM_BASE + i]) << mask;
+                res |= static_cast<uint64_t>(m_memory[addr - kDramBaseAddr + i]) << mask;
                 mask += 8;
             }
             break;
@@ -58,7 +58,7 @@ void DRAM::Store(const uint64_t addr, const uint64_t bit_size, const uint64_t va
         case 64: {
             const uint64_t byte_size     = bit_size >> 3;
             uint8_t        mask          = 0;
-            const uint64_t phy_addr_base = addr - DRAM_BASE;
+            const uint64_t phy_addr_base = addr - kDramBaseAddr;
             for (uint64_t i = 0; i < byte_size; i++) {
                 m_memory[phy_addr_base + i] = static_cast<uint8_t>((val >> (i << 3)) & 0xff);
             }

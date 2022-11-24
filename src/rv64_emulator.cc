@@ -18,16 +18,16 @@ void LoadBin(const char* file_name, rv64_emulator::dram::DRAM* dram) {
     fclose(file);
 
     for (size_t i = 0; i < file_len; i++) {
-        dram->Store(DRAM_BASE + i, 8, buffer[i]);
+        dram->Store(kDramBaseAddr + i, 8, buffer[i]);
     }
 }
 
 int main(int argc, char* argv[]) {
-    auto dram = std::make_unique<rv64_emulator::dram::DRAM>(DRAM_SIZE);
+    auto dram = std::make_unique<rv64_emulator::dram::DRAM>(kDramSize);
     LoadBin(argv[1], dram.get());
 
     auto bus = std::make_unique<rv64_emulator::bus::Bus>(std::move(dram));
-    auto cpu = std::make_unique<rv64_emulator::cpu::CPU>(std::move(bus));
+    auto cpu = std::make_unique<rv64_emulator::cpu::CPU>(rv64_emulator::cpu::ArchMode::kBit64, std::move(bus));
 
     while (true) {
         const uint32_t instuction = cpu->Fetch();
