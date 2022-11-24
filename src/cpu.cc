@@ -387,10 +387,10 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "SLLI",
         .Exec =
             [](CPU* cpu, const uint32_t inst_word) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(inst_word);
-                // TODO: add a member var to cpu class
-                const uint8_t shamt = rv64_emulator::decoder::GetShamt(inst_word, false);
-                const int64_t val   = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) << (int64_t)shamt;
+                const auto&    f         = rv64_emulator::decoder::ParseFormatI(inst_word);
+                const ArchMode arch_mode = cpu->GetArchMode();
+                const uint8_t  shamt     = rv64_emulator::decoder::GetShamt(inst_word, arch_mode == ArchMode::kBit32);
+                const int64_t  val       = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) << (int64_t)shamt;
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
     },
@@ -401,10 +401,10 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "SLLIW",
         .Exec =
             [](CPU* cpu, const uint32_t inst_word) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(inst_word);
-                // TODO: add a member var to cpu class
-                const uint8_t shamt = rv64_emulator::decoder::GetShamt(inst_word, false);
-                const int64_t val   = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) << shamt);
+                const auto&    f         = rv64_emulator::decoder::ParseFormatI(inst_word);
+                const ArchMode arch_mode = cpu->GetArchMode();
+                const uint8_t  shamt     = rv64_emulator::decoder::GetShamt(inst_word, arch_mode == ArchMode::kBit64);
+                const int64_t  val       = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) << shamt);
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
     },
@@ -487,10 +487,10 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "SRAI",
         .Exec =
             [](CPU* cpu, const uint32_t inst_word) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(inst_word);
-                // TODO: add a member var to cpu class
-                const uint8_t shamt = rv64_emulator::decoder::GetShamt(inst_word, false);
-                const int64_t val   = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) >> shamt;
+                const auto&    f         = rv64_emulator::decoder::ParseFormatI(inst_word);
+                const ArchMode arch_mode = cpu->GetArchMode();
+                const uint8_t  shamt     = rv64_emulator::decoder::GetShamt(inst_word, arch_mode == ArchMode::kBit32);
+                const int64_t  val       = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) >> shamt;
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
     },
@@ -501,10 +501,10 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "SRAIW",
         .Exec =
             [](CPU* cpu, const uint32_t inst_word) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(inst_word);
-                // TODO: add a member var to cpu class
-                const uint8_t shamt = rv64_emulator::decoder::GetShamt(inst_word, true);
-                const int64_t val   = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) >> shamt);
+                const auto&    f         = rv64_emulator::decoder::ParseFormatI(inst_word);
+                const ArchMode arch_mode = cpu->GetArchMode();
+                const uint8_t  shamt     = rv64_emulator::decoder::GetShamt(inst_word, arch_mode == ArchMode::kBit64);
+                const int64_t  val       = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) >> shamt);
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
     },
@@ -527,10 +527,10 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "SRLI",
         .Exec =
             [](CPU* cpu, const uint32_t inst_word) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(inst_word);
-                // TODO: add a member var to cpu class
-                const uint8_t shamt = rv64_emulator::decoder::GetShamt(inst_word, false);
-                const int64_t val   = cpu->GetGeneralPurposeRegVal(f.rs1) >> shamt;
+                const auto&    f         = rv64_emulator::decoder::ParseFormatI(inst_word);
+                const ArchMode arch_mode = cpu->GetArchMode();
+                const uint8_t  shamt     = rv64_emulator::decoder::GetShamt(inst_word, arch_mode == ArchMode::kBit32);
+                const int64_t  val       = cpu->GetGeneralPurposeRegVal(f.rs1) >> shamt;
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
     },
@@ -541,10 +541,10 @@ const Instruction RV64I_Instructions[] = {
         .m_name = "SRLIW",
         .Exec =
             [](CPU* cpu, const uint32_t inst_word) {
-                const auto& f = rv64_emulator::decoder::ParseFormatI(inst_word);
-                // TODO: add a member var to cpu class
-                const uint8_t shamt = rv64_emulator::decoder::GetShamt(inst_word, true);
-                const int64_t val   = (int64_t)(int32_t)(cpu->GetGeneralPurposeRegVal(f.rs1) >> shamt);
+                const auto&    f         = rv64_emulator::decoder::ParseFormatI(inst_word);
+                const ArchMode arch_mode = cpu->GetArchMode();
+                const uint8_t  shamt     = rv64_emulator::decoder::GetShamt(inst_word, arch_mode == ArchMode::kBit64);
+                const int64_t  val       = (int64_t)(int32_t)(cpu->GetGeneralPurposeRegVal(f.rs1) >> shamt);
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             },
     },
@@ -620,8 +620,9 @@ const Instruction RV64I_Instructions[] = {
     },
 };
 
-CPU::CPU(std::unique_ptr<rv64_emulator::bus::Bus> bus)
-    : m_pc(kDramBaseAddr)
+CPU::CPU(ArchMode arch_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus)
+    : m_arch_mode(arch_mode)
+    , m_pc(kDramBaseAddr)
     , m_bus(std::move(bus))
     , m_decode_cache(rv64_emulator::decoder::kDecodeCacheEntryNum) {
     m_reg[0] = 0;
@@ -640,12 +641,12 @@ void CPU::Store(const uint64_t addr, const uint64_t bit_size, const uint64_t val
 }
 
 void CPU::SetGeneralPurposeRegVal(const uint64_t reg_num, const uint64_t val) {
-    assert(reg_num <= kGeneralPurposeRegNUM - 1);
+    assert(reg_num <= kGeneralPurposeRegNum - 1);
     m_reg[reg_num] = val;
 }
 
 uint64_t CPU::GetGeneralPurposeRegVal(const uint64_t reg_num) const {
-    assert(reg_num <= kGeneralPurposeRegNUM - 1);
+    assert(reg_num <= kGeneralPurposeRegNum - 1);
     return m_reg[reg_num];
 }
 
@@ -655,6 +656,10 @@ void CPU::SetPC(const uint64_t new_pc) {
 
 uint64_t CPU::GetPC() const {
     return m_pc;
+}
+
+ArchMode CPU::GetArchMode() const {
+    return m_arch_mode;
 }
 
 uint32_t CPU::Fetch() {

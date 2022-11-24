@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
     LoadBin(argv[1], dram.get());
 
     auto bus = std::make_unique<rv64_emulator::bus::Bus>(std::move(dram));
-    auto cpu = std::make_unique<rv64_emulator::cpu::CPU>(std::move(bus));
+    auto cpu = std::make_unique<rv64_emulator::cpu::CPU>(rv64_emulator::cpu::ArchMode::kBit64, std::move(bus));
 
     while (true) {
         const uint32_t instuction = cpu->Fetch();

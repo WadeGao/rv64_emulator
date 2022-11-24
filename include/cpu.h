@@ -12,13 +12,33 @@
 namespace rv64_emulator {
 namespace cpu {
 
-constexpr uint64_t kGeneralPurposeRegNUM = 32;
+constexpr uint64_t kGeneralPurposeRegNum = 32;
+constexpr uint64_t kFloatingPointRegNum  = 32;
 constexpr uint64_t kInstructionBits      = 32;
+constexpr uint64_t kCsrCapacity          = 4096;
+
+enum class ArchMode {
+    kBit32,
+    kBit64
+};
+
+enum class PrivilegeMode {
+    kUser,
+    kSupervisor,
+    kReserved,
+    kMachine
+};
 
 class CPU {
 private:
+    ArchMode m_arch_mode;
     uint64_t m_pc;
-    uint64_t m_reg[kGeneralPurposeRegNUM] = { 0 };
+    // TODO: 把 gpr 的类型迁移到 int64_t
+    uint64_t m_reg[kGeneralPurposeRegNum]   = { 0 };
+    double   m_fp_reg[kFloatingPointRegNum] = { 0 };
+    static_assert(sizeof(double) == 8, "double is not 8 bytes, can't assure the bit width of floating point reg");
+    // TODO: 是否会超过栈大小？是否用 std::array?
+    uint64_t m_csr[kCsrCapacity] = { 0 };
 
     /*
 
@@ -48,7 +68,7 @@ private:
     rv64_emulator::libs::LRUCache<uint32_t, int64_t> m_decode_cache;
 
 public:
-    CPU(std::unique_ptr<rv64_emulator::bus::Bus> bus);
+    CPU(ArchMode arch_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus);
 
     uint64_t Load(const uint64_t addr, const uint64_t bit_size) const;
     void     Store(const uint64_t addr, const uint64_t bit_size, const uint64_t val);
@@ -62,6 +82,8 @@ public:
 
     void     SetPC(const uint64_t new_pc);
     uint64_t GetPC() const;
+
+    ArchMode GetArchMode() const;
 
 #ifdef DEBUG
     void Dump() const;
