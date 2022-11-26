@@ -1,5 +1,5 @@
 set_languages("cxx17")
-add_rules("mode.debug", "mode.release")
+add_rules("mode.debug", "mode.release", "mode.minsizerel", "mode.asan")
 
 target("rv64_emulator")
     add_cxxflags("-fno-rtti", "-fno-exceptions")

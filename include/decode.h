@@ -45,16 +45,23 @@ typedef struct FormatJ {
     int32_t imm;
 } FormatJ;
 
+typedef struct FormatCsr {
+    uint16_t csr;
+    uint8_t  rd;
+    uint8_t  rs;
+} FormatCsr;
+
 uint16_t GetCsr(const uint32_t inst_word);
 uint8_t  GetShamt(const uint32_t inst_word, const bool is_rv32_arch = false); //
 
 // instruction format parser
-FormatR ParseFormatR(const uint32_t inst_word);
-FormatI ParseFormatI(const uint32_t inst_word);
-FormatS ParseFormatS(const uint32_t inst_word);
-FormatB ParseFormatB(const uint32_t inst_word);
-FormatU ParseFormatU(const uint32_t inst_word);
-FormatJ ParseFormatJ(const uint32_t inst_word);
+FormatR   ParseFormatR(const uint32_t inst_word);
+FormatI   ParseFormatI(const uint32_t inst_word);
+FormatS   ParseFormatS(const uint32_t inst_word);
+FormatB   ParseFormatB(const uint32_t inst_word);
+FormatU   ParseFormatU(const uint32_t inst_word);
+FormatJ   ParseFormatJ(const uint32_t inst_word);
+FormatCsr ParseFormatCsr(const uint32_t inst_word);
 
 // instruction dumper
 std::string DumpFormatR(const uint32_t inst_word);

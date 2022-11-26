@@ -620,8 +620,9 @@ const Instruction RV64I_Instructions[] = {
     },
 };
 
-CPU::CPU(ArchMode arch_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus)
+CPU::CPU(ArchMode arch_mode, PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus)
     : m_arch_mode(arch_mode)
+    , m_privilege_mode(privilege_mode)
     , m_pc(kDramBaseAddr)
     , m_bus(std::move(bus))
     , m_decode_cache(rv64_emulator::decoder::kDecodeCacheEntryNum) {
@@ -660,6 +661,16 @@ uint64_t CPU::GetPC() const {
 
 ArchMode CPU::GetArchMode() const {
     return m_arch_mode;
+}
+
+PrivilegeMode CPU::GetPrivilegeMode() const {
+    return m_privilege_mode;
+}
+
+bool CPU::HasCsrAccessPrivilege(const uint16_t csr_num) const {
+    // 可以访问改csr寄存器的最低特权级别
+    const uint16_t lowest_privilege_mode = (csr_num >> 8) & 0b11;
+    return lowest_privilege_mode <= uint16_t(m_privilege_mode);
 }
 
 uint32_t CPU::Fetch() {
