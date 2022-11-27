@@ -941,9 +941,203 @@ bool CPU::HandleTrap(const Trap trap, const uint64_t inst_addr, bool is_interrup
 
         // 1. cur_privilege_mode < new_privilege_mode: Interrupt is always enabled
         // 2. cur_privilege_mode > new_privilege_mode: Interrupt is always disabled
-        // 3. cur_privilege_mode = new_privilege_mode: Interrupt is enabled if xIE in xstatus is 1
-        // TODO
+        // 3. cur_privilege_mode == new_privilege_mode: Interrupt is enabled if xIE in xstatus is 1
+        if (new_privilege_mode < cur_privilege_mode) {
+            return false;
+        } else if (new_privilege_mode == cur_privilege_mode) {
+            switch (cur_privilege_mode) {
+                case PrivilegeMode::kUser:
+                    if (!cur_uie) {
+                        return false;
+                    }
+                    break;
+                case PrivilegeMode::kSupervisor:
+                    if (!cur_sie) {
+                        return false;
+                    }
+                    break;
+                case PrivilegeMode::kMachine:
+                    if (!cur_mie) {
+                        return false;
+                    }
+                    break;
+                case PrivilegeMode::kReserved:
+                    assert(false);
+                default:
+                    break;
+            }
+        }
+
+        switch (trap.m_trap_type) {
+            case TrapType::kUserSoftwareInterrupt:
+                if (!usie) {
+                    return false;
+                }
+                break;
+            case TrapType::kSupervisorSoftwareInterrupt:
+                if (!ssie) {
+                    return false;
+                }
+                break;
+            case TrapType::kMachineSoftwareInterrupt:
+                if (!msie) {
+                    return false;
+                }
+                break;
+            case TrapType::kUserTimerInterrupt:
+                if (!utie) {
+                    return false;
+                }
+                break;
+            case TrapType::kSupervisorTimerInterrupt:
+                if (!stie) {
+                    return false;
+                }
+                break;
+            case TrapType::kMachineTimerInterrupt:
+                if (!mtie) {
+                    return false;
+                }
+                break;
+            case TrapType::kUserExternalInterrupt:
+                if (!ueie) {
+                    return false;
+                }
+                break;
+            case TrapType::kSupervisorExternalInterrupt:
+                if (!seie) {
+                    return false;
+                }
+                break;
+            case TrapType::kMachineExternalInterrupt:
+                if (!meie) {
+                    return false;
+                }
+                break;
+            default:
+                break;
+        }
     }
+
+    // now is a trap
+    m_privilege_mode = new_privilege_mode;
+    // TODO: mmu update privilege mode
+
+    const uint16_t csr_epc_addr = [](const PrivilegeMode pm) -> uint16_t {
+        switch (pm) {
+            case PrivilegeMode::kMachine:
+                return csr::kCsrMepc;
+            case PrivilegeMode::kSupervisor:
+                return csr::kCsrSepc;
+            case PrivilegeMode::kUser:
+                return csr::kCsrUepc;
+            case PrivilegeMode::kReserved:
+            default:
+                assert(false);
+        }
+        return 0;
+    }(m_privilege_mode);
+
+    const uint16_t csr_cause_addr = [](const PrivilegeMode pm) -> uint16_t {
+        switch (pm) {
+            case PrivilegeMode::kMachine:
+                return csr::kCsrMcause;
+            case PrivilegeMode::kSupervisor:
+                return csr::kCsrScause;
+            case PrivilegeMode::kUser:
+                return csr::kCsrUcause;
+            case PrivilegeMode::kReserved:
+            default:
+                assert(false);
+        }
+        return 0;
+    }(m_privilege_mode);
+
+    const uint16_t csr_tval_addr = [](const PrivilegeMode pm) -> uint16_t {
+        switch (pm) {
+            case PrivilegeMode::kMachine:
+                return csr::kCsrMtval;
+            case PrivilegeMode::kSupervisor:
+                return csr::kCsrStval;
+            case PrivilegeMode::kUser:
+                return csr::kCsrUtval;
+            case PrivilegeMode::kReserved:
+            default:
+                assert(false);
+        }
+        return 0;
+    }(m_privilege_mode);
+
+    const uint16_t csr_tvec_addr = [](const PrivilegeMode pm) -> uint16_t {
+        switch (pm) {
+            case PrivilegeMode::kMachine:
+                return csr::kCsrMtvec;
+            case PrivilegeMode::kSupervisor:
+                return csr::kCsrStvec;
+            case PrivilegeMode::kUser:
+                return csr::kCsrUtvec;
+            case PrivilegeMode::kReserved:
+            default:
+                assert(false);
+        }
+        return 0;
+    }(m_privilege_mode);
+
+    WriteCsrDirectly(csr_epc_addr, inst_addr);
+    WriteCsrDirectly(csr_cause_addr, inst_addr);
+    WriteCsrDirectly(csr_tval_addr, inst_addr);
+
+    // https://dingfen.github.io/assets/img/mtvec.png
+    // csr_tvec_addr末两位为 mode
+    // mode为 00 时直接使用csr_tvec_addr的值作为pc
+    // mode为 01 时启用向量中断
+    // mode值大于 2 为保留值
+    const uint8_t mode = csr_tvec_addr & 0x3;
+    switch (mode) {
+        case 0:
+            m_pc = ReadCsrDirectly(csr_tvec_addr);
+            break;
+        case 1:
+            m_pc = (m_pc & (~0x3)) + 4 * (cause & 0xffff);
+            break;
+        default:
+            // reversed
+            assert(false);
+            break;
+    }
+
+    switch (m_privilege_mode) {
+        case PrivilegeMode::kMachine: {
+            const uint64_t status = ReadCsrDirectly(csr::kCsrMstatus);
+
+            bool mie = (status >> 3) & 1;
+            // 1. clear MPP(BIT 12, 11), MPIE(BIT 7), MIE(BIT 3)
+            // 2. override MPP[12:11] with current privilege encoding
+            // 3. set MIE(bit 3) to MPIE(bit 7)
+            const uint64_t new_status = (status & (~0x1888)) | (mie << 7) | ((uint64_t)cur_privilege_mode << 11);
+            WriteCsrDirectly(csr::kCsrMstatus, new_status);
+        } break;
+        case PrivilegeMode::kSupervisor: {
+            uint64_t status = ReadCsrDirectly(csr::kCsrSstatus);
+
+            bool sie = (status >> 1) & 1;
+            // 1. clear SIE(bit 1), SPIE(bit 5), SPP(bit 8)
+            // 2. override SPP(bit 8) with current privilege encoding
+            // 3. set SIE(bit 1) to SPIE(bit 5)
+            const uint64_t new_status = (status & (~0x122)) | (sie << 5) | (((uint64_t)cur_privilege_mode & 1) << 8);
+            WriteCsrDirectly(csr::kCsrSstatus, new_status);
+        } break;
+        case PrivilegeMode::kUser:
+            // not implemented yet
+            assert(false);
+            break;
+        case PrivilegeMode::kReserved:
+        default:
+            assert(false);
+            break;
+    }
+
+    return false;
 }
 
 uint32_t CPU::Fetch() {

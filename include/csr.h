@@ -55,6 +55,15 @@ constexpr uint16_t kCsrSie     = 0x104;
 constexpr uint16_t kCsrSip     = 0x144;
 constexpr uint16_t kCsrUie     = 0x004;
 constexpr uint16_t kCsrTime    = 0xc01;
+constexpr uint16_t kCsrSepc    = 0x141;
+constexpr uint16_t kCsrUepc    = 0x041;
+constexpr uint16_t kCsrScause  = 0x142;
+constexpr uint16_t kCsrUcause  = 0x042;
+
+constexpr uint16_t kCsrStval = 0x143; // Machine bad address or instruction
+constexpr uint16_t kCsrUtval = 0x043; // Machine bad address or instruction
+constexpr uint16_t kCsrStvec = 0x105;
+constexpr uint16_t kCsrUtvec = 0x005;
 
 } // namespace csr
 } // namespace cpu
