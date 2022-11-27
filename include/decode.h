@@ -7,7 +7,8 @@
 #include <string>
 
 namespace rv64_emulator {
-namespace decoder {
+namespace cpu {
+namespace decode {
 
 constexpr uint64_t kDecodeCacheEntryNum = 4096;
 
@@ -65,7 +66,9 @@ FormatCsr ParseFormatCsr(const uint32_t inst_word);
 
 // instruction dumper
 std::string DumpFormatR(const uint32_t inst_word);
+
 } // namespace decoder
+} // namespace cpu
 } // namespace rv64_emulator
 
 #endif
