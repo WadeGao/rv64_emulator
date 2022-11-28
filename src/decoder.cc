@@ -6,7 +6,8 @@
 #include <cstdio>
 
 namespace rv64_emulator {
-namespace decoder {
+namespace cpu {
+namespace decode {
 
 enum class RV64InstructionFormatType : uint8_t {
     R_Type = 0,
@@ -150,5 +151,14 @@ FormatJ ParseFormatJ(const uint32_t inst_word) {
     };
 }
 
-} // namespace decoder
+FormatCsr ParseFormatCsr(const uint32_t inst_word) {
+    return {
+        .csr = 0,
+        .rd  = GetRd(inst_word),
+        .rs  = GetRs1(inst_word),
+    };
+}
+
+} // namespace decode
+} // namespace cpu
 } // namespace rv64_emulator
