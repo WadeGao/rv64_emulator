@@ -1088,17 +1088,18 @@ bool CPU::HandleTrap(const Trap trap, const uint64_t inst_addr, bool is_interrup
     WriteCsrDirectly(csr_tval_addr, inst_addr);
 
     // https://dingfen.github.io/assets/img/mtvec.png
-    // csr_tvec_addr末两位为 mode
-    // mode为 00 时直接使用csr_tvec_addr的值作为pc
-    // mode为 01 时启用向量中断
-    // mode值大于 2 为保留值
-    const uint8_t mode = csr_tvec_addr & 0x3;
+    // csr_tvec_addr 寄存器值的末两位为 mode
+    // mode 为 00 时直接使用 csr_tvec_addr 寄存器的值作为 pc
+    // mode 为 01 时启用向量中断
+    // mode 值大于 2 为保留值
+    const uint64_t csr_tvec_val = ReadCsrDirectly(csr_tvec_addr);
+    const uint8_t  mode         = csr_tvec_val & 0x3;
     switch (mode) {
         case 0:
-            m_pc = ReadCsrDirectly(csr_tvec_addr);
+            m_pc = csr_tvec_val;
             break;
         case 1:
-            m_pc = (m_pc & (~0x3)) + 4 * (cause & 0xffff);
+            m_pc = (csr_tvec_val & (~0x3)) + 4 * (cause & 0xffff);
             break;
         default:
             // reversed
@@ -1137,7 +1138,73 @@ bool CPU::HandleTrap(const Trap trap, const uint64_t inst_addr, bool is_interrup
             break;
     }
 
-    return false;
+    return true;
+}
+
+void CPU::HandleException(const Trap exception, const uint64_t inst_addr) {
+    HandleTrap(exception, inst_addr, false);
+}
+
+void CPU::HandleInterrupt(const uint64_t inst_addr) {
+    const uint64_t mip = ReadCsrDirectly(csr::kCsrMip);
+    const uint64_t mie = ReadCsrDirectly(csr::kCsrMie);
+
+    const uint64_t machine_interrupts = mip & mie;
+
+    TrapType trap_type    = TrapType::kNone;
+    uint16_t csr_mip_mask = 0;
+
+    // 中断优先级：MEI > MSI > MTI > SEI > SSI > STI
+    do {
+        if (machine_interrupts & csr::kCsrMeipMask) {
+            trap_type    = TrapType::kMachineExternalInterrupt;
+            csr_mip_mask = csr::kCsrMeipMask;
+            break;
+        }
+
+        if (machine_interrupts & csr::kCsrMsipMask) {
+            trap_type    = TrapType::kMachineSoftwareInterrupt;
+            csr_mip_mask = csr::kCsrMsipMask;
+            break;
+        }
+
+        if (machine_interrupts & csr::kCsrMtipMask) {
+            trap_type    = TrapType::kMachineTimerInterrupt;
+            csr_mip_mask = csr::kCsrMtipMask;
+            break;
+        }
+
+        if (machine_interrupts & csr::kCsrSeipMask) {
+            trap_type    = TrapType::kSupervisorExternalInterrupt;
+            csr_mip_mask = csr::kCsrSeipMask;
+            break;
+        }
+
+        if (machine_interrupts & csr::kCsrSsipMask) {
+            trap_type    = TrapType::kSupervisorSoftwareInterrupt;
+            csr_mip_mask = csr::kCsrSsipMask;
+            break;
+        }
+
+        if (machine_interrupts & csr::kCsrStipMask) {
+            trap_type    = TrapType::kSupervisorTimerInterrupt;
+            csr_mip_mask = csr::kCsrStipMask;
+            break;
+        }
+    } while (false);
+
+    const Trap trap = {
+        .m_trap_type = trap_type,
+        .m_val       = GetPC(),
+    };
+
+    if (trap_type != TrapType::kNone && HandleTrap(trap, inst_addr, true)) {
+        WriteCsrDirectly(csr::kCsrMip, mip & (~csr_mip_mask));
+        m_wfi = false;
+        return;
+    }
+
+    assert(false);
 }
 
 uint32_t CPU::Fetch() {

@@ -65,6 +65,13 @@ constexpr uint16_t kCsrUtval = 0x043; // Machine bad address or instruction
 constexpr uint16_t kCsrStvec = 0x105;
 constexpr uint16_t kCsrUtvec = 0x005;
 
+constexpr uint16_t kCsrMeipMask = 0x800;
+constexpr uint16_t kCsrMtipMask = 0x080;
+constexpr uint16_t kCsrMsipMask = 0x008;
+constexpr uint16_t kCsrSeipMask = 0x200;
+constexpr uint16_t kCsrStipMask = 0x020;
+constexpr uint16_t kCsrSsipMask = 0x002;
+
 } // namespace csr
 } // namespace cpu
 } // namespace rv64_emulator
