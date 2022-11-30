@@ -71,6 +71,8 @@ private:
     PrivilegeMode m_privilege_mode;
     uint64_t      m_pc;
     uint64_t      m_mstatus;
+
+    bool m_wfi = false;
     // TODO: 把 gpr 的类型迁移到 int64_t
     uint64_t m_reg[kGeneralPurposeRegNum]   = { 0 };
     double   m_fp_reg[kFloatingPointRegNum] = { 0.0 };
@@ -128,18 +130,20 @@ public:
     void     SetGeneralPurposeRegVal(const uint64_t reg_num, const uint64_t val);
     uint64_t GetGeneralPurposeRegVal(const uint64_t reg_num) const;
 
-    void     SetPC(const uint64_t new_pc);
-    uint64_t GetPC() const;
+    inline void     SetPC(const uint64_t new_pc);
+    inline uint64_t GetPC() const;
 
-    ArchMode      GetArchMode() const;
-    PrivilegeMode GetPrivilegeMode() const;
+    inline ArchMode      GetArchMode() const;
+    inline PrivilegeMode GetPrivilegeMode() const;
 
-    bool HasCsrAccessPrivilege(const uint16_t csr_num) const;
+    inline bool HasCsrAccessPrivilege(const uint16_t csr_num) const;
 
     std::tuple<uint64_t, Trap> ReadCsr(const uint16_t csr_addr) const;
     Trap                       WriteCsr(const uint16_t csr_addr, const uint64_t val);
 
     bool HandleTrap(const Trap trap, const uint64_t inst_addr, bool is_interrupt);
+    void HandleException(const Trap exception, const uint64_t inst_addr);
+    void HandleInterrupt(const uint64_t inst_addr);
 
 #ifdef DEBUG
     void Dump() const;
