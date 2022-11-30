@@ -183,6 +183,101 @@ const Instruction RV64I_Instructions[] = {
     },
 
     {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00003073,
+        .m_name = "CSRRC",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+            const auto& f               = decode::ParseFormatCsr(inst_word);
+            const auto& [csr_val, trap] = cpu->ReadCsr(f.csr);
+            if (trap.m_trap_type != TrapType::kNone) {
+                return trap;
+            }
+            const uint64_t new_csr_val = (int64_t)csr_val & (~((int64_t)cpu->GetGeneralPurposeRegVal(f.rs)));
+            cpu->SetGeneralPurposeRegVal(f.rd, csr_val);
+            return cpu->WriteCsr(f.csr, new_csr_val);
+        },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00007073,
+        .m_name = "CSRRCI",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+            const auto& f               = decode::ParseFormatCsr(inst_word);
+            const auto& [csr_val, trap] = cpu->ReadCsr(f.csr);
+            if (trap.m_trap_type != TrapType::kNone) {
+                return trap;
+            }
+            const uint64_t new_csr_val = (int64_t)csr_val & (~((int64_t)f.rs));
+            cpu->SetGeneralPurposeRegVal(f.rd, csr_val);
+            return cpu->WriteCsr(f.csr, new_csr_val);
+        },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00002073,
+        .m_name = "CSRRS",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+            const auto& f               = decode::ParseFormatCsr(inst_word);
+            const auto& [csr_val, trap] = cpu->ReadCsr(f.csr);
+            if (trap.m_trap_type != TrapType::kNone) {
+                return trap;
+            }
+            const uint64_t new_csr_val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs) | (int64_t)csr_val;
+            cpu->SetGeneralPurposeRegVal(f.rd, csr_val);
+            return cpu->WriteCsr(f.csr, new_csr_val);
+        },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00006073,
+        .m_name = "CSRRSI",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+            const auto& f               = decode::ParseFormatCsr(inst_word);
+            const auto& [csr_val, trap] = cpu->ReadCsr(f.csr);
+            if (trap.m_trap_type != TrapType::kNone) {
+                return trap;
+            }
+            const uint64_t new_csr_val = (int64_t)csr_val | (int64_t)f.rs;
+            cpu->SetGeneralPurposeRegVal(f.rd, csr_val);
+            return cpu->WriteCsr(f.csr, new_csr_val);
+        },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00001073,
+        .m_name = "CSRRW",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+            const auto& f               = decode::ParseFormatCsr(inst_word);
+            const auto& [csr_val, trap] = cpu->ReadCsr(f.csr);
+            if (trap.m_trap_type != TrapType::kNone) {
+                return trap;
+            }
+            const uint64_t new_csr_val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs);
+            cpu->SetGeneralPurposeRegVal(f.rd, csr_val);
+            return cpu->WriteCsr(f.csr, new_csr_val);
+        },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x00005073,
+        .m_name = "CSRRWI",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+            const auto& f               = decode::ParseFormatCsr(inst_word);
+            const auto& [csr_val, trap] = cpu->ReadCsr(f.csr);
+            if (trap.m_trap_type != TrapType::kNone) {
+                return trap;
+            }
+            cpu->SetGeneralPurposeRegVal(f.rd, csr_val);
+            return cpu->WriteCsr(f.csr, f.rs);
+        },
+    },
+
+    {
         .m_mask = 0x0000007f,
         .m_data = 0x0000006f,
         .m_name = "JAL",
