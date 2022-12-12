@@ -948,6 +948,8 @@ Trap CPU::WriteCsr(const uint16_t csr_addr, const uint64_t val) {
         };
     }
 
+    WriteCsrDirectly(csr_addr, val);
+    // TODO: UPDATE ADDRESS MODEL
     return {
         .m_trap_type = TrapType::kNone,
         .m_val       = 0,
@@ -1419,7 +1421,7 @@ uint64_t CPU::Execute(const uint32_t inst_word) {
     int64_t instruction_index = Decode(inst_word);
     if (instruction_index == -1) {
         printf("unknown instruction\n");
-        // assert(false);
+        assert(false);
         return 0;
     }
 
