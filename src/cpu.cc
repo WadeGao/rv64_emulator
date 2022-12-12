@@ -408,6 +408,38 @@ const Instruction RV64I_Instructions[] = {
     },
 
     {
+        .m_mask = 0xffffffff,
+        .m_data = 0x30200073,
+        .m_name = "MRET",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+            const auto& [new_pc, mepc_trap] = cpu->ReadCsr(csr::kCsrMepc);
+            if (mepc_trap.m_trap_type != TrapType::kNone) {
+                return mepc_trap;
+            }
+
+            cpu->SetPC(new_pc);
+
+            const auto& [status, mstatus_trap] = cpu->ReadCsr(csr::kCsrMstatus);
+            if (mstatus_trap.m_trap_type != TrapType::kNone) {
+                return mstatus_trap;
+            }
+
+            const uint64_t mpie = (status >> 7) & 1;
+            const uint64_t mpp  = (status >> 11) & 3;
+            assert(PrivilegeMode(mpp) <= PrivilegeMode::kMachine);
+
+            const uint64_t mprv = (PrivilegeMode(mpp) == PrivilegeMode::kMachine) ? ((status >> 17) & 1) : 0;
+
+            const uint64_t new_status = (status & ~0x21888) | (mprv << 17) | (mpie << 3) | (1 << 7);
+            cpu->WriteCsr(csr::kCsrMstatus, new_status);
+
+            cpu->SetPrivilegeMode(PrivilegeMode(mpp));
+            // TODO: update new mode
+            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+        },
+    },
+
+    {
         .m_mask = 0xfe00707f,
         .m_data = 0x00006033,
         .m_name = "OR",
@@ -614,6 +646,52 @@ const Instruction RV64I_Instructions[] = {
         .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
             const auto&   f   = decode::ParseFormatR(inst_word);
             const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) >> (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2));
+            cpu->SetGeneralPurposeRegVal(f.rd, val);
+            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+        },
+    },
+
+    {
+        .m_mask = 0xffffffff,
+        .m_data = 0x10200073,
+        .m_name = "SRET",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+            const auto& [new_pc, sepc_trap] = cpu->ReadCsr(csr::kCsrSepc);
+            if (sepc_trap.m_trap_type != TrapType::kNone) {
+                return sepc_trap;
+            }
+
+            cpu->SetPC(new_pc);
+
+            const auto& [status, sstatus_trap] = cpu->ReadCsr(csr::kCsrSstatus);
+            if (sstatus_trap.m_trap_type != TrapType::kNone) {
+                return sstatus_trap;
+            }
+
+            const uint64_t spie = (status >> 5) & 1;
+            const uint64_t spp  = (status >> 8) & 3;
+            assert(PrivilegeMode(spp) <= PrivilegeMode::kSupervisor);
+
+            const uint64_t mprv = (PrivilegeMode(spp) == PrivilegeMode::kMachine) ? ((status >> 17) & 1) : 0;
+
+            const uint64_t new_status = (status & ~0x20122) | (mprv << 17) | (spie << 1) | (1 << 5);
+            cpu->WriteCsr(csr::kCsrSstatus, new_status);
+
+            cpu->SetPrivilegeMode(PrivilegeMode(spp));
+            // TODO: update new mode
+            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+        },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x00005033,
+        .m_name = "SRL",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+            const auto&    f   = decode::ParseFormatR(inst_word);
+            const uint64_t rs1 = cpu->GetGeneralPurposeRegVal(f.rs1);
+            const uint64_t rs2 = cpu->GetGeneralPurposeRegVal(f.rs2);
+            const int64_t  val = rs1 >> rs2;
             cpu->SetGeneralPurposeRegVal(f.rd, val);
             return { .m_trap_type = TrapType::kNone, .m_val = 0 };
         },
@@ -830,6 +908,11 @@ ArchMode CPU::GetArchMode() const {
 
 PrivilegeMode CPU::GetPrivilegeMode() const {
     return m_privilege_mode;
+}
+
+void CPU::SetPrivilegeMode(const PrivilegeMode mode) {
+    assert(m_privilege_mode != PrivilegeMode::kReserved);
+    m_privilege_mode = mode;
 }
 
 bool CPU::HasCsrAccessPrivilege(const uint16_t csr_num) const {

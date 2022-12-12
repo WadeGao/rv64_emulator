@@ -135,6 +135,7 @@ public:
 
     inline ArchMode      GetArchMode() const;
     inline PrivilegeMode GetPrivilegeMode() const;
+    inline void          SetPrivilegeMode(const PrivilegeMode mode);
 
     inline bool HasCsrAccessPrivilege(const uint16_t csr_num) const;
 

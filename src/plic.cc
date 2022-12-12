@@ -39,6 +39,7 @@ void PLIC::UpdateClaim(const uint32_t irq) {
         m_claim[1] = irq;
     }
 }
+
 void PLIC::SetInterruptPending(const uint32_t irq) {
     const uint32_t index  = irq / 32;
     const uint32_t offset = irq % 32;
