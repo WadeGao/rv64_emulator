@@ -426,13 +426,26 @@ const Instruction RV64I_Instructions[] = {
 
             const uint64_t mpie = (status >> 7) & 1;
             const uint64_t mpp  = (status >> 11) & 3;
-            assert(PrivilegeMode(mpp) <= PrivilegeMode::kMachine);
 
-            const uint64_t mprv = (PrivilegeMode(mpp) == PrivilegeMode::kMachine) ? ((status >> 17) & 1) : 0;
+            /*
+                MPRV：modify privilege。
+                当MPRV=0，load和store行为和正常一样，用当前特权等级做地址转换和保护机制;
+                当MPRV=1时，load和store使用MPP作为当前等级，进行translated和protected。
+                指令地址转换和保护不受MPRV影响。
+                MRET或者SRET指令改变privilege mode到低于M模式会设置MPRV=0。
+            */
+            const uint64_t mprv = (PrivilegeMode(mpp) < PrivilegeMode::kMachine) ? 0 : ((status >> 17) & 1);
+            /*
+                When executing an xRET instruction, supposing xPP holds the value y
+                xIE is set to xPIE; (mpie << 3)
+                xPIE is set to 1; (1 << 7)
+                and xPP is set to U (or M if user-mode is not supported) (set MPP[12:11] to 0 by 'status & ~0x21888')
+                the privilege mode is changed to y;
+            */
 
+            // new_status = (clear mprv mpp mpie mie) | (overwrite mprv) | (MIE is set to MPIE) | (MPIE enable)
             const uint64_t new_status = (status & ~0x21888) | (mprv << 17) | (mpie << 3) | (1 << 7);
             cpu->WriteCsr(csr::kCsrMstatus, new_status);
-
             cpu->SetPrivilegeMode(PrivilegeMode(mpp));
             // TODO: update new mode
             return { .m_trap_type = TrapType::kNone, .m_val = 0 };
@@ -669,14 +682,11 @@ const Instruction RV64I_Instructions[] = {
             }
 
             const uint64_t spie = (status >> 5) & 1;
-            const uint64_t spp  = (status >> 8) & 3;
-            assert(PrivilegeMode(spp) <= PrivilegeMode::kSupervisor);
-
-            const uint64_t mprv = (PrivilegeMode(spp) == PrivilegeMode::kMachine) ? ((status >> 17) & 1) : 0;
+            const uint64_t spp  = (status >> 8) & 1;
+            const uint64_t mprv = (PrivilegeMode(spp) < PrivilegeMode::kMachine) ? 0 : ((status >> 17) & 1);
 
             const uint64_t new_status = (status & ~0x20122) | (mprv << 17) | (spie << 1) | (1 << 5);
             cpu->WriteCsr(csr::kCsrSstatus, new_status);
-
             cpu->SetPrivilegeMode(PrivilegeMode(spp));
             // TODO: update new mode
             return { .m_trap_type = TrapType::kNone, .m_val = 0 };
