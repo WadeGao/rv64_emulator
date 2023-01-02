@@ -1050,6 +1050,22 @@ uint64_t CPU::GetTrapCause(const Trap trap) const {
     return cause;
 }
 
+std::tuple<bool, uint64_t> CPU::RefactorGetTrapCause(const Trap trap) const {
+    // https://dingfen.github.io/assets/img/mcause_table.png
+    bool     is_interrupt = false;
+    uint64_t cause_bits   = TrapToCauseTable.at(trap.m_trap_type);
+
+    // if current trap's type is interrupt, set the msb to 1
+    if (trap.m_trap_type >= TrapType::kUserSoftwareInterrupt) {
+        const uint64_t interrupt_bit = (GetArchMode() == ArchMode::kBit64) ? 0x8000000000000000 : 0x80000000;
+
+        is_interrupt = true;
+        cause_bits |= interrupt_bit;
+    }
+
+    return { is_interrupt, cause_bits };
+}
+
 uint64_t CPU::GetCurrentStatus(const PrivilegeMode mode) const {
     uint64_t current_status = 0;
     switch (mode) {
@@ -1090,14 +1106,33 @@ uint64_t CPU::GetInterruptEnable(const PrivilegeMode mode) const {
     return ie;
 }
 
+bool CPU::RefactorHandleTrap(const Trap trap, const uint64_t inst_addr) {
+    const PrivilegeMode cur_privilege_mode = GetPrivilegeMode();
+    assert(cur_privilege_mode != PrivilegeMode::kReserved);
+    const uint64_t cur_status              = GetCurrentStatus(cur_privilege_mode);
+    const auto& [is_interrupt, cause_bits] = RefactorGetTrapCause(trap);
+
+    if (is_interrupt) {
+        RefactoHandleInterrupt(inst_addr);
+    }
+    const uint64_t mxdeleg = ReadCsrDirectly(is_interrupt ? csr::kCsrMideleg : csr::kCsrMedeleg);
+    const uint64_t sxdeleg = ReadCsrDirectly(is_interrupt ? csr::kCsrSideleg : csr::kCsrSedeleg);
+}
+
+void CPU::RefactoHandleException(const Trap exception, const uint64_t inst_addr) {
+}
+
+void CPU::RefactoHandleInterrupt(const uint64_t inst_addr) {
+}
+
 bool CPU::HandleTrap(const Trap trap, const uint64_t inst_addr, bool is_interrupt) {
     const PrivilegeMode cur_privilege_mode = GetPrivilegeMode();
     assert(cur_privilege_mode != PrivilegeMode::kReserved);
     const uint64_t cur_status = GetCurrentStatus(cur_privilege_mode);
 
     const uint64_t cause   = GetTrapCause(trap);
-    const uint64_t mxdeleg = is_interrupt ? ReadCsrDirectly(csr::kCsrMideleg) : ReadCsrDirectly(csr::kCsrMedeleg);
-    const uint64_t sxdeleg = is_interrupt ? ReadCsrDirectly(csr::kCsrSideleg) : ReadCsrDirectly(csr::kCsrSedeleg);
+    const uint64_t mxdeleg = ReadCsrDirectly(is_interrupt ? csr::kCsrMideleg : csr::kCsrMedeleg);
+    const uint64_t sxdeleg = ReadCsrDirectly(is_interrupt ? csr::kCsrSideleg : csr::kCsrSedeleg);
 
     const uint16_t      pos                = cause & 0xffff;
     const PrivilegeMode new_privilege_mode = (((mxdeleg >> pos) & 1) == 0)   ? PrivilegeMode::kMachine
@@ -1274,8 +1309,8 @@ bool CPU::HandleTrap(const Trap trap, const uint64_t inst_addr, bool is_interrup
     }(m_privilege_mode);
 
     WriteCsrDirectly(csr_epc_addr, inst_addr);
-    WriteCsrDirectly(csr_cause_addr, inst_addr);
-    WriteCsrDirectly(csr_tval_addr, inst_addr);
+    WriteCsrDirectly(csr_cause_addr, cause);
+    WriteCsrDirectly(csr_tval_addr, trap.m_val);
 
     // https://dingfen.github.io/assets/img/mtvec.png
     // csr_tvec_addr 寄存器值的末两位为 mode

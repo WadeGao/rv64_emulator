@@ -8,6 +8,7 @@
 #include "libs/LRU.hpp"
 
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <tuple>
 
@@ -57,6 +58,33 @@ enum class TrapType {
     kSupervisorExternalInterrupt,
     kMachineExternalInterrupt,
     kNone
+};
+
+const std::map<TrapType, uint64_t> TrapToCauseTable = {
+    { TrapType::kInstructionAddressMisaligned, 0 },
+    { TrapType::kInstructionAccessFault, 1 },
+    { TrapType::kIllegalInstruction, 2 },
+    { TrapType::kBreakpoint, 3 },
+    { TrapType::kLoadAddressMisaligned, 4 },
+    { TrapType::kLoadAccessFault, 5 },
+    { TrapType::kStoreAddressMisaligned, 6 },
+    { TrapType::kStoreAccessFault, 7 },
+    { TrapType::kEnvironmentCallFromUMode, 8 },
+    { TrapType::kEnvironmentCallFromSMode, 9 },
+    { TrapType::kEnvironmentCallFromMMode, 11 },
+    { TrapType::kInstructionPageFault, 12 },
+    { TrapType::kLoadPageFault, 13 },
+    { TrapType::kStorePageFault, 15 },
+    /* ----------- belows are interrupts ----------- */
+    { TrapType::kUserSoftwareInterrupt, 0 },
+    { TrapType::kSupervisorSoftwareInterrupt, 1 },
+    { TrapType::kMachineSoftwareInterrupt, 3 },
+    { TrapType::kUserTimerInterrupt, 4 },
+    { TrapType::kSupervisorTimerInterrupt, 5 },
+    { TrapType::kMachineTimerInterrupt, 7 },
+    { TrapType::kUserExternalInterrupt, 8 },
+    { TrapType::kSupervisorExternalInterrupt, 9 },
+    { TrapType::kMachineExternalInterrupt, 11 },
 };
 
 typedef struct Trap {
@@ -113,9 +141,10 @@ private:
 
     void UpdateMstatus(const uint64_t mstatus);
 
-    uint64_t GetTrapCause(const Trap trap) const;
-    uint64_t GetCurrentStatus(const PrivilegeMode mode) const;
-    uint64_t GetInterruptEnable(const PrivilegeMode mode) const;
+    uint64_t                   GetTrapCause(const Trap trap) const;
+    std::tuple<bool, uint64_t> RefactorGetTrapCause(const Trap trap) const;
+    uint64_t                   GetCurrentStatus(const PrivilegeMode mode) const;
+    uint64_t                   GetInterruptEnable(const PrivilegeMode mode) const;
 
 public:
     CPU(ArchMode arch_mode, PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus);
@@ -141,6 +170,10 @@ public:
 
     std::tuple<uint64_t, Trap> ReadCsr(const uint16_t csr_addr) const;
     Trap                       WriteCsr(const uint16_t csr_addr, const uint64_t val);
+
+    bool RefactorHandleTrap(const Trap trap, const uint64_t inst_addr);
+    void RefactoHandleException(const Trap exception, const uint64_t inst_addr);
+    void RefactoHandleInterrupt(const uint64_t inst_addr);
 
     bool HandleTrap(const Trap trap, const uint64_t inst_addr, bool is_interrupt);
     void HandleException(const Trap exception, const uint64_t inst_addr);
