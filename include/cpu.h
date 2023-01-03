@@ -143,8 +143,19 @@ private:
 
     uint64_t                   GetTrapCause(const Trap trap) const;
     std::tuple<bool, uint64_t> RefactorGetTrapCause(const Trap trap) const;
-    uint64_t                   GetCurrentStatus(const PrivilegeMode mode) const;
-    uint64_t                   GetInterruptEnable(const PrivilegeMode mode) const;
+
+    uint64_t GetCsrStatusRegVal(const PrivilegeMode mode) const;
+    uint64_t GetInterruptEnable(const PrivilegeMode mode) const;
+
+    bool CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMode new_pm, const TrapType trap_type) const;
+
+    void     ModifyCsrStatusReg(const PrivilegeMode cur_pm, const PrivilegeMode new_pm);
+    uint64_t GetTrapVectorNewPC(const uint64_t csr_tvec_addr, const uint64_t exception_code) const;
+
+    static uint64_t GetCsrCauseReg(const PrivilegeMode pm);
+    static uint64_t GetCsrEpcReg(const PrivilegeMode pm);
+    static uint64_t GetCsrTvalReg(const PrivilegeMode pm);
+    static uint64_t GetCstTvecReg(const PrivilegeMode pm);
 
 public:
     CPU(ArchMode arch_mode, PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus);
@@ -162,6 +173,8 @@ public:
     inline void     SetPC(const uint64_t new_pc);
     inline uint64_t GetPC() const;
 
+    inline uint64_t GetMaxXLen() const;
+
     inline ArchMode      GetArchMode() const;
     inline PrivilegeMode GetPrivilegeMode() const;
     inline void          SetPrivilegeMode(const PrivilegeMode mode);
@@ -171,8 +184,8 @@ public:
     std::tuple<uint64_t, Trap> ReadCsr(const uint16_t csr_addr) const;
     Trap                       WriteCsr(const uint16_t csr_addr, const uint64_t val);
 
-    bool RefactorHandleTrap(const Trap trap, const uint64_t inst_addr);
-    void RefactoHandleException(const Trap exception, const uint64_t inst_addr);
+    void RefactorHandleTrap(const Trap trap, const uint64_t inst_addr);
+    void RefactorHandleException(const Trap exception, const uint64_t inst_addr);
     void RefactoHandleInterrupt(const uint64_t inst_addr);
 
     bool HandleTrap(const Trap trap, const uint64_t inst_addr, bool is_interrupt);

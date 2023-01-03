@@ -808,6 +808,66 @@ const Instruction RV64I_Instructions[] = {
     },
 };
 
+uint64_t CPU::GetCsrCauseReg(const PrivilegeMode pm) {
+    switch (pm) {
+        case PrivilegeMode::kMachine:
+            return csr::kCsrMcause;
+        case PrivilegeMode::kSupervisor:
+            return csr::kCsrScause;
+        case PrivilegeMode::kUser:
+            return csr::kCsrUcause;
+        case PrivilegeMode::kReserved:
+        default:
+            assert(false);
+    }
+    return 0;
+}
+
+uint64_t CPU::GetCsrEpcReg(const PrivilegeMode pm) {
+    switch (pm) {
+        case PrivilegeMode::kMachine:
+            return csr::kCsrMepc;
+        case PrivilegeMode::kSupervisor:
+            return csr::kCsrSepc;
+        case PrivilegeMode::kUser:
+            return csr::kCsrUepc;
+        case PrivilegeMode::kReserved:
+        default:
+            assert(false);
+    }
+    return 0;
+}
+
+uint64_t CPU::GetCsrTvalReg(const PrivilegeMode pm) {
+    switch (pm) {
+        case PrivilegeMode::kMachine:
+            return csr::kCsrMtval;
+        case PrivilegeMode::kSupervisor:
+            return csr::kCsrStval;
+        case PrivilegeMode::kUser:
+            return csr::kCsrUtval;
+        case PrivilegeMode::kReserved:
+        default:
+            assert(false);
+    }
+    return 0;
+}
+
+uint64_t CPU::GetCstTvecReg(const PrivilegeMode pm) {
+    switch (pm) {
+        case PrivilegeMode::kMachine:
+            return csr::kCsrMtvec;
+        case PrivilegeMode::kSupervisor:
+            return csr::kCsrStvec;
+        case PrivilegeMode::kUser:
+            return csr::kCsrUtvec;
+        case PrivilegeMode::kReserved:
+        default:
+            assert(false);
+    }
+    return 0;
+}
+
 CPU::CPU(ArchMode arch_mode, PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus)
     : m_clock(0)
     , m_arch_mode(arch_mode)
@@ -904,6 +964,10 @@ uint64_t CPU::GetGeneralPurposeRegVal(const uint64_t reg_num) const {
     return m_reg[reg_num];
 }
 
+uint64_t CPU::GetMaxXLen() const {
+    return GetArchMode() == ArchMode::kBit64 ? 64 : 32;
+}
+
 void CPU::SetPC(const uint64_t new_pc) {
     m_pc = new_pc;
 }
@@ -966,9 +1030,146 @@ Trap CPU::WriteCsr(const uint16_t csr_addr, const uint64_t val) {
     };
 }
 
+bool CPU::CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMode new_pm, const TrapType trap_type) const {
+    // https://dingfen.github.io/assets/img/mie.png
+    const uint64_t cur_status = GetCsrStatusRegVal(cur_pm);
+    const uint64_t ie         = GetInterruptEnable(new_pm);
+
+    // get the interrupt enable bit
+    bool cur_mie = (cur_status >> 3) & 1;
+    bool cur_sie = (cur_status >> 1) & 1;
+    bool cur_uie = cur_status & 1;
+
+    // 1. cur_privilege_mode < new_privilege_mode: Interrupt is always enabled
+    // 2. cur_privilege_mode > new_privilege_mode: Interrupt is always disabled
+    // 3. cur_privilege_mode == new_privilege_mode: Interrupt is enabled if xIE in xstatus is 1
+    if (new_pm < cur_pm) {
+        return false;
+    } else if (new_pm == cur_pm) {
+        switch (cur_pm) {
+            case PrivilegeMode::kUser:
+                if (!cur_uie) {
+                    return false;
+                }
+                break;
+            case PrivilegeMode::kSupervisor:
+                if (!cur_sie) {
+                    return false;
+                }
+                break;
+            case PrivilegeMode::kMachine:
+                if (!cur_mie) {
+                    return false;
+                }
+                break;
+            case PrivilegeMode::kReserved:
+                assert(false);
+            default:
+                break;
+        }
+    }
+
+    // software interrupt-enable in x mode
+    bool msie = (ie >> 3) & 1;
+    bool ssie = (ie >> 1) & 1;
+    bool usie = ie & 1;
+
+    // timer interrupt-enable bit in x mode
+    bool mtie = (ie >> 7) & 1;
+    bool stie = (ie >> 5) & 1;
+    bool utie = (ie >> 4) & 1;
+
+    // external interrupt-enable in x mode
+    bool meie = (ie >> 11) & 1;
+    bool seie = (ie >> 9) & 1;
+    bool ueie = (ie >> 8) & 1;
+
+    switch (trap_type) {
+        case TrapType::kUserSoftwareInterrupt:
+            if (!usie) {
+                return false;
+            }
+            break;
+        case TrapType::kSupervisorSoftwareInterrupt:
+            if (!ssie) {
+                return false;
+            }
+            break;
+        case TrapType::kMachineSoftwareInterrupt:
+            if (!msie) {
+                return false;
+            }
+            break;
+        case TrapType::kUserTimerInterrupt:
+            if (!utie) {
+                return false;
+            }
+            break;
+        case TrapType::kSupervisorTimerInterrupt:
+            if (!stie) {
+                return false;
+            }
+            break;
+        case TrapType::kMachineTimerInterrupt:
+            if (!mtie) {
+                return false;
+            }
+            break;
+        case TrapType::kUserExternalInterrupt:
+            if (!ueie) {
+                return false;
+            }
+            break;
+        case TrapType::kSupervisorExternalInterrupt:
+            if (!seie) {
+                return false;
+            }
+            break;
+        case TrapType::kMachineExternalInterrupt:
+            if (!meie) {
+                return false;
+            }
+            break;
+        default:
+            break;
+    }
+
+    return true;
+}
+
+void CPU::ModifyCsrStatusReg(const PrivilegeMode cur_pm, const PrivilegeMode new_pm) {
+    switch (new_pm) {
+        case PrivilegeMode::kMachine: {
+            const uint64_t status = ReadCsrDirectly(csr::kCsrMstatus);
+
+            bool mie = (status >> 3) & 1;
+            // 1. clear MPP(BIT 12, 11), MPIE(BIT 7), MIE(BIT 3)
+            // 2. override MPP[12:11] with current privilege encoding
+            // 3. set MIE(bit 3) to MPIE(bit 7)
+            const uint64_t new_status = (status & (~0x1888)) | (mie << 7) | ((uint64_t)cur_pm << 11);
+            WriteCsrDirectly(csr::kCsrMstatus, new_status);
+        } break;
+        case PrivilegeMode::kSupervisor: {
+            uint64_t status = ReadCsrDirectly(csr::kCsrSstatus);
+
+            bool sie = (status >> 1) & 1;
+            // 1. clear SIE(bit 1), SPIE(bit 5), SPP(bit 8)
+            // 2. override SPP(bit 8) with current privilege encoding
+            // 3. set SIE(bit 1) to SPIE(bit 5)
+            const uint64_t new_status = (status & (~0x122)) | (sie << 5) | (((uint64_t)cur_pm & 1) << 8);
+            WriteCsrDirectly(csr::kCsrSstatus, new_status);
+        } break;
+        case PrivilegeMode::kUser:
+        case PrivilegeMode::kReserved:
+        default:
+            assert(false);
+            break;
+    }
+}
+
 uint64_t CPU::GetTrapCause(const Trap trap) const {
     // https://dingfen.github.io/assets/img/mcause_table.png
-    const uint64_t interrupt_bit = (GetArchMode() == ArchMode::kBit64) ? 0x8000000000000000 : 0x80000000;
+    const uint64_t interrupt_bit = 1 << (GetMaxXLen() - 1);
 
     uint64_t cause = 0;
     switch (trap.m_trap_type) {
@@ -1057,16 +1258,15 @@ std::tuple<bool, uint64_t> CPU::RefactorGetTrapCause(const Trap trap) const {
 
     // if current trap's type is interrupt, set the msb to 1
     if (trap.m_trap_type >= TrapType::kUserSoftwareInterrupt) {
-        const uint64_t interrupt_bit = (GetArchMode() == ArchMode::kBit64) ? 0x8000000000000000 : 0x80000000;
-
-        is_interrupt = true;
+        is_interrupt                 = true;
+        const uint64_t interrupt_bit = 1 << (GetMaxXLen() - 1);
         cause_bits |= interrupt_bit;
     }
 
     return { is_interrupt, cause_bits };
 }
 
-uint64_t CPU::GetCurrentStatus(const PrivilegeMode mode) const {
+uint64_t CPU::GetCsrStatusRegVal(const PrivilegeMode mode) const {
     uint64_t current_status = 0;
     switch (mode) {
         case PrivilegeMode::kUser:
@@ -1105,21 +1305,66 @@ uint64_t CPU::GetInterruptEnable(const PrivilegeMode mode) const {
 
     return ie;
 }
-
-bool CPU::RefactorHandleTrap(const Trap trap, const uint64_t inst_addr) {
-    const PrivilegeMode cur_privilege_mode = GetPrivilegeMode();
-    assert(cur_privilege_mode != PrivilegeMode::kReserved);
-    const uint64_t cur_status              = GetCurrentStatus(cur_privilege_mode);
-    const auto& [is_interrupt, cause_bits] = RefactorGetTrapCause(trap);
-
-    if (is_interrupt) {
-        RefactoHandleInterrupt(inst_addr);
+uint64_t CPU::GetTrapVectorNewPC(const uint64_t csr_tvec_addr, const uint64_t exception_code) const {
+    const uint64_t csr_tvec_val = ReadCsrDirectly(csr_tvec_addr);
+    const uint8_t  mode         = csr_tvec_val & 0x3;
+    uint64_t       new_pc       = 0;
+    switch (mode) {
+        case 0:
+            new_pc = csr_tvec_val;
+            break;
+        case 1:
+            new_pc = (csr_tvec_val & (~0x3)) + 4 * exception_code;
+            break;
+        default:
+            // reversed
+            assert(false);
+            break;
     }
-    const uint64_t mxdeleg = ReadCsrDirectly(is_interrupt ? csr::kCsrMideleg : csr::kCsrMedeleg);
-    const uint64_t sxdeleg = ReadCsrDirectly(is_interrupt ? csr::kCsrSideleg : csr::kCsrSedeleg);
+    return new_pc;
 }
 
-void CPU::RefactoHandleException(const Trap exception, const uint64_t inst_addr) {
+void CPU::RefactorHandleTrap(const Trap trap, const uint64_t epc) {
+    const PrivilegeMode cur_privilege_mode = GetPrivilegeMode();
+    assert(cur_privilege_mode != PrivilegeMode::kReserved);
+    const auto& [is_interrupt, origin_cause_bits] = RefactorGetTrapCause(trap);
+
+    uint64_t cause_bits = origin_cause_bits;
+    // const uint64_t cur_status               = GetCsrStatusRegVal(cur_privilege_mode);
+
+    if (is_interrupt) {
+        // RefactoHandleInterrupt(epc);
+        const uint64_t interrupt_bit = 1 << (GetMaxXLen() - 1);
+        // clear interrupt bit
+        cause_bits &= (~interrupt_bit);
+    }
+
+    const uint64_t  mxdeleg        = ReadCsrDirectly(is_interrupt ? csr::kCsrMideleg : csr::kCsrMedeleg);
+    const uint64_t  sxdeleg        = ReadCsrDirectly(is_interrupt ? csr::kCsrSideleg : csr::kCsrSedeleg);
+    const uint64_t& exception_code = cause_bits;
+
+    bool switch_to_s_mode =
+        (cur_privilege_mode <= PrivilegeMode::kSupervisor && exception_code < GetMaxXLen() && mxdeleg & (1 << exception_code));
+    PrivilegeMode new_privilege_mode = switch_to_s_mode ? PrivilegeMode::kSupervisor : PrivilegeMode::kMachine;
+
+    if (is_interrupt) {
+        assert(CheckInterruptBitsValid(cur_privilege_mode, new_privilege_mode, trap.m_trap_type));
+    }
+
+    const uint64_t csr_tvec_addr  = CPU::GetCstTvecReg(new_privilege_mode);
+    const uint64_t csr_epc_addr   = CPU::GetCsrEpcReg(new_privilege_mode);
+    const uint64_t csr_cause_addr = CPU::GetCsrCauseReg(new_privilege_mode);
+    const uint64_t csr_tval_addr  = CPU::GetCsrTvalReg(new_privilege_mode);
+
+    SetPC(GetTrapVectorNewPC(csr_tvec_addr, exception_code));
+    WriteCsrDirectly(csr_epc_addr, epc);
+    WriteCsrDirectly(csr_cause_addr, origin_cause_bits);
+    WriteCsrDirectly(csr_tval_addr, trap.m_val);
+    ModifyCsrStatusReg(cur_privilege_mode, new_privilege_mode);
+    SetPrivilegeMode(new_privilege_mode);
+}
+
+void CPU::RefactorHandleException(const Trap exception, const uint64_t inst_addr) {
 }
 
 void CPU::RefactoHandleInterrupt(const uint64_t inst_addr) {
@@ -1128,7 +1373,7 @@ void CPU::RefactoHandleInterrupt(const uint64_t inst_addr) {
 bool CPU::HandleTrap(const Trap trap, const uint64_t inst_addr, bool is_interrupt) {
     const PrivilegeMode cur_privilege_mode = GetPrivilegeMode();
     assert(cur_privilege_mode != PrivilegeMode::kReserved);
-    const uint64_t cur_status = GetCurrentStatus(cur_privilege_mode);
+    const uint64_t cur_status = GetCsrStatusRegVal(cur_privilege_mode);
 
     const uint64_t cause   = GetTrapCause(trap);
     const uint64_t mxdeleg = ReadCsrDirectly(is_interrupt ? csr::kCsrMideleg : csr::kCsrMedeleg);
