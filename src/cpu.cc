@@ -278,6 +278,35 @@ const Instruction RV64I_Instructions[] = {
     },
 
     {
+        .m_mask = 0xffffffff,
+        .m_data = 0x00000073,
+        .m_name = "ECALL",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+            const PrivilegeMode pm             = cpu->GetPrivilegeMode();
+            TrapType            exception_type = TrapType::kNone;
+            switch (pm) {
+                case PrivilegeMode::kUser:
+                    exception_type = TrapType::kEnvironmentCallFromUMode;
+                    break;
+                case PrivilegeMode::kSupervisor:
+                    exception_type = TrapType::kEnvironmentCallFromSMode;
+                    break;
+                case PrivilegeMode::kMachine:
+                    exception_type = TrapType::kEnvironmentCallFromMMode;
+                    break;
+                case PrivilegeMode::kReserved:
+                default:
+                    assert(false);
+                    break;
+            }
+            return {
+                .m_trap_type = exception_type,
+                .m_val       = cpu->GetPC(),
+            };
+        },
+    },
+
+    {
         .m_mask = 0x0000007f,
         .m_data = 0x0000006f,
         .m_name = "JAL",
@@ -964,43 +993,15 @@ uint64_t CPU::GetGeneralPurposeRegVal(const uint64_t reg_num) const {
     return m_reg[reg_num];
 }
 
-uint64_t CPU::GetMaxXLen() const {
-    return GetArchMode() == ArchMode::kBit64 ? 64 : 32;
-}
-
-void CPU::SetPC(const uint64_t new_pc) {
-    m_pc = new_pc;
-}
-
-uint64_t CPU::GetPC() const {
-    return m_pc;
-}
-
-ArchMode CPU::GetArchMode() const {
-    return m_arch_mode;
-}
-
-PrivilegeMode CPU::GetPrivilegeMode() const {
-    return m_privilege_mode;
-}
-
-void CPU::SetPrivilegeMode(const PrivilegeMode mode) {
-    assert(m_privilege_mode != PrivilegeMode::kReserved);
-    m_privilege_mode = mode;
-}
-
-bool CPU::HasCsrAccessPrivilege(const uint16_t csr_num) const {
-    // 可以访问改csr寄存器的最低特权级别
-    const uint16_t lowest_privilege_mode = (csr_num >> 8) & 0b11;
-    return lowest_privilege_mode <= uint16_t(m_privilege_mode);
-}
-
 std::tuple<uint64_t, Trap> CPU::ReadCsr(const uint16_t csr_addr) const {
     bool is_privileged = HasCsrAccessPrivilege(csr_addr);
     if (!is_privileged) {
         return {
             0,
-            { .m_trap_type = TrapType::kIllegalInstruction, .m_val = GetPC() - 4 },
+            {
+                .m_trap_type = TrapType::kIllegalInstruction,
+                .m_val       = GetPC() - 4,
+            },
         };
     }
 
@@ -1131,7 +1132,7 @@ bool CPU::CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMod
             }
             break;
         default:
-            break;
+            return false;
     }
 
     return true;
@@ -1330,17 +1331,15 @@ void CPU::RefactorHandleTrap(const Trap trap, const uint64_t epc) {
     const auto& [is_interrupt, origin_cause_bits] = RefactorGetTrapCause(trap);
 
     uint64_t cause_bits = origin_cause_bits;
-    // const uint64_t cur_status               = GetCsrStatusRegVal(cur_privilege_mode);
 
     if (is_interrupt) {
-        // RefactoHandleInterrupt(epc);
-        const uint64_t interrupt_bit = 1 << (GetMaxXLen() - 1);
         // clear interrupt bit
+        const uint64_t interrupt_bit = 1 << (GetMaxXLen() - 1);
         cause_bits &= (~interrupt_bit);
     }
 
-    const uint64_t  mxdeleg        = ReadCsrDirectly(is_interrupt ? csr::kCsrMideleg : csr::kCsrMedeleg);
-    const uint64_t  sxdeleg        = ReadCsrDirectly(is_interrupt ? csr::kCsrSideleg : csr::kCsrSedeleg);
+    const uint64_t mxdeleg = ReadCsrDirectly(is_interrupt ? csr::kCsrMideleg : csr::kCsrMedeleg);
+    // const uint64_t  sxdeleg        = ReadCsrDirectly(is_interrupt ? csr::kCsrSideleg : csr::kCsrSedeleg);
     const uint64_t& exception_code = cause_bits;
 
     bool switch_to_s_mode =
@@ -1362,9 +1361,6 @@ void CPU::RefactorHandleTrap(const Trap trap, const uint64_t epc) {
     WriteCsrDirectly(csr_tval_addr, trap.m_val);
     ModifyCsrStatusReg(cur_privilege_mode, new_privilege_mode);
     SetPrivilegeMode(new_privilege_mode);
-}
-
-void CPU::RefactorHandleException(const Trap exception, const uint64_t inst_addr) {
 }
 
 void CPU::RefactoHandleInterrupt(const uint64_t inst_addr) {
@@ -1674,12 +1670,12 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
         return;
     }
 
-    assert(false);
+    // assert(false);
 }
 
 uint32_t CPU::Fetch() {
-    uint32_t inst_word = m_bus->Load(m_pc, kInstructionBits);
-    m_pc += 4;
+    uint32_t inst_word = m_bus->Load(GetPC(), kInstructionBits);
+    // m_pc += 4;
     return inst_word;
 }
 
@@ -1717,6 +1713,47 @@ uint64_t CPU::Execute(const uint32_t inst_word) {
 
     RV64I_Instructions[instruction_index].Exec(this, inst_word);
     return 0;
+}
+
+Trap CPU::TickOperate() {
+    if (m_wfi) {
+        const uint64_t mie = ReadCsrDirectly(csr::kCsrMie);
+        const uint64_t mip = ReadCsrDirectly(csr::kCsrMip);
+        if (mie & mip) {
+            m_wfi = false;
+        }
+        return {
+            .m_trap_type = TrapType::kNone,
+            .m_val       = 0,
+        };
+    }
+
+    const uint64_t inst_addr = GetPC();
+    const uint32_t inst_word = Fetch();
+    SetPC(inst_addr + 4);
+
+    int64_t instruction_index = Decode(inst_word);
+    if (instruction_index == -1) {
+        return {
+            .m_trap_type = TrapType::kIllegalInstruction,
+            .m_val       = inst_addr,
+        };
+    }
+
+    const Trap trap = RV64I_Instructions[instruction_index].Exec(this, inst_word);
+    // in a emulator, there is not a GND hardwiring x0 to zero
+    m_reg[0] = 0;
+    return trap;
+}
+
+void CPU::Tick() {
+    const uint64_t epc  = GetPC();
+    const Trap     trap = TickOperate();
+    if (trap.m_trap_type != TrapType::kNone) {
+        RefactorHandleTrap(trap, epc);
+    }
+
+    HandleInterrupt(GetPC());
 }
 
 CPU::~CPU() {

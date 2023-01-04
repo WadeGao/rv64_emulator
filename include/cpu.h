@@ -43,11 +43,13 @@ enum class TrapType {
     kStoreAccessFault,
     kEnvironmentCallFromUMode,
     kEnvironmentCallFromSMode,
+    kReserved,
     kEnvironmentCallFromMMode,
     kInstructionPageFault,
     kLoadPageFault,
+    kReservedForFutureStandard,
     kStorePageFault,
-    // three standard interrupt source: software, timer, external
+    /* ----------- belows are interrupts: software, timer, external----------- */
     kUserSoftwareInterrupt,
     kSupervisorSoftwareInterrupt,
     kMachineSoftwareInterrupt,
@@ -136,6 +138,12 @@ private:
     // decode cache, key: inst_word, val: inst_table_index
     rv64_emulator::libs::LRUCache<uint32_t, int64_t> m_decode_cache;
 
+    inline bool HasCsrAccessPrivilege(const uint16_t csr_num) const {
+        // 可以访问改csr寄存器的最低特权级别
+        const uint16_t lowest_privilege_mode = (csr_num >> 8) & 0b11;
+        return lowest_privilege_mode <= uint16_t(m_privilege_mode);
+    }
+
     uint64_t ReadCsrDirectly(const uint16_t csr_addr) const;
     void     WriteCsrDirectly(const uint16_t csr_addr, const uint64_t val);
 
@@ -157,6 +165,8 @@ private:
     static uint64_t GetCsrTvalReg(const PrivilegeMode pm);
     static uint64_t GetCstTvecReg(const PrivilegeMode pm);
 
+    Trap TickOperate();
+
 public:
     CPU(ArchMode arch_mode, PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus);
 
@@ -166,26 +176,40 @@ public:
     uint32_t Fetch();
     int64_t  Decode(const uint32_t inst_word);
     uint64_t Execute(const uint32_t inst_word);
+    void     Tick();
 
     void     SetGeneralPurposeRegVal(const uint64_t reg_num, const uint64_t val);
     uint64_t GetGeneralPurposeRegVal(const uint64_t reg_num) const;
 
-    inline void     SetPC(const uint64_t new_pc);
-    inline uint64_t GetPC() const;
+    inline void SetPC(const uint64_t new_pc) {
+        m_pc = new_pc;
+    }
 
-    inline uint64_t GetMaxXLen() const;
+    inline uint64_t GetPC() const {
+        return m_pc;
+    }
 
-    inline ArchMode      GetArchMode() const;
-    inline PrivilegeMode GetPrivilegeMode() const;
-    inline void          SetPrivilegeMode(const PrivilegeMode mode);
+    inline uint64_t GetMaxXLen() const {
+        return GetArchMode() == ArchMode::kBit64 ? 64 : 32;
+    }
 
-    inline bool HasCsrAccessPrivilege(const uint16_t csr_num) const;
+    inline ArchMode GetArchMode() const {
+        return m_arch_mode;
+    }
+
+    inline PrivilegeMode GetPrivilegeMode() const {
+        return m_privilege_mode;
+    }
+
+    inline void SetPrivilegeMode(const PrivilegeMode mode) {
+        assert(m_privilege_mode != PrivilegeMode::kReserved);
+        m_privilege_mode = mode;
+    }
 
     std::tuple<uint64_t, Trap> ReadCsr(const uint16_t csr_addr) const;
     Trap                       WriteCsr(const uint16_t csr_addr, const uint64_t val);
 
     void RefactorHandleTrap(const Trap trap, const uint64_t inst_addr);
-    void RefactorHandleException(const Trap exception, const uint64_t inst_addr);
     void RefactoHandleInterrupt(const uint64_t inst_addr);
 
     bool HandleTrap(const Trap trap, const uint64_t inst_addr, bool is_interrupt);

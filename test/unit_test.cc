@@ -1,7 +1,4 @@
-// #include "third_party/gmock/gmock/gmock.h"
 #include "gtest/gtest.h"
-
-#include <cstdio>
 
 int main() {
     testing::InitGoogleTest();
