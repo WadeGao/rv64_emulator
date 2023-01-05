@@ -106,8 +106,6 @@ private:
     // TODO: 把 gpr 的类型迁移到 int64_t
     uint64_t m_reg[kGeneralPurposeRegNum]   = { 0 };
     double   m_fp_reg[kFloatingPointRegNum] = { 0.0 };
-    static_assert(sizeof(double) == 8, "double is not 8 bytes, can't assure the bit width of floating point reg");
-
     // TODO: 是否会超过栈大小？是否用 std::array?
     uint64_t m_csr[kCsrCapacity] = { 0 };
 
@@ -149,8 +147,7 @@ private:
 
     void UpdateMstatus(const uint64_t mstatus);
 
-    uint64_t                   GetTrapCause(const Trap trap) const;
-    std::tuple<bool, uint64_t> RefactorGetTrapCause(const Trap trap) const;
+    std::tuple<bool, uint64_t> GetTrapCause(const Trap trap) const;
 
     uint64_t GetCsrStatusRegVal(const PrivilegeMode mode) const;
     uint64_t GetInterruptEnable(const PrivilegeMode mode) const;
@@ -175,7 +172,6 @@ public:
 
     uint32_t Fetch();
     int64_t  Decode(const uint32_t inst_word);
-    uint64_t Execute(const uint32_t inst_word);
     void     Tick();
 
     void     SetGeneralPurposeRegVal(const uint64_t reg_num, const uint64_t val);
@@ -202,23 +198,16 @@ public:
     }
 
     inline void SetPrivilegeMode(const PrivilegeMode mode) {
-        assert(m_privilege_mode != PrivilegeMode::kReserved);
         m_privilege_mode = mode;
     }
 
     std::tuple<uint64_t, Trap> ReadCsr(const uint16_t csr_addr) const;
     Trap                       WriteCsr(const uint16_t csr_addr, const uint64_t val);
 
-    void RefactorHandleTrap(const Trap trap, const uint64_t inst_addr);
-    void RefactoHandleInterrupt(const uint64_t inst_addr);
-
-    bool HandleTrap(const Trap trap, const uint64_t inst_addr, bool is_interrupt);
-    void HandleException(const Trap exception, const uint64_t inst_addr);
+    bool HandleTrap(const Trap trap, const uint64_t inst_addr);
     void HandleInterrupt(const uint64_t inst_addr);
 
-#ifdef DEBUG
     void Dump() const;
-#endif
 
     ~CPU();
 };

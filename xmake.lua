@@ -1,14 +1,14 @@
 set_languages("cxx17")
 add_rules("mode.debug", "mode.release", "mode.minsizerel", "mode.asan")
 
-add_cxxflags("-g")
 add_cxxflags("-fno-rtti", "-fno-exceptions")
 add_cxxflags("-fdata-sections", "-ffunction-sections")
-add_cxxflags("-flto", "-fuse-ld=lld")
-add_ldflags("--verbose", "--print-gc-sections", "--gc-sections", "--icf=safe")
+add_cxxflags("-flto=thin")
+add_cxxflags("-Wl,--print-gc-sections,--gc-sections,--icf=safe")
 
 target("rv64_emulator")
     if is_mode("debug") then
+        add_cxxflags("-g")
         add_defines("DEBUG")
     end
     set_kind("binary")
@@ -39,6 +39,10 @@ target("gmock")
     add_files("third_party/gtest/src/gmock-all.cc")
 
 target("unit_test")
+    if is_mode("debug") then
+        add_cxxflags("-g")
+        add_defines("DEBUG")
+    end
     add_cxxflags("-fno-access-control")
     set_kind("binary")
     set_targetdir("build")

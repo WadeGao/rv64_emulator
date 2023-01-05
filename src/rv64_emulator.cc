@@ -31,8 +31,7 @@ int main(int argc, char* argv[]) {
         rv64_emulator::cpu::ArchMode::kBit64, rv64_emulator::cpu::PrivilegeMode::kMachine, std::move(bus));
 
     while (true) {
-        const uint32_t instuction = cpu->Fetch();
-        cpu->Execute(instuction);
+        cpu->Tick();
 #ifdef DEBUG
         cpu->Dump();
 #endif
