@@ -2,27 +2,52 @@
 #include "include/conf.h"
 #include "include/dram.h"
 #include "gtest/gtest.h"
+#include <cstdint>
 #include <memory>
 
-TEST(BusTest, Load) {
-    auto                       dram     = std::make_unique<rv64_emulator::dram::DRAM>(kDramSize);
-    rv64_emulator::dram::DRAM* raw_dram = dram.get();
-    auto                       bus      = std::make_unique<rv64_emulator::bus::Bus>(std::move(dram));
-    ASSERT_EQ(raw_dram->Load(kDramBaseAddr, 64), bus->Load(kDramBaseAddr, 64));
-}
+class BusTest : public testing::Test { // 继承了 testing::Test
+protected:
+    static void SetUpTestSuite() {
+        printf("start running Bus test case...\n");
+    }
 
-TEST(BusTest, Store) {
-    auto dram = std::make_unique<rv64_emulator::dram::DRAM>(kDramSize);
-    auto bus  = std::make_unique<rv64_emulator::bus::Bus>(std::make_unique<rv64_emulator::dram::DRAM>(kDramSize));
+    static void TearDownTestSuite() {
+        printf("finish running Bus test case...\n");
+    }
 
+    virtual void SetUp() override {
+        auto dram = std::make_unique<rv64_emulator::dram::DRAM>(kDramSize);
+        auto bus  = std::make_unique<rv64_emulator::bus::Bus>(std::move(dram));
+
+        m_bus = std::move(bus);
+    }
+
+    virtual void TearDown() override {
+    }
+
+    std::unique_ptr<rv64_emulator::bus::Bus> m_bus;
+};
+
+TEST_F(BusTest, Load) {
     for (uint64_t i = 0; i < kDramSize; i += 8) {
-        dram->Store(kDramBaseAddr + i, 64, 0x1122334455667788);
-        bus->Store(kDramBaseAddr + i, 64, 0x1122334455667788);
+        uint64_t* raw_data_ptr = reinterpret_cast<uint64_t*>(&(m_bus->m_dram->m_memory[i]));
+        *raw_data_ptr          = 0x1122334455667788;
     }
 
     for (uint64_t i = 0; i < kDramSize; i += 8) {
-        const uint64_t dram_word_val = dram->Load(kDramBaseAddr + i, 64);
-        const uint64_t bus_word_val  = bus->Load(kDramBaseAddr + i, 64);
-        ASSERT_EQ(dram_word_val, bus_word_val);
+        const uint64_t bus_word_val = m_bus->Load(kDramBaseAddr + i, 64);
+        ASSERT_EQ(0x1122334455667788, bus_word_val);
+    }
+}
+
+TEST_F(BusTest, Store) {
+    for (uint64_t i = 0; i < kDramSize; i += 8) {
+        m_bus->Store(kDramBaseAddr + i, 64, 0x1122334455667788);
+    }
+
+    for (uint64_t i = 0; i < kDramSize; i += 8) {
+        const uint64_t* raw_data_ptr = reinterpret_cast<uint64_t*>(&(m_bus->m_dram->m_memory[i]));
+        const uint64_t  bus_word_val = m_bus->Load(kDramBaseAddr + i, 64);
+        ASSERT_EQ(*raw_data_ptr, bus_word_val);
     }
 }
