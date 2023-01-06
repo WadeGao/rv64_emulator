@@ -1,9 +1,8 @@
 set_languages("cxx17")
-add_rules("mode.debug", "mode.release", "mode.minsizerel", "mode.asan")
+add_rules("mode.debug", "mode.release", "mode.minsizerel", "mode.releasedbg", "mode.asan")
 
 add_cxxflags("-fno-rtti", "-fno-exceptions")
 add_cxxflags("-fdata-sections", "-ffunction-sections")
-add_cxxflags("-flto=thin")
 add_cxxflags("-Wl,--print-gc-sections,--gc-sections,--icf=safe")
 
 target("rv64_emulator")

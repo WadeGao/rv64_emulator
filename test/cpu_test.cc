@@ -76,3 +76,23 @@ TEST_F(CpuTest, HandleInterrupt) {
     ASSERT_EQ(kTrap.m_trap_type, rv64_emulator::cpu::TrapType::kNone);
     ASSERT_EQ(kExceptedCauseBits, kRealMCauseBits);
 }
+
+TEST_F(CpuTest, Wfi) {
+    // store wfi instruction
+    m_cpu->Store(kDramBaseAddr, 32, 0x10500073);
+    m_cpu->SetPC(kDramBaseAddr);
+    m_cpu->Tick();
+    ASSERT_EQ(kDramBaseAddr + 4, m_cpu->GetPC());
+
+    for (int i = 0; i < 10; i++) {
+        m_cpu->Tick();
+        ASSERT_EQ(kDramBaseAddr + 4, m_cpu->GetPC());
+    }
+
+    m_cpu->WriteCsr(rv64_emulator::cpu::csr::kCsrMie, rv64_emulator::cpu::csr::kCsrMtipMask);
+    m_cpu->WriteCsr(rv64_emulator::cpu::csr::kCsrMip, rv64_emulator::cpu::csr::kCsrMtipMask);
+    m_cpu->WriteCsr(rv64_emulator::cpu::csr::kCsrMstatus, 0x8);
+    m_cpu->WriteCsr(rv64_emulator::cpu::csr::kCsrMtvec, 0);
+    m_cpu->Tick();
+    ASSERT_EQ(0, m_cpu->GetPC());
+}

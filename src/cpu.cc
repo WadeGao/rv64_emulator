@@ -279,6 +279,16 @@ const Instruction RV64I_Instructions[] = {
 
     {
         .m_mask = 0xffffffff,
+        .m_data = 0x00100073,
+        .m_name = "EBREAK",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+            // TODO: implement
+            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+        },
+    },
+
+    {
+        .m_mask = 0xffffffff,
         .m_data = 0x00000073,
         .m_name = "ECALL",
         .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
@@ -813,6 +823,16 @@ const Instruction RV64I_Instructions[] = {
     },
 
     {
+        .m_mask = 0xffffffff,
+        .m_data = 0x10500073,
+        .m_name = "WFI",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+            cpu->SetWfi(true);
+            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+        },
+    },
+
+    {
         .m_mask = 0xfe00707f,
         .m_data = 0x00004033,
         .m_name = "XOR",
@@ -1245,18 +1265,18 @@ uint64_t CPU::GetTrapVectorNewPC(const uint64_t csr_tvec_addr, const uint64_t ex
 bool CPU::HandleTrap(const Trap trap, const uint64_t epc) {
     const PrivilegeMode cur_privilege_mode = GetPrivilegeMode();
     assert(cur_privilege_mode != PrivilegeMode::kReserved);
-    const auto& [is_interrupt, origin_cause_bits] = GetTrapCause(trap);
+    const auto [is_interrupt, origin_cause_bits] = GetTrapCause(trap);
 
     uint64_t cause_bits = origin_cause_bits;
 
     if (is_interrupt) {
         // clear interrupt bit
-        const uint64_t interrupt_bit = 1 << (GetMaxXLen() - 1);
+        const uint64_t interrupt_bit = static_cast<uint64_t>(1) << (GetMaxXLen() - 1);
         cause_bits &= (~interrupt_bit);
     }
 
-    const uint64_t  mxdeleg        = ReadCsrDirectly(is_interrupt ? csr::kCsrMideleg : csr::kCsrMedeleg);
-    const uint64_t& exception_code = cause_bits;
+    const uint64_t mxdeleg        = ReadCsrDirectly(is_interrupt ? csr::kCsrMideleg : csr::kCsrMedeleg);
+    const uint64_t exception_code = cause_bits;
 
     bool switch_to_s_mode =
         (cur_privilege_mode <= PrivilegeMode::kSupervisor && exception_code < GetMaxXLen() && mxdeleg & (1 << exception_code));

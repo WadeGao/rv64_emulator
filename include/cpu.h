@@ -201,6 +201,14 @@ public:
         m_privilege_mode = mode;
     }
 
+    inline bool GetWfi() const {
+        return m_wfi;
+    }
+
+    inline void SetWfi(const bool wfi) {
+        m_wfi = wfi;
+    }
+
     std::tuple<uint64_t, Trap> ReadCsr(const uint16_t csr_addr) const;
     Trap                       WriteCsr(const uint16_t csr_addr, const uint64_t val);
 
