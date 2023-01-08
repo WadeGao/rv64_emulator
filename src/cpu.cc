@@ -1336,6 +1336,10 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
 
     // 中断优先级：MEI > MSI > MTI > SEI > SSI > STI
     do {
+        if (!machine_interrupts) {
+            break;
+        }
+
         if (machine_interrupts & csr::kCsrMeipMask) {
             trap_type    = TrapType::kMachineExternalInterrupt;
             csr_mip_mask = csr::kCsrMeipMask;
