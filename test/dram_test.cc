@@ -1,17 +1,19 @@
+#include "fmt/core.h"
 #include "include/conf.h"
 #include "include/dram.h"
 #include "gtest/gtest.h"
 
-#include <cstdio>
+#include <cstdint>
+#include <memory>
 
-class DRAMTest : public testing::Test { // 继承了 testing::Test
+class DRAMTest : public testing::Test {
 protected:
     static void SetUpTestSuite() {
-        printf("start running DRAM test case...\n");
+        fmt::print("start running DRAM test case...\n");
     }
 
     static void TearDownTestSuite() {
-        printf("finish running DRAM test case...\n");
+        fmt::print("finish running DRAM test case...\n");
     }
 
     virtual void SetUp() override {

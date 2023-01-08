@@ -1,18 +1,20 @@
+#include "fmt/core.h"
 #include "include/bus.h"
 #include "include/conf.h"
 #include "include/dram.h"
 #include "gtest/gtest.h"
+
 #include <cstdint>
 #include <memory>
 
-class BusTest : public testing::Test { // 继承了 testing::Test
+class BusTest : public testing::Test {
 protected:
     static void SetUpTestSuite() {
-        printf("start running Bus test case...\n");
+        fmt::print("start running Bus test case...\n");
     }
 
     static void TearDownTestSuite() {
-        printf("finish running Bus test case...\n");
+        fmt::print("finish running Bus test case...\n");
     }
 
     virtual void SetUp() override {

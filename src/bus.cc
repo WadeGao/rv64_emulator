@@ -1,7 +1,6 @@
 #include "include/bus.h"
+#include "fmt/core.h"
 #include "include/dram.h"
-
-#include <cstdio>
 
 namespace rv64_emulator {
 namespace bus {
@@ -23,7 +22,7 @@ void Bus::Store(const uint64_t addr, const uint64_t bit_size, const uint64_t val
 
 Bus::~Bus() {
 #ifdef DEBUG
-    printf("destroy a bus\n");
+    fmt::print("destroy a bus\n");
 #endif
 }
 

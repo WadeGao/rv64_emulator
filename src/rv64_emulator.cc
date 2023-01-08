@@ -1,9 +1,9 @@
+#include "fmt/core.h"
 #include "include/bus.h"
 #include "include/conf.h"
 #include "include/cpu.h"
 #include "include/dram.h"
 
-#include <cstdio>
 #include <memory>
 
 void LoadBin(const char* file_name, rv64_emulator::dram::DRAM* dram) {

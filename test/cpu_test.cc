@@ -1,3 +1,4 @@
+#include "fmt/core.h"
 #include "include/bus.h"
 #include "include/conf.h"
 #include "include/cpu.h"
@@ -5,17 +6,17 @@
 #include "include/dram.h"
 #include "gtest/gtest.h"
 
-#include <cstdio>
+#include <cstdint>
 #include <memory>
 
-class CpuTest : public testing::Test { // 继承了 testing::Test
+class CpuTest : public testing::Test {
 protected:
     static void SetUpTestSuite() {
-        printf("start running CPU test case...\n");
+        fmt::print("start running CPU test case...\n");
     }
 
     static void TearDownTestSuite() {
-        printf("finish running CPU test case...\n");
+        fmt::print("finish running CPU test case...\n");
     }
 
     virtual void SetUp() override {

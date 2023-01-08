@@ -1,4 +1,6 @@
 #include "include/cpu.h"
+#include "fmt/core.h"
+#include "fmt/format.h"
 #include "include/bus.h"
 #include "include/conf.h"
 #include "include/csr.h"
@@ -7,7 +9,6 @@
 
 #include <cassert>
 #include <cstdint>
-#include <cstdio>
 #include <tuple>
 
 namespace rv64_emulator {
@@ -325,6 +326,26 @@ const Instruction RV64I_Instructions[] = {
             cpu->SetGeneralPurposeRegVal(f.rd, cpu->GetPC());
             const uint64_t new_pc = (int64_t)cpu->GetPC() + (int64_t)f.imm - 4;
             cpu->SetPC(new_pc);
+            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+        },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x0000000f,
+        .m_name = "FENCE",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+            // TODO: implement
+            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+        },
+    },
+
+    {
+        .m_mask = 0x0000707f,
+        .m_data = 0x0000100f,
+        .m_name = "FENCE.I",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+            // TODO: implement
             return { .m_trap_type = TrapType::kNone, .m_val = 0 };
         },
     },
@@ -929,7 +950,7 @@ CPU::CPU(ArchMode arch_mode, PrivilegeMode privilege_mode, std::unique_ptr<rv64_
     m_reg[0] = 0;
     m_reg[2] = kDramBaseAddr + kDramSize;
 #ifdef DEBUG
-    printf("cpu init, bus addr is %p\n", m_bus.get());
+    fmt::print("cpu init, bus addr is {}\n", fmt::ptr(m_bus.get()));
 #endif
 }
 
@@ -1438,7 +1459,7 @@ void CPU::Tick() {
 
 CPU::~CPU() {
 #ifdef DEBUG
-    printf("destroy a cpu\n");
+    fmt::print("destroy a cpu\n");
 #endif
 }
 
@@ -1449,14 +1470,15 @@ void CPU::Dump() const {
         "a6",   "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6",
     };
 
-    const uint32_t inst_word = m_bus->Load(m_pc, kInstructionBits);
-    printf("0x%016llx -> 0x%08x\n", m_pc, inst_word);
+    const uint64_t last_executed_pc = GetPC();
+    const uint32_t inst_word        = m_bus->Load(last_executed_pc, kInstructionBits);
+    fmt::print("{:#016x} -> {:#08x}\n", last_executed_pc, inst_word);
 
     for (int i = 0; i < 8; i++) {
-        printf("   %4s: 0x%016llx  ", abi[i], m_reg[i]);
-        printf("   %2s: 0x%016llx  ", abi[i + 8], m_reg[i + 8]);
-        printf("   %2s: 0x%016llx  ", abi[i + 16], m_reg[i + 16]);
-        printf("   %3s: 0x%016llx\n", abi[i + 24], m_reg[i + 24]);
+        fmt::print("   {}: {:#016x}  ", abi[i], m_reg[i]);
+        fmt::print("   {}: {:#016x}  ", abi[i + 8], m_reg[i + 8]);
+        fmt::print("   {}: {:#016x}  ", abi[i + 16], m_reg[i + 16]);
+        fmt::print("   {}: {:#016x}  \n", abi[i + 24], m_reg[i + 24]);
     }
 }
 
