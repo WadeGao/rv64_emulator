@@ -1,9 +1,9 @@
+#include "fmt/core.h"
 #include "include/conf.h"
 #include "include/decode.h"
 
 #include <cassert>
 #include <cstdint>
-#include <cstdio>
 
 namespace rv64_emulator {
 namespace cpu {
@@ -45,7 +45,7 @@ static int32_t GetImm(const uint32_t inst_word, const RV64InstructionFormatType 
     switch (type) {
         case RV64InstructionFormatType::R_Type:
 #ifdef DEBUG
-            printf("Imm not exists in R Type Instruction!\n");
+            fmt::print("Imm not exists in R Type Instruction!\n");
             assert(false);
 #endif
             break;

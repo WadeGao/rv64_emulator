@@ -1,9 +1,9 @@
+#include "fmt/core.h"
 #include "include/bus.h"
 #include "include/conf.h"
 #include "include/cpu.h"
 #include "include/dram.h"
 
-#include <cstdio>
 #include <memory>
 
 void LoadBin(const char* file_name, rv64_emulator::dram::DRAM* dram) {
@@ -31,8 +31,7 @@ int main(int argc, char* argv[]) {
         rv64_emulator::cpu::ArchMode::kBit64, rv64_emulator::cpu::PrivilegeMode::kMachine, std::move(bus));
 
     while (true) {
-        const uint32_t instuction = cpu->Fetch();
-        cpu->Execute(instuction);
+        cpu->Tick();
 #ifdef DEBUG
         cpu->Dump();
 #endif

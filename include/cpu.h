@@ -8,6 +8,7 @@
 #include "libs/LRU.hpp"
 
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <tuple>
 
@@ -42,11 +43,13 @@ enum class TrapType {
     kStoreAccessFault,
     kEnvironmentCallFromUMode,
     kEnvironmentCallFromSMode,
+    kReserved,
     kEnvironmentCallFromMMode,
     kInstructionPageFault,
     kLoadPageFault,
+    kReservedForFutureStandard,
     kStorePageFault,
-    // three standard interrupt source: software, timer, external
+    /* ----------- belows are interrupts: software, timer, external----------- */
     kUserSoftwareInterrupt,
     kSupervisorSoftwareInterrupt,
     kMachineSoftwareInterrupt,
@@ -57,6 +60,33 @@ enum class TrapType {
     kSupervisorExternalInterrupt,
     kMachineExternalInterrupt,
     kNone
+};
+
+const std::map<TrapType, uint64_t> TrapToCauseTable = {
+    { TrapType::kInstructionAddressMisaligned, 0 },
+    { TrapType::kInstructionAccessFault, 1 },
+    { TrapType::kIllegalInstruction, 2 },
+    { TrapType::kBreakpoint, 3 },
+    { TrapType::kLoadAddressMisaligned, 4 },
+    { TrapType::kLoadAccessFault, 5 },
+    { TrapType::kStoreAddressMisaligned, 6 },
+    { TrapType::kStoreAccessFault, 7 },
+    { TrapType::kEnvironmentCallFromUMode, 8 },
+    { TrapType::kEnvironmentCallFromSMode, 9 },
+    { TrapType::kEnvironmentCallFromMMode, 11 },
+    { TrapType::kInstructionPageFault, 12 },
+    { TrapType::kLoadPageFault, 13 },
+    { TrapType::kStorePageFault, 15 },
+    /* ----------- belows are interrupts ----------- */
+    { TrapType::kUserSoftwareInterrupt, 0 },
+    { TrapType::kSupervisorSoftwareInterrupt, 1 },
+    { TrapType::kMachineSoftwareInterrupt, 3 },
+    { TrapType::kUserTimerInterrupt, 4 },
+    { TrapType::kSupervisorTimerInterrupt, 5 },
+    { TrapType::kMachineTimerInterrupt, 7 },
+    { TrapType::kUserExternalInterrupt, 8 },
+    { TrapType::kSupervisorExternalInterrupt, 9 },
+    { TrapType::kMachineExternalInterrupt, 11 },
 };
 
 typedef struct Trap {
@@ -76,8 +106,6 @@ private:
     // TODO: 把 gpr 的类型迁移到 int64_t
     uint64_t m_reg[kGeneralPurposeRegNum]   = { 0 };
     double   m_fp_reg[kFloatingPointRegNum] = { 0.0 };
-    static_assert(sizeof(double) == 8, "double is not 8 bytes, can't assure the bit width of floating point reg");
-
     // TODO: 是否会超过栈大小？是否用 std::array?
     uint64_t m_csr[kCsrCapacity] = { 0 };
 
@@ -108,14 +136,33 @@ private:
     // decode cache, key: inst_word, val: inst_table_index
     rv64_emulator::libs::LRUCache<uint32_t, int64_t> m_decode_cache;
 
+    inline bool HasCsrAccessPrivilege(const uint16_t csr_num) const {
+        // 可以访问改csr寄存器的最低特权级别
+        const uint16_t lowest_privilege_mode = (csr_num >> 8) & 0b11;
+        return lowest_privilege_mode <= uint16_t(m_privilege_mode);
+    }
+
     uint64_t ReadCsrDirectly(const uint16_t csr_addr) const;
     void     WriteCsrDirectly(const uint16_t csr_addr, const uint64_t val);
 
     void UpdateMstatus(const uint64_t mstatus);
 
-    uint64_t GetTrapCause(const Trap trap) const;
-    uint64_t GetCurrentStatus(const PrivilegeMode mode) const;
+    std::tuple<bool, uint64_t> GetTrapCause(const Trap trap) const;
+
+    uint64_t GetCsrStatusRegVal(const PrivilegeMode mode) const;
     uint64_t GetInterruptEnable(const PrivilegeMode mode) const;
+
+    bool CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMode new_pm, const TrapType trap_type) const;
+
+    void     ModifyCsrStatusReg(const PrivilegeMode cur_pm, const PrivilegeMode new_pm);
+    uint64_t GetTrapVectorNewPC(const uint64_t csr_tvec_addr, const uint64_t exception_code) const;
+
+    static uint64_t GetCsrCauseReg(const PrivilegeMode pm);
+    static uint64_t GetCsrEpcReg(const PrivilegeMode pm);
+    static uint64_t GetCsrTvalReg(const PrivilegeMode pm);
+    static uint64_t GetCstTvecReg(const PrivilegeMode pm);
+
+    Trap TickOperate();
 
 public:
     CPU(ArchMode arch_mode, PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus);
@@ -125,30 +172,50 @@ public:
 
     uint32_t Fetch();
     int64_t  Decode(const uint32_t inst_word);
-    uint64_t Execute(const uint32_t inst_word);
+    void     Tick();
 
     void     SetGeneralPurposeRegVal(const uint64_t reg_num, const uint64_t val);
     uint64_t GetGeneralPurposeRegVal(const uint64_t reg_num) const;
 
-    inline void     SetPC(const uint64_t new_pc);
-    inline uint64_t GetPC() const;
+    inline void SetPC(const uint64_t new_pc) {
+        m_pc = new_pc;
+    }
 
-    inline ArchMode      GetArchMode() const;
-    inline PrivilegeMode GetPrivilegeMode() const;
-    inline void          SetPrivilegeMode(const PrivilegeMode mode);
+    inline uint64_t GetPC() const {
+        return m_pc;
+    }
 
-    inline bool HasCsrAccessPrivilege(const uint16_t csr_num) const;
+    inline uint64_t GetMaxXLen() const {
+        return GetArchMode() == ArchMode::kBit64 ? 64 : 32;
+    }
+
+    inline ArchMode GetArchMode() const {
+        return m_arch_mode;
+    }
+
+    inline PrivilegeMode GetPrivilegeMode() const {
+        return m_privilege_mode;
+    }
+
+    inline void SetPrivilegeMode(const PrivilegeMode mode) {
+        m_privilege_mode = mode;
+    }
+
+    inline bool GetWfi() const {
+        return m_wfi;
+    }
+
+    inline void SetWfi(const bool wfi) {
+        m_wfi = wfi;
+    }
 
     std::tuple<uint64_t, Trap> ReadCsr(const uint16_t csr_addr) const;
     Trap                       WriteCsr(const uint16_t csr_addr, const uint64_t val);
 
-    bool HandleTrap(const Trap trap, const uint64_t inst_addr, bool is_interrupt);
-    void HandleException(const Trap exception, const uint64_t inst_addr);
+    bool HandleTrap(const Trap trap, const uint64_t inst_addr);
     void HandleInterrupt(const uint64_t inst_addr);
 
-#ifdef DEBUG
     void Dump() const;
-#endif
 
     ~CPU();
 };

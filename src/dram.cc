@@ -1,9 +1,9 @@
 #include "include/dram.h"
+#include "fmt/core.h"
 #include "include/conf.h"
 
 #include <cassert>
 #include <cstdint>
-#include <cstdio>
 #include <memory>
 
 namespace rv64_emulator {
@@ -17,7 +17,7 @@ DRAM::DRAM(const uint64_t mem_size)
     }
 
 #ifdef DEBUG
-    printf("dram init to all zeros, size %lu bytes\n", m_size);
+    fmt::print("dram init to all zeros, size {} bytes\n", m_size);
 #endif
 }
 
@@ -42,7 +42,7 @@ uint64_t DRAM::Load(const uint64_t addr, const uint64_t bit_size) const {
         }
         default:
 #ifdef DEBUG
-            printf("dram invalid load from addr [%lu] bit_size [%lu], now abort\n", addr, bit_size);
+            fmt::print("dram invalid load from addr [{}] bit_size [{}], now abort\n", addr, bit_size);
 #endif
             assert(false);
             break;
@@ -66,7 +66,7 @@ void DRAM::Store(const uint64_t addr, const uint64_t bit_size, const uint64_t va
         }
         default:
 #ifdef DEBUG
-            printf("dram invalid store to addr [%lu] bit_size [%lu] val [%lu], now abort\n", addr, bit_size, val);
+            fmt::print("dram invalid store to addr [{}] bit_size [{}] val [{}], now abort\n", addr, bit_size, val);
 #endif
             assert(false);
             break;
@@ -75,7 +75,7 @@ void DRAM::Store(const uint64_t addr, const uint64_t bit_size, const uint64_t va
 
 DRAM::~DRAM() {
 #ifdef DEBUG
-    printf("destroy a dram, size %lu bytes\n", m_size);
+    fmt::print("destroy a dram, size {} bytes\n", m_size);
 #endif
     m_size = 0;
 }
