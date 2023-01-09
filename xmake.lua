@@ -3,7 +3,7 @@ add_rules("mode.debug", "mode.release", "mode.minsizerel", "mode.releasedbg", "m
 
 add_cxxflags("-fno-rtti", "-fno-exceptions")
 add_cxxflags("-fdata-sections", "-ffunction-sections")
-add_ldflags("-Wl,--print-gc-sections,--gc-sections,--icf=safe")
+add_ldflags("-Wl,--print-gc-sections,--gc-sections")
 
 target("rv64_emulator")
     if is_mode("debug") then

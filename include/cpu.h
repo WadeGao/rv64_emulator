@@ -97,6 +97,7 @@ typedef struct Trap {
 class CPU {
 private:
     uint64_t      m_clock;
+    uint64_t      m_instruction_count;
     ArchMode      m_arch_mode;
     PrivilegeMode m_privilege_mode;
     uint64_t      m_pc;
