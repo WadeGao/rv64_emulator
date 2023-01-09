@@ -940,6 +940,7 @@ uint64_t CPU::GetCstTvecReg(const PrivilegeMode pm) {
 
 CPU::CPU(ArchMode arch_mode, PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus)
     : m_clock(0)
+    , m_instruction_count(0)
     , m_arch_mode(arch_mode)
     , m_privilege_mode(privilege_mode)
     , m_pc(kDramBaseAddr)
@@ -966,6 +967,12 @@ uint64_t CPU::ReadCsrDirectly(const uint16_t csr_addr) const {
             return m_csr[csr::kCsrMie] & 0x222;
         case csr::kCsrSip:
             return m_csr[csr::kCsrMip] & 0x222;
+        case csr::kCsrMCycle:
+        case csr::kCsrMinstret:
+            return GetMaxXLen() == 64 ? m_csr[csr_addr] : m_csr[csr_addr] & 0x00000000ffffffff;
+        case csr::kCsrMCycleH:
+        case csr::kCsrMinstretH:
+            return GetMaxXLen() == 64 ? m_csr[csr_addr] : m_csr[csr_addr] & 0xffffffff00000000;
         case csr::kCsrTime:
             // TODO: clint module
         default:
@@ -1004,6 +1011,12 @@ void CPU::WriteCsrDirectly(const uint16_t csr_addr, const uint64_t val) {
         case csr::kCsrMideleg:
             m_csr[csr_addr] = val & 0x666; // from qemu
             break;
+        case csr::kCsrMCycle:
+        case csr::kCsrMinstret:
+            m_csr[csr_addr] = GetMaxXLen() == 64 ? val : val & 0x00000000ffffffff;
+        case csr::kCsrMCycleH:
+        case csr::kCsrMinstretH:
+            m_csr[csr_addr] = GetMaxXLen() == 64 ? val : val & 0xffffffff00000000;
         case csr::kCsrTime:
             // TODO: clint module
             break;
@@ -1459,6 +1472,11 @@ void CPU::Tick() {
     }
 
     HandleInterrupt(GetPC());
+
+    // rust style 'wrapping_add' not need
+    // risc-v cycle, time, instret regs: risc-v1.com/thread-968-1-1.html
+    WriteCsrDirectly(csr::kCsrMCycle, ++m_clock);
+    WriteCsrDirectly(csr::kCsrMinstret, ++m_instruction_count);
 }
 
 CPU::~CPU() {

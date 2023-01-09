@@ -44,16 +44,18 @@ constexpr uint16_t kCsrMtinst   = 0x34a; // Machine trap instruction (transforme
 constexpr uint16_t kCsrMtval2   = 0x34b; // Machine bad guest physical address
 
 // Machine Timers and Counters
-constexpr uint16_t kCsrMcycle   = 0xb00; // Machine cycle counter
+constexpr uint16_t kCsrMCycle   = 0xb00; // Machine cycle counter
 constexpr uint16_t kCsrMinstret = 0xb02; // Machine instructions-retired counter
 
-//
+constexpr uint16_t kCsrMCycleH   = 0xb80; // Upper 32 bits of mcycle, RV32 only.
+constexpr uint16_t kCsrMinstretH = 0xb82; // Upper 32 bits of minstret, RV32 only.
 
 constexpr uint16_t kCsrSedeleg = 0x102;
 constexpr uint16_t kCsrSideleg = 0x103;
 constexpr uint16_t kCsrSie     = 0x104;
 constexpr uint16_t kCsrSip     = 0x144;
 constexpr uint16_t kCsrUie     = 0x004;
+constexpr uint16_t kCsrCycle   = 0xc00;
 constexpr uint16_t kCsrTime    = 0xc01;
 constexpr uint16_t kCsrSepc    = 0x141;
 constexpr uint16_t kCsrUepc    = 0x041;
