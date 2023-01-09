@@ -3,7 +3,7 @@ add_rules("mode.debug", "mode.release", "mode.minsizerel", "mode.releasedbg", "m
 
 add_cxxflags("-fno-rtti", "-fno-exceptions")
 add_cxxflags("-fdata-sections", "-ffunction-sections")
-add_cxxflags("-Wl,--print-gc-sections,--gc-sections,--icf=safe")
+add_ldflags("-Wl,--print-gc-sections,--gc-sections,--icf=safe")
 
 target("rv64_emulator")
     if is_mode("debug") then
@@ -34,7 +34,6 @@ target("gtest_main")
 target("gmock")
     set_kind("static")
     set_targetdir("build")
-    add_deps("gtest_main")
     add_includedirs("third_party/gtest")
     add_includedirs("third_party/gtest/include")
     add_files("third_party/gtest/src/gmock-all.cc")
