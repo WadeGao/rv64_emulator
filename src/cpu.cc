@@ -14,7 +14,7 @@
 namespace rv64_emulator {
 namespace cpu {
 
-const Instruction RV64I_Instructions[] = {
+const Instruction kInstructionTable[] = {
     {
         .m_mask = 0xfe00707f,
         .m_data = 0x00000033,
@@ -357,7 +357,7 @@ const Instruction RV64I_Instructions[] = {
         .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
             const auto&    f        = decode::ParseFormatI(inst_word);
             const uint64_t saved_pc = cpu->GetPC();
-            const uint64_t new_pc   = ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm) & 0xfffffffe;
+            const uint64_t new_pc   = ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm) & 0xfffffffffffffffe;
 
             cpu->SetPC(new_pc);
             cpu->SetGeneralPurposeRegVal(f.rd, saved_pc);
@@ -1420,7 +1420,7 @@ int64_t CPU::Decode(const uint32_t inst_word) {
 
     // decode cache miss, find the index in instruction table
     inst_table_index = 0;
-    for (auto& inst : RV64I_Instructions) {
+    for (auto& inst : kInstructionTable) {
         if ((inst_word & inst.m_mask) == inst.m_data) {
             m_decode_cache.Set(inst_word, inst_table_index);
             return inst_table_index;
@@ -1456,7 +1456,7 @@ Trap CPU::TickOperate() {
         };
     }
 
-    const Trap trap = RV64I_Instructions[instruction_index].Exec(this, inst_word);
+    const Trap trap = kInstructionTable[instruction_index].Exec(this, inst_word);
     // in a emulator, there is not a GND hardwiring x0 to zero
     m_reg[0] = 0;
     return trap;

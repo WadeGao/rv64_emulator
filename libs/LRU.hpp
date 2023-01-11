@@ -14,11 +14,8 @@ private:
 
     // inline initialization need C++11 and above
     uint64_t m_current_size = 0;
-
-#ifdef DEBUG
-    uint64_t m_hit_count  = 0;
-    uint64_t m_miss_count = 0;
-#endif
+    uint64_t m_hit_count    = 0;
+    uint64_t m_miss_count   = 0;
 
     std::list<std::pair<Tkey, Tval>>                                              m_list;
     std::unordered_map<Tkey, typename std::list<std::pair<Tkey, Tval>>::iterator> m_cache;
@@ -30,16 +27,11 @@ public:
 
     bool Get(Tkey key, Tval& ret_val) {
         if (m_cache.find(key) == m_cache.end()) {
-#ifdef DEBUG
             m_miss_count++;
-#endif
             return false;
         }
 
-#ifdef DEBUG
         m_hit_count++;
-#endif
-
         m_list.splice(m_list.begin(), m_list, m_cache[key]);
         m_cache[key] = m_list.begin();
         ret_val      = m_list.begin()->second;

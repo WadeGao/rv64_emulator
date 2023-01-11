@@ -53,7 +53,7 @@ typedef struct FormatCsr {
 } FormatCsr;
 
 uint16_t GetCsr(const uint32_t inst_word);
-uint8_t  GetShamt(const uint32_t inst_word, const bool is_rv32_arch = false); //
+uint8_t  GetShamt(const uint32_t inst_word, const bool kRv32Arch = false); //
 
 // instruction format parser
 FormatR   ParseFormatR(const uint32_t inst_word);
@@ -67,7 +67,7 @@ FormatCsr ParseFormatCsr(const uint32_t inst_word);
 // instruction dumper
 std::string DumpFormatR(const uint32_t inst_word);
 
-} // namespace decoder
+} // namespace decode
 } // namespace cpu
 } // namespace rv64_emulator
 
