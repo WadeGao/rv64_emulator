@@ -101,6 +101,7 @@ private:
     ArchMode      m_arch_mode;
     PrivilegeMode m_privilege_mode;
     uint64_t      m_pc;
+    uint64_t      m_last_executed_pc;
     uint64_t      m_mstatus;
 
     bool m_wfi = false;

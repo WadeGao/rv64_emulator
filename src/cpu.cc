@@ -944,6 +944,7 @@ CPU::CPU(ArchMode arch_mode, PrivilegeMode privilege_mode, std::unique_ptr<rv64_
     , m_arch_mode(arch_mode)
     , m_privilege_mode(privilege_mode)
     , m_pc(kDramBaseAddr)
+    , m_last_executed_pc(kDramBaseAddr)
     , m_mstatus(0)
     , m_bus(std::move(bus))
     , m_decode_cache(decode::kDecodeCacheEntryNum) {
@@ -1456,7 +1457,8 @@ Trap CPU::TickOperate() {
         };
     }
 
-    const Trap trap = kInstructionTable[instruction_index].Exec(this, inst_word);
+    const Trap trap    = kInstructionTable[instruction_index].Exec(this, inst_word);
+    m_last_executed_pc = inst_addr;
     // in a emulator, there is not a GND hardwiring x0 to zero
     m_reg[0] = 0;
     return trap;
@@ -1492,9 +1494,8 @@ void CPU::Dump() const {
         "a6",   "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6",
     };
 
-    const uint64_t last_executed_pc = GetPC();
-    const uint32_t inst_word        = m_bus->Load(last_executed_pc, kInstructionBits);
-    fmt::print("{:#016x} -> {:#08x}\n", last_executed_pc, inst_word);
+    const uint32_t inst_word = m_bus->Load(m_last_executed_pc, kInstructionBits);
+    fmt::print("{:#016x} -> {:#08x}\n", m_last_executed_pc, inst_word);
 
     for (int i = 0; i < 8; i++) {
         fmt::print("   {}: {:#016x}  ", abi[i], m_reg[i]);
