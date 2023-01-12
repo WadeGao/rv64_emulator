@@ -4,18 +4,13 @@
 
 #include <cassert>
 #include <cstdint>
-#include <memory>
 
 namespace rv64_emulator {
 namespace dram {
 
 DRAM::DRAM(const uint64_t mem_size)
     : m_size(mem_size)
-    , m_memory(std::move(std::make_unique<uint8_t[]>(mem_size))) {
-    for (uint64_t i = 0; i < mem_size; i++) {
-        m_memory[i] = 0;
-    }
-
+    , m_memory(mem_size, 0) {
 #ifdef DEBUG
     fmt::print("dram init to all zeros, size {} bytes\n", m_size);
 #endif
