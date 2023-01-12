@@ -1,6 +1,6 @@
-#include "include/bus.h"
+#include "bus.h"
+#include "dram.h"
 #include "fmt/core.h"
-#include "include/dram.h"
 
 namespace rv64_emulator {
 namespace bus {

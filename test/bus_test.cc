@@ -1,7 +1,7 @@
+#include "bus.h"
+#include "conf.h"
+#include "dram.h"
 #include "fmt/core.h"
-#include "include/bus.h"
-#include "include/conf.h"
-#include "include/dram.h"
 #include "gtest/gtest.h"
 
 #include <cstdint>

@@ -1,8 +1,8 @@
+#include "bus.h"
+#include "conf.h"
+#include "cpu/cpu.h"
+#include "dram.h"
 #include "fmt/core.h"
-#include "include/bus.h"
-#include "include/conf.h"
-#include "include/cpu.h"
-#include "include/dram.h"
 
 #include <memory>
 

@@ -1,6 +1,6 @@
-#include "include/dram.h"
+#include "dram.h"
+#include "conf.h"
 #include "fmt/core.h"
-#include "include/conf.h"
 
 #include <cassert>
 #include <cstdint>
@@ -37,7 +37,7 @@ uint64_t DRAM::Load(const uint64_t addr, const uint64_t bit_size) const {
             const uint64_t kRealIndexEnd   = kRealIndexStart + (kByteSize - 1);
             // 提前确保整个访问范围处于有效内存范围内
             // addr大于基址 && 结束地址大于起始地址且没有整数溢出 && 结束地址仍位于有效地址内
-            assert(addr >= kDramBaseAddr && kRealIndexEnd > kRealIndexStart && kRealIndexEnd < m_size);
+            assert(addr >= kDramBaseAddr && kRealIndexEnd >= kRealIndexStart && kRealIndexEnd < m_size);
             uint8_t mask = 0;
             for (uint64_t i = 0; i < kByteSize; i++) {
                 const uint64_t index = kRealIndexStart + i;

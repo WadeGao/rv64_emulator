@@ -1,7 +1,7 @@
 #ifndef RV64_EMULATOR_INCLUDE_DECODER_H_
 #define RV64_EMULATOR_INCLUDE_DECODER_H_
 
-#include "include/conf.h"
+#include "conf.h"
 
 #include <cstdint>
 #include <string>

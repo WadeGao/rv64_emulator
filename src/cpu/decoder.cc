@@ -1,6 +1,6 @@
+#include "conf.h"
+#include "cpu/decode.h"
 #include "fmt/core.h"
-#include "include/conf.h"
-#include "include/decode.h"
 
 #include <cassert>
 #include <cstdint>

@@ -1,9 +1,10 @@
+#include "bus.h"
+#include "conf.h"
+#include "cpu/cpu.h"
+#include "cpu/csr.h"
+#include "cpu/trap.h"
+#include "dram.h"
 #include "fmt/core.h"
-#include "include/bus.h"
-#include "include/conf.h"
-#include "include/cpu.h"
-#include "include/csr.h"
-#include "include/dram.h"
 #include "gtest/gtest.h"
 
 #include <cstdint>
@@ -45,7 +46,7 @@ TEST_F(CpuTest, HandleTrap) {
 
     const auto& [val, trap] = m_cpu->ReadCsr(rv64_emulator::cpu::csr::kCsrMcause);
     ASSERT_EQ(trap.m_trap_type, rv64_emulator::cpu::TrapType::kNone);
-    ASSERT_EQ(rv64_emulator::cpu::TrapToCauseTable.at(rv64_emulator::cpu::TrapType::kEnvironmentCallFromMMode), val);
+    ASSERT_EQ(rv64_emulator::cpu::kTrapToCauseTable.at(rv64_emulator::cpu::TrapType::kEnvironmentCallFromMMode), val);
 }
 
 TEST_F(CpuTest, HandleInterrupt) {

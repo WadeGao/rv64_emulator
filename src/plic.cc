@@ -1,5 +1,5 @@
-#include "include/plic.h"
-#include "include/csr.h"
+#include "plic.h"
+#include "cpu/csr.h"
 
 #include <cassert>
 #include <cstdint>

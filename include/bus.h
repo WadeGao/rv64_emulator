@@ -1,7 +1,7 @@
 #ifndef RV64_EMULATOR_INCLUDE_BUS_H_
 #define RV64_EMULATOR_INCLUDE_BUS_H_
 
-#include "include/dram.h"
+#include "dram.h"
 
 #include <memory>
 

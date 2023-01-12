@@ -1,10 +1,11 @@
-#include "include/cpu.h"
+#include "cpu/cpu.h"
+#include "bus.h"
+#include "conf.h"
+#include "cpu/csr.h"
+#include "cpu/decode.h"
+#include "cpu/trap.h"
 #include "fmt/core.h"
 #include "fmt/format.h"
-#include "include/bus.h"
-#include "include/conf.h"
-#include "include/csr.h"
-#include "include/decode.h"
 #include "libs/LRU.hpp"
 
 #include <cassert>
@@ -1227,7 +1228,7 @@ void CPU::ModifyCsrStatusReg(const PrivilegeMode cur_pm, const PrivilegeMode new
 std::tuple<bool, uint64_t> CPU::GetTrapCause(const Trap trap) const {
     // https://dingfen.github.io/assets/img/mcause_table.png
     bool     is_interrupt = false;
-    uint64_t cause_bits   = TrapToCauseTable.at(trap.m_trap_type);
+    uint64_t cause_bits   = kTrapToCauseTable.at(trap.m_trap_type);
 
     // if current trap's type is interrupt, set the msb to 1
     if (trap.m_trap_type >= TrapType::kUserSoftwareInterrupt) {
