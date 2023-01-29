@@ -5,8 +5,7 @@
 #include <cassert>
 #include <cstdint>
 
-namespace rv64_emulator {
-namespace dram {
+namespace rv64_emulator::dram {
 
 DRAM::DRAM(const uint64_t mem_size)
     : m_size(mem_size)
@@ -88,5 +87,4 @@ DRAM::~DRAM() {
 #endif
 }
 
-} // namespace dram
-} // namespace rv64_emulator
+} // namespace rv64_emulator::dram

@@ -4,8 +4,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace rv64_emulator {
-namespace dram {
+namespace rv64_emulator::dram {
 
 class DRAM {
 private:
@@ -20,7 +19,6 @@ public:
     ~DRAM();
 };
 
-} // namespace dram
-} // namespace rv64_emulator
+} // namespace rv64_emulator::dram
 
 #endif

@@ -4,8 +4,7 @@
 #include <cstdint>
 #include <map>
 
-namespace rv64_emulator {
-namespace cpu {
+namespace rv64_emulator::cpu {
 
 enum class TrapType {
     kInstructionAddressMisaligned = 0,
@@ -69,6 +68,5 @@ typedef struct Trap {
     uint64_t m_val;
 } Trap;
 
-} // namespace cpu
-} // namespace rv64_emulator
+} // namespace rv64_emulator::cpu
 #endif

@@ -3,9 +3,7 @@
 
 #include <cstdint>
 
-namespace rv64_emulator {
-namespace cpu {
-namespace csr {
+namespace rv64_emulator::cpu::csr {
 
 constexpr uint16_t kCsrFflags = 0x001; // Floating-Point Accrued Exceptions.
 constexpr uint16_t kCsrFrm    = 0x002; // Floating-Point Dynamic Rounding Mode
@@ -74,7 +72,5 @@ constexpr uint16_t kCsrSeipMask = 0x200;
 constexpr uint16_t kCsrStipMask = 0x020;
 constexpr uint16_t kCsrSsipMask = 0x002;
 
-} // namespace csr
-} // namespace cpu
-} // namespace rv64_emulator
+} // namespace rv64_emulator::cpu::csr
 #endif

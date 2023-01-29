@@ -12,8 +12,7 @@
 #include <cstdint>
 #include <tuple>
 
-namespace rv64_emulator {
-namespace cpu {
+namespace rv64_emulator::cpu {
 
 const Instruction kInstructionTable[] = {
     {
@@ -1507,5 +1506,4 @@ void CPU::Dump() const {
     }
 }
 
-} // namespace cpu
-} // namespace rv64_emulator
+} // namespace rv64_emulator::cpu

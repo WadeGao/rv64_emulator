@@ -5,8 +5,7 @@
 
 #include <memory>
 
-namespace rv64_emulator {
-namespace bus {
+namespace rv64_emulator::bus {
 
 class Bus {
 private:
@@ -19,7 +18,6 @@ public:
     ~Bus();
 };
 
-} // namespace bus
-} // namespace rv64_emulator
+} // namespace rv64_emulator::bus
 
 #endif
