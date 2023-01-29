@@ -1,10 +1,10 @@
-#ifndef RV64_EMULATOR_INCLUDE_TRAP_H_
-#define RV64_EMULATOR_INCLUDE_TRAP_H_
+#ifndef RV64_EMULATOR_INCLUDE_CPU_TRAP_H_
+#define RV64_EMULATOR_INCLUDE_CPU_TRAP_H_
 
 #include <cstdint>
 #include <map>
 
-namespace rv64_emulator::cpu {
+namespace rv64_emulator::cpu::trap {
 
 enum class TrapType {
     kInstructionAddressMisaligned = 0,
@@ -68,5 +68,5 @@ typedef struct Trap {
     uint64_t m_val;
 } Trap;
 
-} // namespace rv64_emulator::cpu
+} // namespace rv64_emulator::cpu::trap
 #endif

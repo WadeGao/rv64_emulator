@@ -19,11 +19,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfe00707f,
         .m_data = 0x00000033,
         .m_name = "ADD",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatR(inst_word);
             const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -31,11 +31,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00000013,
         .m_name = "ADDI",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatI(inst_word);
             const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -43,11 +43,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x0000001b,
         .m_name = "ADDIW",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatI(inst_word);
             const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) + f.imm);
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -55,11 +55,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfe00707f,
         .m_data = 0x0000003b,
         .m_name = "ADDW",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatR(inst_word);
             const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2));
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -67,11 +67,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfe00707f,
         .m_data = 0x00007033,
         .m_name = "AND",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatR(inst_word);
             const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) & (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -79,11 +79,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00007013,
         .m_name = "ANDI",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatI(inst_word);
             const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) & (int64_t)f.imm;
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -91,11 +91,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000007f,
         .m_data = 0x00000017,
         .m_name = "AUIPC",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatU(inst_word);
             const int64_t val = (int64_t)(cpu->GetPC() - 4) + (int64_t)f.imm;
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -103,13 +103,13 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00000063,
         .m_name = "BEQ",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto& f = decode::ParseFormatB(inst_word);
             if ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) == (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
                 const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
                 cpu->SetPC(new_pc);
             }
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -117,13 +117,13 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00005063,
         .m_name = "BGE",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto& f = decode::ParseFormatB(inst_word);
             if ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) >= (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
                 const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
                 cpu->SetPC(new_pc);
             }
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -131,13 +131,13 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00007063,
         .m_name = "BGEU",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto& f = decode::ParseFormatB(inst_word);
             if ((uint64_t)cpu->GetGeneralPurposeRegVal(f.rs1) >= (uint64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
                 const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
                 cpu->SetPC(new_pc);
             }
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -145,13 +145,13 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00004063,
         .m_name = "BLT",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto& f = decode::ParseFormatB(inst_word);
             if ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) < (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
                 const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
                 cpu->SetPC(new_pc);
             }
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -159,13 +159,13 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00006063,
         .m_name = "BLTU",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto& f = decode::ParseFormatB(inst_word);
             if ((uint64_t)cpu->GetGeneralPurposeRegVal(f.rs1) < (uint64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
                 const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
                 cpu->SetPC(new_pc);
             }
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -173,13 +173,13 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00001063,
         .m_name = "BNE",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto& f = decode::ParseFormatB(inst_word);
             if ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) != (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2)) {
                 const uint64_t new_pc = cpu->GetPC() + ((int64_t)f.imm - 4);
                 cpu->SetPC(new_pc);
             }
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -187,10 +187,10 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00003073,
         .m_name = "CSRRC",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto& f               = decode::ParseFormatCsr(inst_word);
             const auto& [csr_val, trap] = cpu->ReadCsr(f.csr);
-            if (trap.m_trap_type != TrapType::kNone) {
+            if (trap.m_trap_type != trap::TrapType::kNone) {
                 return trap;
             }
             const uint64_t new_csr_val = (int64_t)csr_val & (~((int64_t)cpu->GetGeneralPurposeRegVal(f.rs)));
@@ -203,10 +203,10 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00007073,
         .m_name = "CSRRCI",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto& f               = decode::ParseFormatCsr(inst_word);
             const auto& [csr_val, trap] = cpu->ReadCsr(f.csr);
-            if (trap.m_trap_type != TrapType::kNone) {
+            if (trap.m_trap_type != trap::TrapType::kNone) {
                 return trap;
             }
             const uint64_t new_csr_val = (int64_t)csr_val & (~((int64_t)f.rs));
@@ -219,10 +219,10 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00002073,
         .m_name = "CSRRS",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto& f               = decode::ParseFormatCsr(inst_word);
             const auto& [csr_val, trap] = cpu->ReadCsr(f.csr);
-            if (trap.m_trap_type != TrapType::kNone) {
+            if (trap.m_trap_type != trap::TrapType::kNone) {
                 return trap;
             }
             const uint64_t new_csr_val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs) | (int64_t)csr_val;
@@ -235,10 +235,10 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00006073,
         .m_name = "CSRRSI",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto& f               = decode::ParseFormatCsr(inst_word);
             const auto& [csr_val, trap] = cpu->ReadCsr(f.csr);
-            if (trap.m_trap_type != TrapType::kNone) {
+            if (trap.m_trap_type != trap::TrapType::kNone) {
                 return trap;
             }
             const uint64_t new_csr_val = (int64_t)csr_val | (int64_t)f.rs;
@@ -251,10 +251,10 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00001073,
         .m_name = "CSRRW",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto& f               = decode::ParseFormatCsr(inst_word);
             const auto& [csr_val, trap] = cpu->ReadCsr(f.csr);
-            if (trap.m_trap_type != TrapType::kNone) {
+            if (trap.m_trap_type != trap::TrapType::kNone) {
                 return trap;
             }
             const uint64_t new_csr_val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs);
@@ -267,10 +267,10 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00005073,
         .m_name = "CSRRWI",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto& f               = decode::ParseFormatCsr(inst_word);
             const auto& [csr_val, trap] = cpu->ReadCsr(f.csr);
-            if (trap.m_trap_type != TrapType::kNone) {
+            if (trap.m_trap_type != trap::TrapType::kNone) {
                 return trap;
             }
             cpu->SetGeneralPurposeRegVal(f.rd, csr_val);
@@ -282,9 +282,9 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xffffffff,
         .m_data = 0x00100073,
         .m_name = "EBREAK",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             // TODO: implement
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -292,18 +292,18 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xffffffff,
         .m_data = 0x00000073,
         .m_name = "ECALL",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const PrivilegeMode pm             = cpu->GetPrivilegeMode();
-            TrapType            exception_type = TrapType::kNone;
+            trap::TrapType      exception_type = trap::TrapType::kNone;
             switch (pm) {
                 case PrivilegeMode::kUser:
-                    exception_type = TrapType::kEnvironmentCallFromUMode;
+                    exception_type = trap::TrapType::kEnvironmentCallFromUMode;
                     break;
                 case PrivilegeMode::kSupervisor:
-                    exception_type = TrapType::kEnvironmentCallFromSMode;
+                    exception_type = trap::TrapType::kEnvironmentCallFromSMode;
                     break;
                 case PrivilegeMode::kMachine:
-                    exception_type = TrapType::kEnvironmentCallFromMMode;
+                    exception_type = trap::TrapType::kEnvironmentCallFromMMode;
                     break;
                 case PrivilegeMode::kReserved:
                 default:
@@ -321,12 +321,12 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000007f,
         .m_data = 0x0000006f,
         .m_name = "JAL",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto& f = decode::ParseFormatJ(inst_word);
             cpu->SetGeneralPurposeRegVal(f.rd, cpu->GetPC());
             const uint64_t new_pc = (int64_t)cpu->GetPC() + (int64_t)f.imm - 4;
             cpu->SetPC(new_pc);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -334,9 +334,9 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x0000000f,
         .m_name = "FENCE",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             // TODO: implement
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -344,9 +344,9 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x0000100f,
         .m_name = "FENCE.I",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             // TODO: implement
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -354,14 +354,14 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00000067,
         .m_name = "JALR",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f        = decode::ParseFormatI(inst_word);
             const uint64_t saved_pc = cpu->GetPC();
             const uint64_t new_pc   = ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm) & 0xfffffffffffffffe;
 
             cpu->SetPC(new_pc);
             cpu->SetGeneralPurposeRegVal(f.rd, saved_pc);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -369,12 +369,12 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00000003,
         .m_name = "LB",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f    = decode::ParseFormatI(inst_word);
             const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
             const int8_t   data = (int8_t)(cpu->Load(addr, 8));
             cpu->SetGeneralPurposeRegVal(f.rd, (int64_t)data);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -382,12 +382,12 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00004003,
         .m_name = "LBU",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f    = decode::ParseFormatI(inst_word);
             const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
             const uint64_t data = cpu->Load(addr, 8);
             cpu->SetGeneralPurposeRegVal(f.rd, data);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -395,12 +395,12 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00003003,
         .m_name = "LD",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f    = decode::ParseFormatI(inst_word);
             const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
             const int64_t  data = (int64_t)cpu->Load(addr, 64);
             cpu->SetGeneralPurposeRegVal(f.rd, (int64_t)data);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -408,12 +408,12 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00001003,
         .m_name = "LH",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f    = decode::ParseFormatI(inst_word);
             const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
             const int16_t  data = (int16_t)cpu->Load(addr, 16);
             cpu->SetGeneralPurposeRegVal(f.rd, (int64_t)data);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -421,12 +421,12 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00005003,
         .m_name = "LHU",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f    = decode::ParseFormatI(inst_word);
             const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
             const uint64_t data = cpu->Load(addr, 16);
             cpu->SetGeneralPurposeRegVal(f.rd, data);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -434,10 +434,10 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000007f,
         .m_data = 0x00000037,
         .m_name = "LUI",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto& f = decode::ParseFormatU(inst_word);
             cpu->SetGeneralPurposeRegVal(f.rd, (uint64_t)f.imm);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -445,12 +445,12 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00002003,
         .m_name = "LW",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f    = decode::ParseFormatI(inst_word);
             const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
             const int32_t  data = (int32_t)cpu->Load(addr, 32);
             cpu->SetGeneralPurposeRegVal(f.rd, (int64_t)data);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -458,12 +458,12 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00006003,
         .m_name = "LWU",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f    = decode::ParseFormatI(inst_word);
             const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
             const uint64_t data = cpu->Load(addr, 32);
             cpu->SetGeneralPurposeRegVal(f.rd, data);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -471,16 +471,16 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xffffffff,
         .m_data = 0x30200073,
         .m_name = "MRET",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto& [new_pc, mepc_trap] = cpu->ReadCsr(csr::kCsrMepc);
-            if (mepc_trap.m_trap_type != TrapType::kNone) {
+            if (mepc_trap.m_trap_type != trap::TrapType::kNone) {
                 return mepc_trap;
             }
 
             cpu->SetPC(new_pc);
 
             const auto& [status, mstatus_trap] = cpu->ReadCsr(csr::kCsrMstatus);
-            if (mstatus_trap.m_trap_type != TrapType::kNone) {
+            if (mstatus_trap.m_trap_type != trap::TrapType::kNone) {
                 return mstatus_trap;
             }
 
@@ -508,7 +508,7 @@ const Instruction kInstructionTable[] = {
             cpu->WriteCsr(csr::kCsrMstatus, new_status);
             cpu->SetPrivilegeMode(PrivilegeMode(mpp));
             // TODO: update new mode
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -516,11 +516,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfe00707f,
         .m_data = 0x00006033,
         .m_name = "OR",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatR(inst_word);
             const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) | (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -528,11 +528,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00006013,
         .m_name = "ORI",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatI(inst_word);
             const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) | (int64_t)f.imm;
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -540,11 +540,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00000023,
         .m_name = "SB",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f    = decode::ParseFormatS(inst_word);
             const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
             cpu->Store(addr, 8, cpu->GetGeneralPurposeRegVal(f.rs2));
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -552,11 +552,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00003023,
         .m_name = "SD",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f    = decode::ParseFormatS(inst_word);
             const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
             cpu->Store(addr, 64, cpu->GetGeneralPurposeRegVal(f.rs2));
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -564,11 +564,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00001023,
         .m_name = "SH",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f    = decode::ParseFormatS(inst_word);
             const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
             cpu->Store(addr, 16, cpu->GetGeneralPurposeRegVal(f.rs2));
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -576,11 +576,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfe00707f,
         .m_data = 0x00001033,
         .m_name = "SLL",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatR(inst_word);
             const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) << (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -588,13 +588,13 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfc00707f,
         .m_data = 0x00001013,
         .m_name = "SLLI",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f         = decode::ParseFormatI(inst_word);
             const ArchMode arch_mode = cpu->GetArchMode();
             const uint8_t  shamt     = decode::GetShamt(inst_word, arch_mode == ArchMode::kBit32);
             const int64_t  val       = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) << (int64_t)shamt;
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -602,13 +602,13 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfe00707f,
         .m_data = 0x0000101b,
         .m_name = "SLLIW",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f         = decode::ParseFormatI(inst_word);
             const ArchMode arch_mode = cpu->GetArchMode();
             const uint8_t  shamt     = decode::GetShamt(inst_word, arch_mode == ArchMode::kBit64);
             const int64_t  val       = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) << shamt);
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -616,11 +616,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfe00707f,
         .m_data = 0x0000103b,
         .m_name = "SLLW",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatR(inst_word);
             const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) << (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2));
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -628,11 +628,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfe00707f,
         .m_data = 0x00002033,
         .m_name = "SLT",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatR(inst_word);
             const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) < (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2) ? 1 : 0;
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -640,11 +640,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00002013,
         .m_name = "SLTI",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatI(inst_word);
             const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) < (int64_t)f.imm ? 1 : 0;
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -652,11 +652,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00003013,
         .m_name = "SLTIU",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatI(inst_word);
             const int64_t val = (uint64_t)cpu->GetGeneralPurposeRegVal(f.rs1) < (uint64_t)f.imm ? 1 : 0;
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -664,11 +664,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfe00707f,
         .m_data = 0x00003033,
         .m_name = "SLTU",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatR(inst_word);
             const int64_t val = (uint64_t)cpu->GetGeneralPurposeRegVal(f.rs1) < (uint64_t)cpu->GetGeneralPurposeRegVal(f.rs2) ? 1 : 0;
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -676,11 +676,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfe00707f,
         .m_data = 0x40005033,
         .m_name = "SRA",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatR(inst_word);
             const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) >> (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -688,13 +688,13 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfc00707f,
         .m_data = 0x40005013,
         .m_name = "SRAI",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f         = decode::ParseFormatI(inst_word);
             const ArchMode arch_mode = cpu->GetArchMode();
             const uint8_t  shamt     = decode::GetShamt(inst_word, arch_mode == ArchMode::kBit32);
             const int64_t  val       = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) >> shamt;
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -702,13 +702,13 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfc00707f,
         .m_data = 0x4000501b,
         .m_name = "SRAIW",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f         = decode::ParseFormatI(inst_word);
             const ArchMode arch_mode = cpu->GetArchMode();
             const uint8_t  shamt     = decode::GetShamt(inst_word, arch_mode == ArchMode::kBit64);
             const int64_t  val       = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) >> shamt);
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -716,11 +716,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfe00707f,
         .m_data = 0x4000503b,
         .m_name = "SRAW",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatR(inst_word);
             const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) >> (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2));
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -728,16 +728,16 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xffffffff,
         .m_data = 0x10200073,
         .m_name = "SRET",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto& [new_pc, sepc_trap] = cpu->ReadCsr(csr::kCsrSepc);
-            if (sepc_trap.m_trap_type != TrapType::kNone) {
+            if (sepc_trap.m_trap_type != trap::TrapType::kNone) {
                 return sepc_trap;
             }
 
             cpu->SetPC(new_pc);
 
             const auto& [status, sstatus_trap] = cpu->ReadCsr(csr::kCsrSstatus);
-            if (sstatus_trap.m_trap_type != TrapType::kNone) {
+            if (sstatus_trap.m_trap_type != trap::TrapType::kNone) {
                 return sstatus_trap;
             }
 
@@ -749,7 +749,7 @@ const Instruction kInstructionTable[] = {
             cpu->WriteCsr(csr::kCsrSstatus, new_status);
             cpu->SetPrivilegeMode(PrivilegeMode(spp));
             // TODO: update new mode
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -757,13 +757,13 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfe00707f,
         .m_data = 0x00005033,
         .m_name = "SRL",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f   = decode::ParseFormatR(inst_word);
             const uint64_t rs1 = cpu->GetGeneralPurposeRegVal(f.rs1);
             const uint64_t rs2 = cpu->GetGeneralPurposeRegVal(f.rs2);
             const int64_t  val = rs1 >> rs2;
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -771,13 +771,13 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfc00707f,
         .m_data = 0x00005013,
         .m_name = "SRLI",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f         = decode::ParseFormatI(inst_word);
             const ArchMode arch_mode = cpu->GetArchMode();
             const uint8_t  shamt     = decode::GetShamt(inst_word, arch_mode == ArchMode::kBit32);
             const int64_t  val       = cpu->GetGeneralPurposeRegVal(f.rs1) >> shamt;
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -785,13 +785,13 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfc00707f,
         .m_data = 0x0000501b,
         .m_name = "SRLIW",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f         = decode::ParseFormatI(inst_word);
             const ArchMode arch_mode = cpu->GetArchMode();
             const uint8_t  shamt     = decode::GetShamt(inst_word, arch_mode == ArchMode::kBit64);
             const int64_t  val       = (int64_t)(int32_t)(cpu->GetGeneralPurposeRegVal(f.rs1) >> shamt);
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -799,11 +799,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfe00707f,
         .m_data = 0x0000503b,
         .m_name = "SRLW",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatR(inst_word);
             const int64_t val = (int64_t)((uint32_t)cpu->GetGeneralPurposeRegVal(f.rs1) >> (uint32_t)cpu->GetGeneralPurposeRegVal(f.rs2));
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -811,11 +811,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfe00707f,
         .m_data = 0x40000033,
         .m_name = "SUB",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatR(inst_word);
             const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) - (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -823,11 +823,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfe00707f,
         .m_data = 0x4000003b,
         .m_name = "SUBW",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatR(inst_word);
             const int64_t val = (int64_t)((int32_t)cpu->GetGeneralPurposeRegVal(f.rs1) - (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2));
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -835,11 +835,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00002023,
         .m_name = "SW",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&    f    = decode::ParseFormatS(inst_word);
             const uint64_t addr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) + (int64_t)f.imm;
             cpu->Store(addr, 32, cpu->GetGeneralPurposeRegVal(f.rs2));
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -847,9 +847,9 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xffffffff,
         .m_data = 0x10500073,
         .m_name = "WFI",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             cpu->SetWfi(true);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -857,11 +857,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0xfe00707f,
         .m_data = 0x00004033,
         .m_name = "XOR",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatR(inst_word);
             const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) ^ (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 
@@ -869,11 +869,11 @@ const Instruction kInstructionTable[] = {
         .m_mask = 0x0000707f,
         .m_data = 0x00004013,
         .m_name = "XORI",
-        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> Trap {
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto&   f   = decode::ParseFormatI(inst_word);
             const int64_t val = cpu->GetGeneralPurposeRegVal(f.rs1) ^ f.imm;
             cpu->SetGeneralPurposeRegVal(f.rd, val);
-            return { .m_trap_type = TrapType::kNone, .m_val = 0 };
+            return { .m_trap_type = trap::TrapType::kNone, .m_val = 0 };
         },
     },
 };
@@ -1050,13 +1050,13 @@ uint64_t CPU::GetGeneralPurposeRegVal(const uint64_t reg_num) const {
     return m_reg[reg_num];
 }
 
-std::tuple<uint64_t, Trap> CPU::ReadCsr(const uint16_t csr_addr) const {
+std::tuple<uint64_t, trap::Trap> CPU::ReadCsr(const uint16_t csr_addr) const {
     bool is_privileged = HasCsrAccessPrivilege(csr_addr);
     if (!is_privileged) {
         return {
             0,
             {
-                .m_trap_type = TrapType::kIllegalInstruction,
+                .m_trap_type = trap::TrapType::kIllegalInstruction,
                 .m_val       = GetPC() - 4,
             },
         };
@@ -1065,17 +1065,17 @@ std::tuple<uint64_t, Trap> CPU::ReadCsr(const uint16_t csr_addr) const {
     return {
         ReadCsrDirectly(csr_addr),
         {
-            .m_trap_type = TrapType::kNone,
+            .m_trap_type = trap::TrapType::kNone,
             .m_val       = 0,
         },
     };
 }
 
-Trap CPU::WriteCsr(const uint16_t csr_addr, const uint64_t val) {
+trap::Trap CPU::WriteCsr(const uint16_t csr_addr, const uint64_t val) {
     bool is_privileged = HasCsrAccessPrivilege(csr_addr);
     if (!is_privileged) {
         return {
-            .m_trap_type = TrapType::kIllegalInstruction,
+            .m_trap_type = trap::TrapType::kIllegalInstruction,
             .m_val       = GetPC() - 4,
         };
     }
@@ -1083,12 +1083,12 @@ Trap CPU::WriteCsr(const uint16_t csr_addr, const uint64_t val) {
     WriteCsrDirectly(csr_addr, val);
     // TODO: UPDATE ADDRESS MODEL
     return {
-        .m_trap_type = TrapType::kNone,
+        .m_trap_type = trap::TrapType::kNone,
         .m_val       = 0,
     };
 }
 
-bool CPU::CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMode new_pm, const TrapType trap_type) const {
+bool CPU::CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMode new_pm, const trap::TrapType trap_type) const {
     // https://dingfen.github.io/assets/img/mie.png
     const uint64_t cur_status = GetCsrStatusRegVal(cur_pm);
     const uint64_t ie         = GetInterruptEnable(new_pm);
@@ -1143,47 +1143,47 @@ bool CPU::CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMod
     bool ueie = (ie >> 8) & 1;
 
     switch (trap_type) {
-        case TrapType::kUserSoftwareInterrupt:
+        case trap::TrapType::kUserSoftwareInterrupt:
             if (!usie) {
                 return false;
             }
             break;
-        case TrapType::kSupervisorSoftwareInterrupt:
+        case trap::TrapType::kSupervisorSoftwareInterrupt:
             if (!ssie) {
                 return false;
             }
             break;
-        case TrapType::kMachineSoftwareInterrupt:
+        case trap::TrapType::kMachineSoftwareInterrupt:
             if (!msie) {
                 return false;
             }
             break;
-        case TrapType::kUserTimerInterrupt:
+        case trap::TrapType::kUserTimerInterrupt:
             if (!utie) {
                 return false;
             }
             break;
-        case TrapType::kSupervisorTimerInterrupt:
+        case trap::TrapType::kSupervisorTimerInterrupt:
             if (!stie) {
                 return false;
             }
             break;
-        case TrapType::kMachineTimerInterrupt:
+        case trap::TrapType::kMachineTimerInterrupt:
             if (!mtie) {
                 return false;
             }
             break;
-        case TrapType::kUserExternalInterrupt:
+        case trap::TrapType::kUserExternalInterrupt:
             if (!ueie) {
                 return false;
             }
             break;
-        case TrapType::kSupervisorExternalInterrupt:
+        case trap::TrapType::kSupervisorExternalInterrupt:
             if (!seie) {
                 return false;
             }
             break;
-        case TrapType::kMachineExternalInterrupt:
+        case trap::TrapType::kMachineExternalInterrupt:
             if (!meie) {
                 return false;
             }
@@ -1225,13 +1225,13 @@ void CPU::ModifyCsrStatusReg(const PrivilegeMode cur_pm, const PrivilegeMode new
     }
 }
 
-std::tuple<bool, uint64_t> CPU::GetTrapCause(const Trap trap) const {
+std::tuple<bool, uint64_t> CPU::GetTrapCause(const trap::Trap trap) const {
     // https://dingfen.github.io/assets/img/mcause_table.png
     bool     is_interrupt = false;
-    uint64_t cause_bits   = kTrapToCauseTable.at(trap.m_trap_type);
+    uint64_t cause_bits   = trap::kTrapToCauseTable.at(trap.m_trap_type);
 
     // if current trap's type is interrupt, set the msb to 1
-    if (trap.m_trap_type >= TrapType::kUserSoftwareInterrupt) {
+    if (trap.m_trap_type >= trap::TrapType::kUserSoftwareInterrupt) {
         is_interrupt                 = true;
         const uint64_t interrupt_bit = static_cast<uint64_t>(1) << (GetMaxXLen() - 1);
         cause_bits |= interrupt_bit;
@@ -1298,7 +1298,7 @@ uint64_t CPU::GetTrapVectorNewPC(const uint64_t csr_tvec_addr, const uint64_t ex
     return new_pc;
 }
 
-bool CPU::HandleTrap(const Trap trap, const uint64_t epc) {
+bool CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
     const PrivilegeMode cur_privilege_mode = GetPrivilegeMode();
     assert(cur_privilege_mode != PrivilegeMode::kReserved);
     const auto [is_interrupt, origin_cause_bits] = GetTrapCause(trap);
@@ -1346,8 +1346,8 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
 
     const uint64_t machine_interrupts = mip & mie;
 
-    TrapType trap_type    = TrapType::kNone;
-    uint16_t csr_mip_mask = 0;
+    trap::TrapType trap_type    = trap::TrapType::kNone;
+    uint16_t       csr_mip_mask = 0;
 
     // 中断优先级：MEI > MSI > MTI > SEI > SSI > STI
     do {
@@ -1356,48 +1356,48 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
         }
 
         if (machine_interrupts & csr::kCsrMeipMask) {
-            trap_type    = TrapType::kMachineExternalInterrupt;
+            trap_type    = trap::TrapType::kMachineExternalInterrupt;
             csr_mip_mask = csr::kCsrMeipMask;
             break;
         }
 
         if (machine_interrupts & csr::kCsrMsipMask) {
-            trap_type    = TrapType::kMachineSoftwareInterrupt;
+            trap_type    = trap::TrapType::kMachineSoftwareInterrupt;
             csr_mip_mask = csr::kCsrMsipMask;
             break;
         }
 
         if (machine_interrupts & csr::kCsrMtipMask) {
-            trap_type    = TrapType::kMachineTimerInterrupt;
+            trap_type    = trap::TrapType::kMachineTimerInterrupt;
             csr_mip_mask = csr::kCsrMtipMask;
             break;
         }
 
         if (machine_interrupts & csr::kCsrSeipMask) {
-            trap_type    = TrapType::kSupervisorExternalInterrupt;
+            trap_type    = trap::TrapType::kSupervisorExternalInterrupt;
             csr_mip_mask = csr::kCsrSeipMask;
             break;
         }
 
         if (machine_interrupts & csr::kCsrSsipMask) {
-            trap_type    = TrapType::kSupervisorSoftwareInterrupt;
+            trap_type    = trap::TrapType::kSupervisorSoftwareInterrupt;
             csr_mip_mask = csr::kCsrSsipMask;
             break;
         }
 
         if (machine_interrupts & csr::kCsrStipMask) {
-            trap_type    = TrapType::kSupervisorTimerInterrupt;
+            trap_type    = trap::TrapType::kSupervisorTimerInterrupt;
             csr_mip_mask = csr::kCsrStipMask;
             break;
         }
     } while (false);
 
-    const Trap trap = {
+    const trap::Trap trap = {
         .m_trap_type = trap_type,
         .m_val       = GetPC(),
     };
 
-    if (trap.m_trap_type != TrapType::kNone && HandleTrap(trap, inst_addr)) {
+    if (trap.m_trap_type != trap::TrapType::kNone && HandleTrap(trap, inst_addr)) {
         WriteCsrDirectly(csr::kCsrMip, mip & (~csr_mip_mask));
         m_wfi = false;
         return;
@@ -1433,7 +1433,7 @@ int64_t CPU::Decode(const uint32_t inst_word) {
     return -1;
 }
 
-Trap CPU::TickOperate() {
+trap::Trap CPU::TickOperate() {
     if (m_wfi) {
         const uint64_t mie = ReadCsrDirectly(csr::kCsrMie);
         const uint64_t mip = ReadCsrDirectly(csr::kCsrMip);
@@ -1441,7 +1441,7 @@ Trap CPU::TickOperate() {
             m_wfi = false;
         }
         return {
-            .m_trap_type = TrapType::kNone,
+            .m_trap_type = trap::TrapType::kNone,
             .m_val       = 0,
         };
     }
@@ -1453,22 +1453,22 @@ Trap CPU::TickOperate() {
     int64_t instruction_index = Decode(inst_word);
     if (instruction_index == -1) {
         return {
-            .m_trap_type = TrapType::kIllegalInstruction,
+            .m_trap_type = trap::TrapType::kIllegalInstruction,
             .m_val       = inst_addr,
         };
     }
 
-    const Trap trap    = kInstructionTable[instruction_index].Exec(this, inst_word);
-    m_last_executed_pc = inst_addr;
+    const trap::Trap trap = kInstructionTable[instruction_index].Exec(this, inst_word);
+    m_last_executed_pc    = inst_addr;
     // in a emulator, there is not a GND hardwiring x0 to zero
     m_reg[0] = 0;
     return trap;
 }
 
 void CPU::Tick() {
-    const uint64_t epc  = GetPC();
-    const Trap     trap = TickOperate();
-    if (trap.m_trap_type != TrapType::kNone) {
+    const uint64_t   epc  = GetPC();
+    const trap::Trap trap = TickOperate();
+    if (trap.m_trap_type != trap::TrapType::kNone) {
         if (!HandleTrap(trap, epc)) {
             // TODO: 日志
         }

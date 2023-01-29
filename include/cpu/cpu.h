@@ -1,5 +1,5 @@
-#ifndef RV64_EMULATOR_INCLUDE_CPU_H_
-#define RV64_EMULATOR_INCLUDE_CPU_H_
+#ifndef RV64_EMULATOR_INCLUDE_CPU_CPU_H_
+#define RV64_EMULATOR_INCLUDE_CPU_CPU_H_
 
 #include "bus.h"
 #include "conf.h"
@@ -91,12 +91,12 @@ private:
 
     void UpdateMstatus(const uint64_t mstatus);
 
-    std::tuple<bool, uint64_t> GetTrapCause(const Trap trap) const;
+    std::tuple<bool, uint64_t> GetTrapCause(const trap::Trap trap) const;
 
     uint64_t GetCsrStatusRegVal(const PrivilegeMode mode) const;
     uint64_t GetInterruptEnable(const PrivilegeMode mode) const;
 
-    bool CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMode new_pm, const TrapType trap_type) const;
+    bool CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMode new_pm, const trap::TrapType trap_type) const;
 
     void     ModifyCsrStatusReg(const PrivilegeMode cur_pm, const PrivilegeMode new_pm);
     uint64_t GetTrapVectorNewPC(const uint64_t csr_tvec_addr, const uint64_t exception_code) const;
@@ -106,7 +106,7 @@ private:
     static uint64_t GetCsrTvalReg(const PrivilegeMode pm);
     static uint64_t GetCstTvecReg(const PrivilegeMode pm);
 
-    Trap TickOperate();
+    trap::Trap TickOperate();
 
 public:
     CPU(ArchMode arch_mode, PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus);
@@ -153,10 +153,10 @@ public:
         m_wfi = wfi;
     }
 
-    std::tuple<uint64_t, Trap> ReadCsr(const uint16_t csr_addr) const;
-    Trap                       WriteCsr(const uint16_t csr_addr, const uint64_t val);
+    std::tuple<uint64_t, trap::Trap> ReadCsr(const uint16_t csr_addr) const;
+    trap::Trap                       WriteCsr(const uint16_t csr_addr, const uint64_t val);
 
-    bool HandleTrap(const Trap trap, const uint64_t inst_addr);
+    bool HandleTrap(const trap::Trap trap, const uint64_t inst_addr);
     void HandleInterrupt(const uint64_t inst_addr);
 
     void Dump() const;
@@ -169,7 +169,7 @@ typedef struct Instruction {
     uint32_t    m_data;
     const char* m_name;
 
-    Trap (*Exec)(CPU* cpu, const uint32_t inst_word);
+    trap::Trap (*Exec)(CPU* cpu, const uint32_t inst_word);
     // std::string Disassemble() const;
 } Instruction;
 
