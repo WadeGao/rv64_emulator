@@ -1,13 +1,11 @@
+#include "conf.h"
+#include "cpu/decode.h"
 #include "fmt/core.h"
-#include "include/conf.h"
-#include "include/decode.h"
 
 #include <cassert>
 #include <cstdint>
 
-namespace rv64_emulator {
-namespace cpu {
-namespace decode {
+namespace rv64_emulator::cpu::decode {
 
 enum class RV64InstructionFormatType : uint8_t {
     kTypeR = 0,
@@ -159,6 +157,4 @@ FormatCsr ParseFormatCsr(const uint32_t inst_word) {
     };
 }
 
-} // namespace decode
-} // namespace cpu
-} // namespace rv64_emulator
+} // namespace rv64_emulator::cpu::decode

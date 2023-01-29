@@ -1,16 +1,18 @@
-#ifndef RV64_EMULATOR_INCLUDE_CPU_H_
-#define RV64_EMULATOR_INCLUDE_CPU_H_
+#ifndef RV64_EMULATOR_INCLUDE_CPU_CPU_H_
+#define RV64_EMULATOR_INCLUDE_CPU_CPU_H_
 
-#include "include/bus.h"
-#include "include/conf.h"
-#include "include/csr.h"
-#include "include/decode.h"
+#include "bus.h"
+#include "conf.h"
+#include "cpu/csr.h"
+#include "cpu/decode.h"
+#include "cpu/trap.h"
 #include "libs/LRU.hpp"
 
 #include <cstdint>
 #include <map>
 #include <memory>
 #include <tuple>
+#include <vector>
 
 namespace rv64_emulator {
 namespace cpu {
@@ -32,68 +34,6 @@ enum class PrivilegeMode {
     kMachine
 };
 
-enum class TrapType {
-    kInstructionAddressMisaligned = 0,
-    kInstructionAccessFault,
-    kIllegalInstruction,
-    kBreakpoint,
-    kLoadAddressMisaligned,
-    kLoadAccessFault,
-    kStoreAddressMisaligned,
-    kStoreAccessFault,
-    kEnvironmentCallFromUMode,
-    kEnvironmentCallFromSMode,
-    kReserved,
-    kEnvironmentCallFromMMode,
-    kInstructionPageFault,
-    kLoadPageFault,
-    kReservedForFutureStandard,
-    kStorePageFault,
-    /* ----------- belows are interrupts: software, timer, external----------- */
-    kUserSoftwareInterrupt,
-    kSupervisorSoftwareInterrupt,
-    kMachineSoftwareInterrupt,
-    kUserTimerInterrupt,
-    kSupervisorTimerInterrupt,
-    kMachineTimerInterrupt,
-    kUserExternalInterrupt,
-    kSupervisorExternalInterrupt,
-    kMachineExternalInterrupt,
-    kNone
-};
-
-const std::map<TrapType, uint64_t> TrapToCauseTable = {
-    { TrapType::kInstructionAddressMisaligned, 0 },
-    { TrapType::kInstructionAccessFault, 1 },
-    { TrapType::kIllegalInstruction, 2 },
-    { TrapType::kBreakpoint, 3 },
-    { TrapType::kLoadAddressMisaligned, 4 },
-    { TrapType::kLoadAccessFault, 5 },
-    { TrapType::kStoreAddressMisaligned, 6 },
-    { TrapType::kStoreAccessFault, 7 },
-    { TrapType::kEnvironmentCallFromUMode, 8 },
-    { TrapType::kEnvironmentCallFromSMode, 9 },
-    { TrapType::kEnvironmentCallFromMMode, 11 },
-    { TrapType::kInstructionPageFault, 12 },
-    { TrapType::kLoadPageFault, 13 },
-    { TrapType::kStorePageFault, 15 },
-    /* ----------- belows are interrupts ----------- */
-    { TrapType::kUserSoftwareInterrupt, 0 },
-    { TrapType::kSupervisorSoftwareInterrupt, 1 },
-    { TrapType::kMachineSoftwareInterrupt, 3 },
-    { TrapType::kUserTimerInterrupt, 4 },
-    { TrapType::kSupervisorTimerInterrupt, 5 },
-    { TrapType::kMachineTimerInterrupt, 7 },
-    { TrapType::kUserExternalInterrupt, 8 },
-    { TrapType::kSupervisorExternalInterrupt, 9 },
-    { TrapType::kMachineExternalInterrupt, 11 },
-};
-
-typedef struct Trap {
-    TrapType m_trap_type;
-    uint64_t m_val;
-} Trap;
-
 class CPU {
 private:
     uint64_t      m_clock;
@@ -105,12 +45,14 @@ private:
     uint64_t      m_mstatus;
 
     bool m_wfi = false;
-    // TODO: 把 gpr 的类型迁移到 int64_t
-    uint64_t m_reg[kGeneralPurposeRegNum]   = { 0 };
-    double   m_fp_reg[kFloatingPointRegNum] = { 0.0 };
-    // TODO: 是否会超过栈大小？是否用 std::array?
-    uint64_t m_csr[kCsrCapacity] = { 0 };
 
+    // TODO: 把 gpr 的类型迁移到 int64_t
+    uint64_t m_reg[kGeneralPurposeRegNum] = { 0 };
+
+    // F 拓展说明：https://tclin914.github.io/3d45634e/
+    float m_fp_reg[kFloatingPointRegNum] = { 0.0 };
+
+    std::vector<uint64_t> m_csr;
     /*
 
     +───────────+───────────+────────────────────────────────────+────────+
@@ -149,12 +91,12 @@ private:
 
     void UpdateMstatus(const uint64_t mstatus);
 
-    std::tuple<bool, uint64_t> GetTrapCause(const Trap trap) const;
+    std::tuple<bool, uint64_t> GetTrapCause(const trap::Trap trap) const;
 
     uint64_t GetCsrStatusRegVal(const PrivilegeMode mode) const;
     uint64_t GetInterruptEnable(const PrivilegeMode mode) const;
 
-    bool CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMode new_pm, const TrapType trap_type) const;
+    bool CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMode new_pm, const trap::TrapType trap_type) const;
 
     void     ModifyCsrStatusReg(const PrivilegeMode cur_pm, const PrivilegeMode new_pm);
     uint64_t GetTrapVectorNewPC(const uint64_t csr_tvec_addr, const uint64_t exception_code) const;
@@ -164,7 +106,7 @@ private:
     static uint64_t GetCsrTvalReg(const PrivilegeMode pm);
     static uint64_t GetCstTvecReg(const PrivilegeMode pm);
 
-    Trap TickOperate();
+    trap::Trap TickOperate();
 
 public:
     CPU(ArchMode arch_mode, PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus);
@@ -211,10 +153,10 @@ public:
         m_wfi = wfi;
     }
 
-    std::tuple<uint64_t, Trap> ReadCsr(const uint16_t csr_addr) const;
-    Trap                       WriteCsr(const uint16_t csr_addr, const uint64_t val);
+    std::tuple<uint64_t, trap::Trap> ReadCsr(const uint16_t csr_addr) const;
+    trap::Trap                       WriteCsr(const uint16_t csr_addr, const uint64_t val);
 
-    bool HandleTrap(const Trap trap, const uint64_t inst_addr);
+    bool HandleTrap(const trap::Trap trap, const uint64_t inst_addr);
     void HandleInterrupt(const uint64_t inst_addr);
 
     void Dump() const;
@@ -227,7 +169,7 @@ typedef struct Instruction {
     uint32_t    m_data;
     const char* m_name;
 
-    Trap (*Exec)(CPU* cpu, const uint32_t inst_word);
+    trap::Trap (*Exec)(CPU* cpu, const uint32_t inst_word);
     // std::string Disassemble() const;
 } Instruction;
 

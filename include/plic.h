@@ -1,12 +1,10 @@
 #ifndef RV64_EMULATOR_INCLUDE_PLIC_H_
 #define RV64_EMULATOR_INCLUDE_PLIC_H_
 
-#include "include/conf.h"
+#include "conf.h"
 #include <cstdint>
 
-namespace rv64_emulator {
-namespace cpu {
-namespace plic {
+namespace rv64_emulator::cpu::plic {
 
 enum class Irq {
     kVirtIO = 1,
@@ -52,7 +50,5 @@ public:
     void     Store(const uint64_t addr, const uint32_t data);
 };
 
-} // namespace plic
-} // namespace cpu
-} // namespace rv64_emulator
+} // namespace rv64_emulator::cpu::plic
 #endif

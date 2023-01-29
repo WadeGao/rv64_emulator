@@ -1,12 +1,11 @@
 #ifndef RV64_EMULATOR_INCLUDE_BUS_H_
 #define RV64_EMULATOR_INCLUDE_BUS_H_
 
-#include "include/dram.h"
+#include "dram.h"
 
 #include <memory>
 
-namespace rv64_emulator {
-namespace bus {
+namespace rv64_emulator::bus {
 
 class Bus {
 private:
@@ -19,7 +18,6 @@ public:
     ~Bus();
 };
 
-} // namespace bus
-} // namespace rv64_emulator
+} // namespace rv64_emulator::bus
 
 #endif

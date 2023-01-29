@@ -1,14 +1,12 @@
-#ifndef RV64_EMULATOR_INCLUDE_DECODER_H_
-#define RV64_EMULATOR_INCLUDE_DECODER_H_
+#ifndef RV64_EMULATOR_INCLUDE_CPU_DECODE_H_
+#define RV64_EMULATOR_INCLUDE_CPU_DECODE_H_
 
-#include "include/conf.h"
+#include "conf.h"
 
 #include <cstdint>
 #include <string>
 
-namespace rv64_emulator {
-namespace cpu {
-namespace decode {
+namespace rv64_emulator::cpu::decode {
 
 constexpr uint64_t kDecodeCacheEntryNum = 4096;
 
@@ -53,7 +51,7 @@ typedef struct FormatCsr {
 } FormatCsr;
 
 uint16_t GetCsr(const uint32_t inst_word);
-uint8_t  GetShamt(const uint32_t inst_word, const bool kRv32Arch = false); //
+uint8_t  GetShamt(const uint32_t inst_word, const bool kRv32Arch /* = false */);
 
 // instruction format parser
 FormatR   ParseFormatR(const uint32_t inst_word);
@@ -64,11 +62,6 @@ FormatU   ParseFormatU(const uint32_t inst_word);
 FormatJ   ParseFormatJ(const uint32_t inst_word);
 FormatCsr ParseFormatCsr(const uint32_t inst_word);
 
-// instruction dumper
-std::string DumpFormatR(const uint32_t inst_word);
-
-} // namespace decode
-} // namespace cpu
-} // namespace rv64_emulator
+} // namespace rv64_emulator::cpu::decode
 
 #endif

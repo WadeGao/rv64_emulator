@@ -2,15 +2,14 @@
 #define RV64_EMULATOR_INCLUDE_DRAM_H_
 
 #include <cstdint>
-#include <memory>
+#include <vector>
 
-namespace rv64_emulator {
-namespace dram {
+namespace rv64_emulator::dram {
 
 class DRAM {
 private:
-    uint64_t                   m_size;
-    std::unique_ptr<uint8_t[]> m_memory;
+    const uint64_t       m_size;
+    std::vector<uint8_t> m_memory;
 
 public:
     DRAM(const uint64_t mem_size);
@@ -20,7 +19,6 @@ public:
     ~DRAM();
 };
 
-} // namespace dram
-} // namespace rv64_emulator
+} // namespace rv64_emulator::dram
 
 #endif

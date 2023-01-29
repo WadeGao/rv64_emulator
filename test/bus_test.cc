@@ -1,7 +1,7 @@
+#include "bus.h"
+#include "conf.h"
+#include "dram.h"
 #include "fmt/core.h"
-#include "include/bus.h"
-#include "include/conf.h"
-#include "include/dram.h"
 #include "gtest/gtest.h"
 
 #include <cstdint>
@@ -32,7 +32,7 @@ protected:
 
 TEST_F(BusTest, Load) {
     for (uint64_t i = 0; i < kDramSize; i += 8) {
-        uint64_t* raw_data_ptr = reinterpret_cast<uint64_t*>(&(m_bus->m_dram->m_memory[i]));
+        uint64_t* raw_data_ptr = reinterpret_cast<uint64_t*>(m_bus->m_dram->m_memory.data() + i);
         *raw_data_ptr          = 0x1122334455667788;
     }
 
@@ -48,7 +48,7 @@ TEST_F(BusTest, Store) {
     }
 
     for (uint64_t i = 0; i < kDramSize; i += 8) {
-        const uint64_t* raw_data_ptr = reinterpret_cast<uint64_t*>(&(m_bus->m_dram->m_memory[i]));
+        const uint64_t* raw_data_ptr = reinterpret_cast<uint64_t*>(m_bus->m_dram->m_memory.data() + i);
         const uint64_t  bus_word_val = m_bus->Load(kDramBaseAddr + i, 64);
         ASSERT_EQ(*raw_data_ptr, bus_word_val);
     }

@@ -1,12 +1,10 @@
-#include "include/plic.h"
-#include "include/csr.h"
+#include "plic.h"
+#include "cpu/csr.h"
 
 #include <cassert>
 #include <cstdint>
 
-namespace rv64_emulator {
-namespace cpu {
-namespace plic {
+namespace rv64_emulator::cpu::plic {
 
 void PLIC::Tick(bool virtio_ip, bool uart_ip, uint64_t& mip) {
     m_clock = (m_clock + 1) % UINT64_MAX;
@@ -166,6 +164,4 @@ void PLIC::Store(const uint64_t addr, const uint32_t data) {
     assert(false);
 }
 
-} // namespace plic
-} // namespace cpu
-} // namespace rv64_emulator
+} // namespace rv64_emulator::cpu::plic

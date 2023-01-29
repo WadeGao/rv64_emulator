@@ -1,9 +1,10 @@
+#include "bus.h"
+#include "conf.h"
+#include "cpu/cpu.h"
+#include "cpu/csr.h"
+#include "cpu/trap.h"
+#include "dram.h"
 #include "fmt/core.h"
-#include "include/bus.h"
-#include "include/conf.h"
-#include "include/cpu.h"
-#include "include/csr.h"
-#include "include/dram.h"
 #include "gtest/gtest.h"
 
 #include <cstdint>
@@ -44,8 +45,8 @@ TEST_F(CpuTest, HandleTrap) {
     ASSERT_EQ(handler_vector, m_cpu->GetPC());
 
     const auto& [val, trap] = m_cpu->ReadCsr(rv64_emulator::cpu::csr::kCsrMcause);
-    ASSERT_EQ(trap.m_trap_type, rv64_emulator::cpu::TrapType::kNone);
-    ASSERT_EQ(rv64_emulator::cpu::TrapToCauseTable.at(rv64_emulator::cpu::TrapType::kEnvironmentCallFromMMode), val);
+    ASSERT_EQ(trap.m_trap_type, rv64_emulator::cpu::trap::TrapType::kNone);
+    ASSERT_EQ(rv64_emulator::cpu::trap::kTrapToCauseTable.at(rv64_emulator::cpu::trap::TrapType::kEnvironmentCallFromMMode), val);
 }
 
 TEST_F(CpuTest, HandleInterrupt) {
@@ -69,12 +70,12 @@ TEST_F(CpuTest, HandleInterrupt) {
     ASSERT_EQ(handler_vector, m_cpu->GetPC());
 
     const auto [kIsInterrupt, kExceptedCauseBits] = m_cpu->GetTrapCause({
-        .m_trap_type = rv64_emulator::cpu::TrapType::kMachineTimerInterrupt,
+        .m_trap_type = rv64_emulator::cpu::trap::TrapType::kMachineTimerInterrupt,
         .m_val       = 0,
     });
     const auto [kRealMCauseBits, kTrap]           = m_cpu->ReadCsr(rv64_emulator::cpu::csr::kCsrMcause);
     ASSERT_TRUE(kIsInterrupt);
-    ASSERT_EQ(kTrap.m_trap_type, rv64_emulator::cpu::TrapType::kNone);
+    ASSERT_EQ(kTrap.m_trap_type, rv64_emulator::cpu::trap::TrapType::kNone);
     ASSERT_EQ(kExceptedCauseBits, kRealMCauseBits);
 }
 

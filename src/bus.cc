@@ -1,9 +1,8 @@
-#include "include/bus.h"
+#include "bus.h"
+#include "dram.h"
 #include "fmt/core.h"
-#include "include/dram.h"
 
-namespace rv64_emulator {
-namespace bus {
+namespace rv64_emulator::bus {
 
 Bus::Bus(std::unique_ptr<rv64_emulator::dram::DRAM> dram)
     : m_dram(std::move(dram)) {
@@ -26,5 +25,4 @@ Bus::~Bus() {
 #endif
 }
 
-} // namespace bus
-} // namespace rv64_emulator
+} // namespace rv64_emulator::bus
