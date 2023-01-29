@@ -9,7 +9,7 @@ namespace dram {
 
 class DRAM {
 private:
-    uint64_t             m_size;
+    const uint64_t       m_size;
     std::vector<uint8_t> m_memory;
 
 public:

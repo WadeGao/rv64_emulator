@@ -12,6 +12,7 @@
 #include <map>
 #include <memory>
 #include <tuple>
+#include <vector>
 
 namespace rv64_emulator {
 namespace cpu {
@@ -44,12 +45,14 @@ private:
     uint64_t      m_mstatus;
 
     bool m_wfi = false;
-    // TODO: 把 gpr 的类型迁移到 int64_t
-    uint64_t m_reg[kGeneralPurposeRegNum]   = { 0 };
-    double   m_fp_reg[kFloatingPointRegNum] = { 0.0 };
-    // TODO: 是否会超过栈大小？是否用 std::array?
-    uint64_t m_csr[kCsrCapacity] = { 0 };
 
+    // TODO: 把 gpr 的类型迁移到 int64_t
+    uint64_t m_reg[kGeneralPurposeRegNum] = { 0 };
+
+    // F 拓展说明：https://tclin914.github.io/3d45634e/
+    float m_fp_reg[kFloatingPointRegNum] = { 0.0 };
+
+    std::vector<uint64_t> m_csr;
     /*
 
     +───────────+───────────+────────────────────────────────────+────────+

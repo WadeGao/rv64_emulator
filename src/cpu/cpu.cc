@@ -947,9 +947,10 @@ CPU::CPU(ArchMode arch_mode, PrivilegeMode privilege_mode, std::unique_ptr<rv64_
     , m_pc(kDramBaseAddr)
     , m_last_executed_pc(kDramBaseAddr)
     , m_mstatus(0)
+    , m_csr(kCsrCapacity, 0)
     , m_bus(std::move(bus))
     , m_decode_cache(decode::kDecodeCacheEntryNum) {
-    static_assert(sizeof(double) == 8, "double is not 8 bytes, can't assure the bit width of floating point reg");
+    static_assert(sizeof(float) == 4, "float is not 4 bytes, can't assure the bit width of floating point reg");
     m_reg[0] = 0;
     m_reg[2] = kDramBaseAddr + kDramSize;
 #ifdef DEBUG
