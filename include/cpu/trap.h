@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <map>
+#include <tuple>
 
 namespace rv64_emulator::cpu::trap {
 
@@ -67,6 +68,8 @@ typedef struct Trap {
     TrapType m_trap_type;
     uint64_t m_val;
 } Trap;
+
+std::tuple<bool, uint64_t> GetTrapCauseBits(const trap::Trap trap);
 
 } // namespace rv64_emulator::cpu::trap
 #endif

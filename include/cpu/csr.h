@@ -2,8 +2,11 @@
 #define RV64_EMULATOR_INCLUDE_CPU_CSR_H_
 
 #include <cstdint>
+#include <vector>
 
 namespace rv64_emulator::cpu::csr {
+
+constexpr uint64_t kCsrCapacity = 4096;
 
 constexpr uint16_t kCsrFflags = 0x001; // Floating-Point Accrued Exceptions.
 constexpr uint16_t kCsrFrm    = 0x002; // Floating-Point Dynamic Rounding Mode
@@ -71,6 +74,17 @@ constexpr uint16_t kCsrMsipMask = 0x008;
 constexpr uint16_t kCsrSeipMask = 0x200;
 constexpr uint16_t kCsrStipMask = 0x020;
 constexpr uint16_t kCsrSsipMask = 0x002;
+
+class State {
+private:
+    std::vector<uint64_t> m_csr;
+
+public:
+    State();
+    uint64_t Read(const uint64_t addr) const;
+    void     Write(const uint64_t addr, const uint64_t val);
+    void     Reset();
+};
 
 } // namespace rv64_emulator::cpu::csr
 #endif
