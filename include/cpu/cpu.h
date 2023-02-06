@@ -14,13 +14,11 @@
 #include <tuple>
 #include <vector>
 
-namespace rv64_emulator {
-namespace cpu {
+namespace rv64_emulator::cpu {
 
 constexpr uint64_t kGeneralPurposeRegNum = 32;
 constexpr uint64_t kFloatingPointRegNum  = 32;
 constexpr uint64_t kInstructionBits      = 32;
-constexpr uint64_t kCsrCapacity          = 4096;
 
 enum class ArchMode {
     kBit32 = 0,
@@ -42,7 +40,6 @@ private:
     PrivilegeMode m_privilege_mode;
     uint64_t      m_pc;
     uint64_t      m_last_executed_pc;
-    uint64_t      m_mstatus;
 
     bool m_wfi = false;
 
@@ -52,7 +49,6 @@ private:
     // F 拓展说明：https://tclin914.github.io/3d45634e/
     float m_fp_reg[kFloatingPointRegNum] = { 0.0 };
 
-    std::vector<uint64_t> m_csr;
     /*
 
     +───────────+───────────+────────────────────────────────────+────────+
@@ -80,35 +76,16 @@ private:
     // decode cache, key: inst_word, val: inst_table_index
     rv64_emulator::libs::LRUCache<uint32_t, int64_t> m_decode_cache;
 
-    inline bool HasCsrAccessPrivilege(const uint16_t csr_num) const {
-        // 可以访问改csr寄存器的最低特权级别
-        const uint16_t lowest_privilege_mode = (csr_num >> 8) & 0b11;
-        return lowest_privilege_mode <= uint16_t(m_privilege_mode);
-    }
-
-    uint64_t ReadCsrDirectly(const uint16_t csr_addr) const;
-    void     WriteCsrDirectly(const uint16_t csr_addr, const uint64_t val);
-
-    void UpdateMstatus(const uint64_t mstatus);
-
-    std::tuple<bool, uint64_t> GetTrapCause(const trap::Trap trap) const;
-
-    uint64_t GetCsrStatusRegVal(const PrivilegeMode mode) const;
-    uint64_t GetInterruptEnable(const PrivilegeMode mode) const;
-
     bool CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMode new_pm, const trap::TrapType trap_type) const;
 
     void     ModifyCsrStatusReg(const PrivilegeMode cur_pm, const PrivilegeMode new_pm);
     uint64_t GetTrapVectorNewPC(const uint64_t csr_tvec_addr, const uint64_t exception_code) const;
 
-    static uint64_t GetCsrCauseReg(const PrivilegeMode pm);
-    static uint64_t GetCsrEpcReg(const PrivilegeMode pm);
-    static uint64_t GetCsrTvalReg(const PrivilegeMode pm);
-    static uint64_t GetCstTvecReg(const PrivilegeMode pm);
-
     trap::Trap TickOperate();
 
 public:
+    csr::State m_state;
+
     CPU(ArchMode arch_mode, PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus);
 
     uint64_t Load(const uint64_t addr, const uint64_t bit_size) const;
@@ -153,9 +130,6 @@ public:
         m_wfi = wfi;
     }
 
-    std::tuple<uint64_t, trap::Trap> ReadCsr(const uint16_t csr_addr) const;
-    trap::Trap                       WriteCsr(const uint16_t csr_addr, const uint64_t val);
-
     bool HandleTrap(const trap::Trap trap, const uint64_t inst_addr);
     void HandleInterrupt(const uint64_t inst_addr);
 
@@ -173,7 +147,6 @@ typedef struct Instruction {
     // std::string Disassemble() const;
 } Instruction;
 
-} // namespace cpu
-} // namespace rv64_emulator
+} // namespace rv64_emulator::cpu
 
 #endif
