@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 root_dir="$(cd $(dirname $0)/.. ; pwd)"
 cd "$root_dir/third_party/riscv-tests/isa"
