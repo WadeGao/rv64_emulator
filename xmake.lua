@@ -61,6 +61,14 @@ target("unit_test")
         add_cxxflags("-g")
         add_defines("DEBUG")
     end
+    if is_mode("coverage") then
+        add_cflags("-fprofile-arcs -ftest-coverage")
+        add_cxxflags("-fprofile-arcs -ftest-coverage")
+        add_ldflags("-fprofile-arcs -ftest-coverage")
+        after_build(function (target) 
+            os.run("./scripts/gen_coverage_report.sh")
+        end)
+    end
     add_cxxflags("-fno-access-control")
     set_kind("binary")
     set_targetdir("build")

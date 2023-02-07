@@ -2,3 +2,5 @@
 .xmake
 build/
 *.bin
+*.gcno
+*.gcda
