@@ -20,11 +20,6 @@ constexpr uint64_t kGeneralPurposeRegNum = 32;
 constexpr uint64_t kFloatingPointRegNum  = 32;
 constexpr uint64_t kInstructionBits      = 32;
 
-enum class ArchMode {
-    kBit32 = 0,
-    kBit64
-};
-
 enum class PrivilegeMode {
     kUser = 0,
     kSupervisor,
@@ -36,7 +31,6 @@ class CPU {
 private:
     uint64_t      m_clock;
     uint64_t      m_instruction_count;
-    ArchMode      m_arch_mode;
     PrivilegeMode m_privilege_mode;
     uint64_t      m_pc;
     uint64_t      m_last_executed_pc;
@@ -86,7 +80,8 @@ private:
 public:
     csr::State m_state;
 
-    CPU(ArchMode arch_mode, PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus);
+    CPU(PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus);
+    void Reset();
 
     uint64_t Load(const uint64_t addr, const uint64_t bit_size) const;
     void     Store(const uint64_t addr, const uint64_t bit_size, const uint64_t val);
@@ -107,11 +102,7 @@ public:
     }
 
     inline uint64_t GetMaxXLen() const {
-        return GetArchMode() == ArchMode::kBit64 ? 64 : 32;
-    }
-
-    inline ArchMode GetArchMode() const {
-        return m_arch_mode;
+        return 64;
     }
 
     inline PrivilegeMode GetPrivilegeMode() const {

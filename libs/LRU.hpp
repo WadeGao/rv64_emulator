@@ -67,6 +67,14 @@ public:
             m_cache.emplace(key, m_list.begin());
         }
     }
+
+    void Reset() {
+        m_current_size = 0;
+        m_hit_count    = 0;
+        m_miss_count   = 0;
+        m_list.clear();
+        m_cache.clear();
+    }
 };
 
 } // namespace libs

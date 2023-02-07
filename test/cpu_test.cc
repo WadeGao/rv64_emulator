@@ -23,9 +23,8 @@ protected:
     virtual void SetUp() override {
         auto dram = std::make_unique<rv64_emulator::dram::DRAM>(kDramSize);
         auto bus  = std::make_unique<rv64_emulator::bus::Bus>(std::move(dram));
-        auto cpu  = std::make_unique<rv64_emulator::cpu::CPU>(
-            rv64_emulator::cpu::ArchMode::kBit64, rv64_emulator::cpu::PrivilegeMode::kMachine, std::move(bus));
-        m_cpu = std::move(cpu);
+        auto cpu  = std::make_unique<rv64_emulator::cpu::CPU>(rv64_emulator::cpu::PrivilegeMode::kMachine, std::move(bus));
+        m_cpu     = std::move(cpu);
     }
 
     virtual void TearDown() override {
@@ -45,7 +44,6 @@ TEST_F(CpuTest, HandleTrap) {
     ASSERT_EQ(handler_vector, m_cpu->GetPC());
 
     const uint64_t val = m_cpu->m_state.Read(rv64_emulator::cpu::csr::kCsrMcause);
-    // ASSERT_EQ(trap.m_trap_type, rv64_emulator::cpu::trap::TrapType::kNone);
     ASSERT_EQ(rv64_emulator::cpu::trap::kTrapToCauseTable.at(rv64_emulator::cpu::trap::TrapType::kEnvironmentCallFromMMode), val);
 }
 
@@ -53,29 +51,45 @@ TEST_F(CpuTest, HandleInterrupt) {
     const uint64_t handler_vector = 0x10000000;
     // write "addi x0, x0, 1" instruction
     m_cpu->Store(kDramBaseAddr, 32, 0x00100013);
-    m_cpu->SetPC(kDramBaseAddr);
 
-    m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMie, rv64_emulator::cpu::csr::kCsrMtipMask);
-    m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMip, rv64_emulator::cpu::csr::kCsrMtipMask);
-    m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMtvec, handler_vector);
+    constexpr uint16_t masks[] = {
+        rv64_emulator::cpu::csr::kCsrMeipMask, rv64_emulator::cpu::csr::kCsrMtipMask, rv64_emulator::cpu::csr::kCsrMsipMask,
+        rv64_emulator::cpu::csr::kCsrSeipMask, rv64_emulator::cpu::csr::kCsrStipMask, rv64_emulator::cpu::csr::kCsrSsipMask,
+    };
 
-    m_cpu->Tick();
-    // now the interrupt can't be caught because mie is disabled
-    ASSERT_EQ(kDramBaseAddr + 4, m_cpu->GetPC());
+    constexpr rv64_emulator::cpu::trap::TrapType trap_types[] = {
+        rv64_emulator::cpu::trap::TrapType::kMachineExternalInterrupt, rv64_emulator::cpu::trap::TrapType::kMachineTimerInterrupt,
+        rv64_emulator::cpu::trap::TrapType::kMachineSoftwareInterrupt, rv64_emulator::cpu::trap::TrapType::kSupervisorExternalInterrupt,
+        rv64_emulator::cpu::trap::TrapType::kSupervisorTimerInterrupt, rv64_emulator::cpu::trap::TrapType::kSupervisorSoftwareInterrupt,
+    };
 
-    // enable mie
-    m_cpu->SetPC(kDramBaseAddr);
-    m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMstatus, 0b1000);
-    m_cpu->Tick();
-    ASSERT_EQ(handler_vector, m_cpu->GetPC());
+    for (size_t i = 0; i < 6; i++) {
+        m_cpu->SetPC(kDramBaseAddr);
 
-    const auto [kIsInterrupt, kExceptedCauseBits] = rv64_emulator::cpu::trap::GetTrapCauseBits({
-        .m_trap_type = rv64_emulator::cpu::trap::TrapType::kMachineTimerInterrupt,
-        .m_val       = 0,
-    });
-    const uint64_t kRealMCauseBits                = m_cpu->m_state.Read(rv64_emulator::cpu::csr::kCsrMcause);
-    ASSERT_TRUE(kIsInterrupt);
-    ASSERT_EQ(kExceptedCauseBits, kRealMCauseBits);
+        m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMie, masks[i]);
+        m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMip, masks[i]);
+        m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMtvec, handler_vector);
+
+        m_cpu->Tick();
+        // now the interrupt can't be caught because mie is disabled
+        ASSERT_EQ(kDramBaseAddr + 4, m_cpu->GetPC());
+
+        // enable mie
+        m_cpu->SetPC(kDramBaseAddr);
+        m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMstatus, 0b1000);
+        m_cpu->Tick();
+        ASSERT_EQ(handler_vector, m_cpu->GetPC());
+
+        const auto [kIsInterrupt, kExceptedCauseBits] = rv64_emulator::cpu::trap::GetTrapCauseBits({
+            .m_trap_type = trap_types[i],
+            .m_val       = 0,
+        });
+        const uint64_t kRealMCauseBits                = m_cpu->m_state.Read(rv64_emulator::cpu::csr::kCsrMcause);
+        ASSERT_TRUE(kIsInterrupt);
+        ASSERT_EQ(kExceptedCauseBits, kRealMCauseBits);
+
+        m_cpu->Reset();
+    }
 }
 
 TEST_F(CpuTest, Wfi) {

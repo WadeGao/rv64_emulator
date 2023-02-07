@@ -33,8 +33,8 @@ echo $LCOV_CMD
 
 $LCOV_CMD
 
-sed -i '' 's/__cpp_//g' $BUILD_DIR/all.info
-sed -i '' 's/.cc.cc/.cc/g' $BUILD_DIR/all.info
+sed -i 's/__cpp_//g' $BUILD_DIR/all.info
+sed -i 's/.cc.cc/.cc/g' $BUILD_DIR/all.info
 
 TMP_DIR="$BUILD_DIR/.objs/unit_test/$PLATFORM/$ARCH/$MODE/"
 TMP_DIR_ESC=$(echo $TMP_DIR | sed 's#\/#\\\/#g')
@@ -42,6 +42,6 @@ sed -i '' "s/$TMP_DIR_ESC//g" $BUILD_DIR/all.info
 
 genhtml -o "$BUILD_DIR/coverage" $BUILD_DIR/all.info --rc lcov_branch_coverage=1
 
-lcov --remove $BUILD_DIR/all.info '*v1*' '*test*' '*third_party*' -o $BUILD_DIR/res.info --rc lcov_branch_coverage=1
-# lcov --extract $BUILD_DIR/all.info '*/src/*' '*/libs/*' '*/rv64_emulator/include/*' -o $BUILD_DIR/res.info --rc lcov_branch_coverage=1
+# lcov --remove $BUILD_DIR/all.info '*v1*' '*test*' '*third_party*' -o $BUILD_DIR/res.info --rc lcov_branch_coverage=1
+lcov --extract $BUILD_DIR/all.info '*/src/*' '*/libs/*' '*/rv64_emulator/include/*' -o $BUILD_DIR/res.info --rc lcov_branch_coverage=1
 genhtml -o "$BUILD_DIR/coverage" $BUILD_DIR/res.info --rc lcov_branch_coverage=1
