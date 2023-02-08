@@ -1292,6 +1292,7 @@ CPU::~CPU() {
 #endif
 }
 
+#ifdef DEBUG
 void CPU::Dump() const {
     // Application Binary Interface registers
     const char* abi[] = {
@@ -1309,5 +1310,6 @@ void CPU::Dump() const {
         fmt::print("   {}: {:#016x}  \n", abi[i + 24], m_reg[i + 24]);
     }
 }
+#endif
 
 } // namespace rv64_emulator::cpu

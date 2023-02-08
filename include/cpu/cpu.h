@@ -124,7 +124,9 @@ public:
     bool HandleTrap(const trap::Trap trap, const uint64_t inst_addr);
     void HandleInterrupt(const uint64_t inst_addr);
 
+#ifdef DEBUG
     void Dump() const;
+#endif
 
     ~CPU();
 };

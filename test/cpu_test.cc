@@ -8,6 +8,7 @@
 #include "gtest/gtest.h"
 
 #include <cstdint>
+#include <map>
 #include <memory>
 
 class CpuTest : public testing::Test {
@@ -52,22 +53,20 @@ TEST_F(CpuTest, HandleInterrupt) {
     // write "addi x0, x0, 1" instruction
     m_cpu->Store(kDramBaseAddr, 32, 0x00100013);
 
-    constexpr uint16_t masks[] = {
-        rv64_emulator::cpu::csr::kCsrMeipMask, rv64_emulator::cpu::csr::kCsrMtipMask, rv64_emulator::cpu::csr::kCsrMsipMask,
-        rv64_emulator::cpu::csr::kCsrSeipMask, rv64_emulator::cpu::csr::kCsrStipMask, rv64_emulator::cpu::csr::kCsrSsipMask,
+    const std::map<uint16_t, rv64_emulator::cpu::trap::TrapType> kInterruptTable = {
+        { rv64_emulator::cpu::csr::kCsrMeipMask, rv64_emulator::cpu::trap::TrapType::kMachineExternalInterrupt },
+        { rv64_emulator::cpu::csr::kCsrMtipMask, rv64_emulator::cpu::trap::TrapType::kMachineTimerInterrupt },
+        { rv64_emulator::cpu::csr::kCsrMsipMask, rv64_emulator::cpu::trap::TrapType::kMachineSoftwareInterrupt },
+        { rv64_emulator::cpu::csr::kCsrSeipMask, rv64_emulator::cpu::trap::TrapType::kSupervisorExternalInterrupt },
+        { rv64_emulator::cpu::csr::kCsrStipMask, rv64_emulator::cpu::trap::TrapType::kSupervisorTimerInterrupt },
+        { rv64_emulator::cpu::csr::kCsrSsipMask, rv64_emulator::cpu::trap::TrapType::kSupervisorSoftwareInterrupt },
     };
 
-    constexpr rv64_emulator::cpu::trap::TrapType trap_types[] = {
-        rv64_emulator::cpu::trap::TrapType::kMachineExternalInterrupt, rv64_emulator::cpu::trap::TrapType::kMachineTimerInterrupt,
-        rv64_emulator::cpu::trap::TrapType::kMachineSoftwareInterrupt, rv64_emulator::cpu::trap::TrapType::kSupervisorExternalInterrupt,
-        rv64_emulator::cpu::trap::TrapType::kSupervisorTimerInterrupt, rv64_emulator::cpu::trap::TrapType::kSupervisorSoftwareInterrupt,
-    };
-
-    for (size_t i = 0; i < 6; i++) {
+    for (const auto [mask, trap_type] : kInterruptTable) {
         m_cpu->SetPC(kDramBaseAddr);
 
-        m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMie, masks[i]);
-        m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMip, masks[i]);
+        m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMie, mask);
+        m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMip, mask);
         m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMtvec, handler_vector);
 
         m_cpu->Tick();
@@ -81,7 +80,7 @@ TEST_F(CpuTest, HandleInterrupt) {
         ASSERT_EQ(handler_vector, m_cpu->GetPC());
 
         const auto [kIsInterrupt, kExceptedCauseBits] = rv64_emulator::cpu::trap::GetTrapCauseBits({
-            .m_trap_type = trap_types[i],
+            .m_trap_type = trap_type,
             .m_val       = 0,
         });
         const uint64_t kRealMCauseBits                = m_cpu->m_state.Read(rv64_emulator::cpu::csr::kCsrMcause);
