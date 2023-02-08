@@ -898,13 +898,12 @@ const Instruction kInstructionTable[] = {
     },
 };
 
-CPU::CPU(ArchMode arch_mode, PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus)
+CPU::CPU(PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus)
     : m_clock(0)
     , m_instruction_count(0)
-    , m_arch_mode(arch_mode)
     , m_privilege_mode(privilege_mode)
     , m_pc(kDramBaseAddr)
-    , m_last_executed_pc(kDramBaseAddr)
+    , m_last_executed_pc(0)
     , m_bus(std::move(bus))
     , m_decode_cache(decode::kDecodeCacheEntryNum) {
     static_assert(sizeof(float) == 4, "float is not 4 bytes, can't assure the bit width of floating point reg");
@@ -913,6 +912,16 @@ CPU::CPU(ArchMode arch_mode, PrivilegeMode privilege_mode, std::unique_ptr<rv64_
 #ifdef DEBUG
     fmt::print("cpu init, bus addr is {}\n", fmt::ptr(m_bus.get()));
 #endif
+}
+
+void CPU::Reset() {
+    m_clock             = 0;
+    m_instruction_count = 0;
+    m_pc                = kDramBaseAddr;
+    m_last_executed_pc  = 0;
+
+    m_state.Reset();
+    m_decode_cache.Reset();
 }
 
 uint64_t CPU::Load(const uint64_t addr, const uint64_t bit_size) const {
