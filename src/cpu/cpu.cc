@@ -4,9 +4,12 @@
 #include "cpu/csr.h"
 #include "cpu/decode.h"
 #include "cpu/trap.h"
+
+#include "libs/LRU.hpp"
+
+#include "fmt/color.h"
 #include "fmt/core.h"
 #include "fmt/format.h"
-#include "libs/LRU.hpp"
 
 #include <cassert>
 #include <cstdint>
@@ -898,12 +901,13 @@ const Instruction kInstructionTable[] = {
     },
 };
 
+uint32_t gpr_change_record = 0;
+
 CPU::CPU(PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus)
     : m_clock(0)
     , m_instruction_count(0)
     , m_privilege_mode(privilege_mode)
     , m_pc(kDramBaseAddr)
-    , m_last_executed_pc(0)
     , m_bus(std::move(bus))
     , m_decode_cache(decode::kDecodeCacheEntryNum) {
     static_assert(sizeof(float) == 4, "float is not 4 bytes, can't assure the bit width of floating point reg");
@@ -918,7 +922,6 @@ void CPU::Reset() {
     m_clock             = 0;
     m_instruction_count = 0;
     m_pc                = kDramBaseAddr;
-    m_last_executed_pc  = 0;
 
     m_state.Reset();
     m_decode_cache.Reset();
@@ -1226,7 +1229,7 @@ int64_t CPU::Decode(const uint32_t inst_word) {
 
     // decode cache miss, find the index in instruction table
     inst_table_index = 0;
-    for (auto& inst : kInstructionTable) {
+    for (const auto& inst : kInstructionTable) {
         if ((inst_word & inst.m_mask) == inst.m_data) {
             m_decode_cache.Set(inst_word, inst_table_index);
             return inst_table_index;
@@ -1262,10 +1265,25 @@ trap::Trap CPU::TickOperate() {
         };
     }
 
+#ifdef DEBUG
+    Disassemble(inst_addr, inst_word, instruction_index);
+    uint64_t backup_reg[kGeneralPurposeRegNum] = { 0 };
+    memcpy(backup_reg, m_reg, kGeneralPurposeRegNum * sizeof(uint64_t));
+#endif
+
     const trap::Trap trap = kInstructionTable[instruction_index].Exec(this, inst_word);
-    m_last_executed_pc    = inst_addr;
     // in a emulator, there is not a GND hardwiring x0 to zero
     m_reg[0] = 0;
+
+#ifdef DEBUG
+    gpr_change_record = 0;
+    for (uint64_t i = 0; i < kGeneralPurposeRegNum; i++) {
+        if (backup_reg[i] != m_reg[i]) {
+            gpr_change_record |= (1 << i);
+        }
+    }
+#endif
+
     return trap;
 }
 
@@ -1292,21 +1310,32 @@ CPU::~CPU() {
 #endif
 }
 
-void CPU::Dump() const {
+void CPU::Disassemble(const uint64_t pc, const uint32_t word, const int64_t instruction_table_index) const {
+    fmt::print("{:#018x} {:#010x} {}\n", pc, word, kInstructionTable[instruction_table_index].m_name);
+}
+
+void CPU::DumpRegisters() const {
     // Application Binary Interface registers
     const char* abi[] = {
         "zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0",  "a1",  "a2", "a3", "a4", "a5",
         "a6",   "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6",
     };
 
-    const uint32_t inst_word = m_bus->Load(m_last_executed_pc, kInstructionBits);
-    fmt::print("{:#016x} -> {:#08x}\n", m_last_executed_pc, inst_word);
+    constexpr int kBiasTable[4] = { 0, 8, 16, 24 };
 
     for (int i = 0; i < 8; i++) {
-        fmt::print("   {}: {:#016x}  ", abi[i], m_reg[i]);
-        fmt::print("   {}: {:#016x}  ", abi[i + 8], m_reg[i + 8]);
-        fmt::print("   {}: {:#016x}  ", abi[i + 16], m_reg[i + 16]);
-        fmt::print("   {}: {:#016x}  \n", abi[i + 24], m_reg[i + 24]);
+        for (const auto bias : kBiasTable) {
+            const int index = i + bias;
+            if (gpr_change_record & (1 << index)) {
+                fmt::print(
+                    "      {:>28}",
+                    fmt::format(fmt::bg(fmt::color::green) | fmt::fg(fmt::color::red), "{}: {:#018x}", abi[index], m_reg[index]));
+                //  fmt::bg(fmt::color::green) | fmt::fg(fmt::color::red)
+            } else {
+                fmt::print("{:>28}", fmt::format("{}: {:#018x}", abi[index], m_reg[index]));
+            }
+        }
+        fmt::print("\n");
     }
 }
 
