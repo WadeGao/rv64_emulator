@@ -33,7 +33,6 @@ private:
     uint64_t      m_instruction_count;
     PrivilegeMode m_privilege_mode;
     uint64_t      m_pc;
-    uint64_t      m_last_executed_pc;
 
     bool m_wfi = false;
 
@@ -124,9 +123,8 @@ public:
     bool HandleTrap(const trap::Trap trap, const uint64_t inst_addr);
     void HandleInterrupt(const uint64_t inst_addr);
 
-#ifdef DEBUG
-    void Dump() const;
-#endif
+    void Disassemble(const uint64_t pc, const uint32_t word, const int64_t instruction_table_index) const;
+    void DumpRegisters() const;
 
     ~CPU();
 };
@@ -137,7 +135,6 @@ typedef struct Instruction {
     const char* m_name;
 
     trap::Trap (*Exec)(CPU* cpu, const uint32_t inst_word);
-    // std::string Disassemble() const;
 } Instruction;
 
 } // namespace rv64_emulator::cpu
