@@ -6,6 +6,7 @@
 #include "cpu/trap.h"
 
 #include "libs/LRU.hpp"
+#include "libs/utils.hpp"
 
 #include "fmt/color.h"
 #include "fmt/core.h"
@@ -901,6 +902,240 @@ const Instruction kInstructionTable[] = {
         .m_name = "FENCE.I",
         .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             // TODO: implement
+            return kNoneTrap;
+        },
+    },
+
+    /*********** rv_m ***********/
+    // https://tclin914.github.io/f37f836/
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x2000033,
+        .m_name = "MUL",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
+            const auto&   f   = decode::ParseFormatR(inst_word);
+            const int64_t a   = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1);
+            const int64_t b   = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+            const int64_t val = a * b;
+
+            cpu->SetGeneralPurposeRegVal(f.rd, val);
+            return kNoneTrap;
+        },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x2001033,
+        .m_name = "MULH",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
+            const auto&   f = decode::ParseFormatR(inst_word);
+            const int64_t a = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1);
+            const int64_t b = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+
+            const bool     kNegativeRes = (a < 0) ^ (b < 0);
+            const uint64_t abs_a        = static_cast<uint64_t>(a < 0 ? -a : a);
+            const uint64_t abs_b        = static_cast<uint64_t>(a < 0 ? -a : a);
+            const uint64_t res          = rv64_emulator::libs::MulUnsignedHi(abs_a, abs_b);
+
+            // use ~res directly because of UINT64^$_MAX^2 = 0xfffffffffffffffe0000000000000001
+            const int64_t val = kNegativeRes ? (~res + (a * b == 0)) : res;
+
+            cpu->SetGeneralPurposeRegVal(f.rd, val);
+            return kNoneTrap;
+        },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x2002033,
+        .m_name = "MULHSU",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
+            const auto&    f = decode::ParseFormatR(inst_word);
+            const int64_t  a = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1);
+            const uint64_t b = cpu->GetGeneralPurposeRegVal(f.rs2);
+
+            // TODO
+            const bool     kNegativeRes = a < 0;
+            const uint64_t abs_a        = static_cast<uint64_t>(a < 0 ? -a : a);
+            const uint64_t res          = rv64_emulator::libs::MulUnsignedHi(abs_a, b);
+
+            const int64_t val = kNegativeRes ? (~res + (a * b == 0)) : res;
+
+            cpu->SetGeneralPurposeRegVal(f.rd, val);
+            return kNoneTrap;
+        },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x2003033,
+        .m_name = "MULHU",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
+            // reference: https://stackoverflow.com/questions/28868367/getting-the-high-part-of-64-bit-integer-multiplication
+            const auto&    f   = decode::ParseFormatR(inst_word);
+            const uint64_t a   = cpu->GetGeneralPurposeRegVal(f.rs1);
+            const uint64_t b   = cpu->GetGeneralPurposeRegVal(f.rs2);
+            const uint64_t val = rv64_emulator::libs::MulUnsignedHi(a, b);
+
+            cpu->SetGeneralPurposeRegVal(f.rd, val);
+            return kNoneTrap;
+        },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x2004033,
+        .m_name = "DIV",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
+            // reference: https://stackoverflow.com/questions/28868367/getting-the-high-part-of-64-bit-integer-multiplication
+            const auto&   f = decode::ParseFormatR(inst_word);
+            const int64_t a = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1);
+            const int64_t b = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+
+            if (b == 0) {
+                cpu->SetGeneralPurposeRegVal(f.rd, UINT64_MAX);
+            } else if (a == INT64_MIN && b == -1) {
+                cpu->SetGeneralPurposeRegVal(f.rd, INT64_MIN);
+            } else {
+                const int64_t val = a / b;
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            }
+
+            return kNoneTrap;
+        },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x2005033,
+        .m_name = "DIVU",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
+            // reference: https://stackoverflow.com/questions/28868367/getting-the-high-part-of-64-bit-integer-multiplication
+            const auto&    f = decode::ParseFormatR(inst_word);
+            const uint64_t a = cpu->GetGeneralPurposeRegVal(f.rs1);
+            const uint64_t b = cpu->GetGeneralPurposeRegVal(f.rs2);
+
+            const uint64_t val = b == 0 ? UINT64_MAX : a / b;
+            cpu->SetGeneralPurposeRegVal(f.rd, val);
+
+            return kNoneTrap;
+        },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x2006033,
+        .m_name = "REM",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
+            const auto&   f = decode::ParseFormatR(inst_word);
+            const int64_t a = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1);
+            const int64_t b = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+
+            if (b == 0) {
+                cpu->SetGeneralPurposeRegVal(f.rd, a);
+            } else if (a == INT64_MIN && b == -1) {
+                cpu->SetGeneralPurposeRegVal(f.rd, 0);
+            } else {
+                const int64_t val = a % b;
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            }
+
+            return kNoneTrap;
+        },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x2007033,
+        .m_name = "REMU",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
+            const auto&    f = decode::ParseFormatR(inst_word);
+            const uint64_t a = cpu->GetGeneralPurposeRegVal(f.rs1);
+            const uint64_t b = cpu->GetGeneralPurposeRegVal(f.rs2);
+
+            const uint64_t val = b == 0 ? a : a % b;
+
+            cpu->SetGeneralPurposeRegVal(f.rd, val);
+            return kNoneTrap;
+        },
+    },
+
+    /*********** rv64_m ***********/
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x200003b,
+        .m_name = "MULW",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
+            // reference: https://stackoverflow.com/questions/28868367/getting-the-high-part-of-64-bit-integer-multiplication
+            const auto&   f = decode::ParseFormatR(inst_word);
+            const int32_t a = (int32_t)cpu->GetGeneralPurposeRegVal(f.rs1);
+            const int32_t b = (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+
+            const int64_t val = a * b;
+            cpu->SetGeneralPurposeRegVal(f.rd, val);
+            return kNoneTrap;
+        },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x200403b,
+        .m_name = "DIVW",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
+            // reference: https://stackoverflow.com/questions/28868367/getting-the-high-part-of-64-bit-integer-multiplication
+            const auto&   f = decode::ParseFormatR(inst_word);
+            const int32_t a = (int32_t)cpu->GetGeneralPurposeRegVal(f.rs1);
+            const int32_t b = (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+
+            if (b == 0) {
+                cpu->SetGeneralPurposeRegVal(f.rd, UINT64_MAX);
+            } else {
+                const int64_t val = (int64_t)(a / b);
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            }
+
+            return kNoneTrap;
+        },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x200503b,
+        .m_name = "DIVUW",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
+            // reference: https://stackoverflow.com/questions/28868367/getting-the-high-part-of-64-bit-integer-multiplication
+            const auto&    f = decode::ParseFormatR(inst_word);
+            const uint32_t a = (uint32_t)cpu->GetGeneralPurposeRegVal(f.rs1);
+            const uint32_t b = (uint32_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+
+            if (b == 0) {
+                cpu->SetGeneralPurposeRegVal(f.rd, UINT64_MAX);
+            } else {
+                const uint64_t val = a / b;
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            }
+
+            return kNoneTrap;
+        },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x200603b,
+        .m_name = "REMW",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
+            // reference: https://stackoverflow.com/questions/28868367/getting-the-high-part-of-64-bit-integer-multiplication
+            const auto&   f = decode::ParseFormatR(inst_word);
+            const int32_t a = (int32_t)cpu->GetGeneralPurposeRegVal(f.rs1);
+            const int32_t b = (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+
+            if (b == 0) {
+                cpu->SetGeneralPurposeRegVal(f.rd, a);
+            } else {
+                const int64_t val = a % b;
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
+            }
+
             return kNoneTrap;
         },
     },
