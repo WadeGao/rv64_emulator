@@ -1,5 +1,4 @@
-#ifndef RV64_EMULATOR_INCLUDE_CPU_CPU_H_
-#define RV64_EMULATOR_INCLUDE_CPU_CPU_H_
+#pragma once
 
 #include "bus.h"
 #include "conf.h"
@@ -129,14 +128,4 @@ public:
     ~CPU();
 };
 
-typedef struct Instruction {
-    uint32_t    m_mask;
-    uint32_t    m_data;
-    const char* m_name;
-
-    trap::Trap (*Exec)(CPU* cpu, const uint32_t inst_word);
-} Instruction;
-
 } // namespace rv64_emulator::cpu
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef RV64_EMULATOR_LIBS_UTILS_H_
-#define RV64_EMULATOR_LIBS_UTILS_H_
+#pragma once
 
 #include <cstdint>
 #include <type_traits>
@@ -33,5 +32,3 @@ MulUnsignedHi(const T a, const T b) {
 }
 
 } // namespace rv64_emulator::libs
-
-#endif

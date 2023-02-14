@@ -1,14 +1,13 @@
-#ifndef RV64_EMULATOR_LIBS_LRU_H_
-#define RV64_EMULATOR_LIBS_LRU_H_
+#pragma once
 
 #include <cstdint>
 #include <list>
 #include <unordered_map>
 
-namespace rv64_emulator {
-namespace libs {
+namespace rv64_emulator::libs {
 
-template <typename Tkey = uint64_t, typename Tval = int64_t> class LRUCache {
+template <typename Tkey = uint64_t, typename Tval = int64_t>
+class LRUCache {
 private:
     uint64_t m_capacity;
 
@@ -77,7 +76,4 @@ public:
     }
 };
 
-} // namespace libs
-} // namespace rv64_emulator
-
-#endif
+} // namespace rv64_emulator::libs

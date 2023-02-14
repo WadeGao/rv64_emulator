@@ -1,5 +1,4 @@
-#ifndef RV64_EMULATOR_INCLUDE_PLIC_H_
-#define RV64_EMULATOR_INCLUDE_PLIC_H_
+#pragma once
 
 #include "conf.h"
 #include <cstdint>
@@ -51,4 +50,3 @@ public:
 };
 
 } // namespace rv64_emulator::cpu::plic
-#endif
