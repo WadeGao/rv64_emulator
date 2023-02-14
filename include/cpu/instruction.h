@@ -31,7 +31,10 @@ const Instruction kInstructionTable[] = {
         .m_name = "LUI",
         .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             const auto& f = decode::ParseFormatU(inst_word);
-            cpu->SetGeneralPurposeRegVal(f.rd, (uint64_t)f.imm);
+
+            const uint64_t val = (int64_t)f.imm;
+            cpu->SetGeneralPurposeRegVal(f.rd, val);
+
             return kNoneTrap;
         },
     },
@@ -897,7 +900,7 @@ const Instruction kInstructionTable[] = {
 
             const bool     kNegativeRes = (a < 0) ^ (b < 0);
             const uint64_t abs_a        = static_cast<uint64_t>(a < 0 ? -a : a);
-            const uint64_t abs_b        = static_cast<uint64_t>(a < 0 ? -a : a);
+            const uint64_t abs_b        = static_cast<uint64_t>(b < 0 ? -b : b);
             const uint64_t res          = rv64_emulator::libs::MulUnsignedHi(abs_a, abs_b);
 
             // use ~res directly because of UINT64^$_MAX^2 = 0xfffffffffffffffe0000000000000001
@@ -1074,7 +1077,7 @@ const Instruction kInstructionTable[] = {
             if (b == 0) {
                 cpu->SetGeneralPurposeRegVal(f.rd, UINT64_MAX);
             } else {
-                const uint64_t val = a / b;
+                const int64_t val = (int32_t)(a / b);
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             }
 
@@ -1093,11 +1096,30 @@ const Instruction kInstructionTable[] = {
             const int32_t b = (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2);
 
             if (b == 0) {
-                cpu->SetGeneralPurposeRegVal(f.rd, a);
+                // const uint64_t val = cpu->GetGeneralPurposeRegVal(f.rs1);
+                const int64_t val = a;
+                cpu->SetGeneralPurposeRegVal(f.rd, val);
             } else {
-                const int64_t val = a % b;
+                const int64_t val = (int64_t)((int32_t)(a % b));
                 cpu->SetGeneralPurposeRegVal(f.rd, val);
             }
+
+            return kNoneTrap;
+        },
+    },
+
+    {
+        .m_mask = 0xfe00707f,
+        .m_data = 0x200703b,
+        .m_name = "REMUW",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
+            // reference: https://stackoverflow.com/questions/28868367/getting-the-high-part-of-64-bit-integer-multiplication
+            const auto&    f = decode::ParseFormatR(inst_word);
+            const uint32_t a = cpu->GetGeneralPurposeRegVal(f.rs1);
+            const uint32_t b = cpu->GetGeneralPurposeRegVal(f.rs2);
+
+            const int64_t val = (int32_t)(b == 0 ? a : a % b);
+            cpu->SetGeneralPurposeRegVal(f.rd, val);
 
             return kNoneTrap;
         },
