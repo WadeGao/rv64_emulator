@@ -33,12 +33,17 @@ echo "$LCOV_CMD"
 
 $LCOV_CMD
 
-sed -i 's/__cpp_//g' "$BUILD_DIR"/all.info
-sed -i 's/.cc.cc/.cc/g' "$BUILD_DIR"/all.info
+MACOSX_SED_TMP_FILENAME="''"
+if [ "$PLATFORM" != "macosx" ]; then
+    MACOSX_SED_TMP_FILENAME=""
+fi
+
+sed -i $MACOSX_SED_TMP_FILENAME 's/__cpp_//g' "$BUILD_DIR"/all.info
+sed -i $MACOSX_SED_TMP_FILENAME 's/.cc.cc/.cc/g' "$BUILD_DIR"/all.info
 
 TMP_DIR="$BUILD_DIR/.objs/unit_test/$PLATFORM/$ARCH/$MODE/"
 TMP_DIR_ESC=$(echo $TMP_DIR | sed 's#\/#\\\/#g')
-sed -i '' "s/$TMP_DIR_ESC//g" "$BUILD_DIR"/all.info
+sed -i $MACOSX_SED_TMP_FILENAME "s/$TMP_DIR_ESC//g" "$BUILD_DIR"/all.info
 
 genhtml -o "$BUILD_DIR/coverage" $BUILD_DIR/all.info --rc lcov_branch_coverage=1
 
