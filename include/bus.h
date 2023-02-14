@@ -1,5 +1,4 @@
-#ifndef RV64_EMULATOR_INCLUDE_BUS_H_
-#define RV64_EMULATOR_INCLUDE_BUS_H_
+#pragma once
 
 #include "dram.h"
 
@@ -19,5 +18,3 @@ public:
 };
 
 } // namespace rv64_emulator::bus
-
-#endif

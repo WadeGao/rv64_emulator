@@ -1,5 +1,4 @@
-#ifndef RV64_EMULATOR_INCLUDE_CONF_H_
-#define RV64_EMULATOR_INCLUDE_CONF_H_
+#pragma once
 
 #include <cstdint>
 
@@ -9,5 +8,3 @@ constexpr uint64_t kDramBaseAddr = 0x80000000;
 
 // plic config
 constexpr uint64_t kPlicBase = 0xc000000;
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef RV64_EMULATOR_INCLUDE_CPU_DECODE_H_
-#define RV64_EMULATOR_INCLUDE_CPU_DECODE_H_
+#pragma once
 
 #include "conf.h"
 
@@ -63,5 +62,3 @@ FormatJ   ParseFormatJ(const uint32_t inst_word);
 FormatCsr ParseFormatCsr(const uint32_t inst_word);
 
 } // namespace rv64_emulator::cpu::decode
-
-#endif

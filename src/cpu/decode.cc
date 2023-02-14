@@ -1,5 +1,5 @@
-#include "conf.h"
 #include "cpu/decode.h"
+#include "conf.h"
 #include "fmt/core.h"
 
 #include <cassert>

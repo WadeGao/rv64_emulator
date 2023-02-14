@@ -1,5 +1,4 @@
-#ifndef RV64_EMULATOR_INCLUDE_DRAM_H_
-#define RV64_EMULATOR_INCLUDE_DRAM_H_
+#pragma once
 
 #include <cstdint>
 #include <vector>
@@ -20,5 +19,3 @@ public:
 };
 
 } // namespace rv64_emulator::dram
-
-#endif

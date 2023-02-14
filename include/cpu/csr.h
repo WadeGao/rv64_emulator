@@ -1,5 +1,4 @@
-#ifndef RV64_EMULATOR_INCLUDE_CPU_CSR_H_
-#define RV64_EMULATOR_INCLUDE_CPU_CSR_H_
+#pragma once
 
 #include <cstdint>
 #include <vector>
@@ -87,4 +86,3 @@ public:
 };
 
 } // namespace rv64_emulator::cpu::csr
-#endif

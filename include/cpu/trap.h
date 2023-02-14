@@ -1,5 +1,4 @@
-#ifndef RV64_EMULATOR_INCLUDE_CPU_TRAP_H_
-#define RV64_EMULATOR_INCLUDE_CPU_TRAP_H_
+#pragma once
 
 #include <cstdint>
 #include <map>
@@ -72,4 +71,3 @@ typedef struct Trap {
 std::tuple<bool, uint64_t> GetTrapCauseBits(const trap::Trap trap);
 
 } // namespace rv64_emulator::cpu::trap
-#endif

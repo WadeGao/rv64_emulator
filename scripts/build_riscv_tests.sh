@@ -4,7 +4,7 @@ root_dir="$(cd $(dirname $0)/.. ; pwd)"
 cd "$root_dir/third_party/riscv-tests/isa"
 
 set +e
-make "$1"
+make "$1" -j $(nproc)
 set -e
 
 rv64_elf_exe=()
