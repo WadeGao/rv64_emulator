@@ -1,9 +1,12 @@
 #include "dram.h"
 #include "conf.h"
+#include "error_code.h"
+
 #include "fmt/core.h"
 
 #include <cassert>
 #include <cstdint>
+#include <cstdlib>
 
 namespace rv64_emulator::dram {
 
@@ -32,21 +35,28 @@ uint64_t DRAM::Load(const uint64_t addr, const uint64_t bit_size) const {
 
             // 提前确保整个访问范围处于有效内存范围内
             // addr大于基址 && 结束地址大于起始地址且没有整数溢出 && 结束地址仍位于有效地址内
-            assert(addr >= kDramBaseAddr && kRealIndexEnd >= kRealIndexStart && kRealIndexEnd < m_size);
+            if (!(addr >= kDramBaseAddr && kRealIndexEnd >= kRealIndexStart && kRealIndexEnd < m_size)) {
+#ifdef DEBUG
+                fmt::print(
+                    "dram invalid address range, addr[{:#018x}] kRealIndexStart[{:#018x}], kRealIndexEnd[{:#018x}],  now abort\n", addr,
+                    kRealIndexStart, kRealIndexEnd);
+#endif
+                exit(static_cast<int>(rv64_emulator::errorcode::DramErrorCode::kInvalidRange));
+            }
 
             uint8_t mask = 0;
             for (uint64_t i = 0; i < kByteSize; i++) {
                 const uint64_t kIndex = kRealIndexStart + i;
-                res |= static_cast<uint64_t>(m_memory.at(kIndex)) << mask;
+                res |= static_cast<uint64_t>(m_memory[kIndex]) << mask;
                 mask += 8;
             }
-            break;
-        }
+        } break;
+
         default:
 #ifdef DEBUG
-            fmt::print("dram invalid load from addr [{}] bit_size [{}], now abort\n", addr, bit_size);
+            fmt::print("dram invalid load from addr[{:#018x}] bit_size[{}], now abort\n", addr, bit_size);
 #endif
-            assert(false);
+            exit(static_cast<int>(rv64_emulator::errorcode::DramErrorCode::kAccessBitsWidthUnaligned));
             break;
     }
     return res;
@@ -64,19 +74,27 @@ void DRAM::Store(const uint64_t addr, const uint64_t bit_size, const uint64_t va
 
             // 提前确保整个访问范围处于有效内存范围内
             // addr大于基址 && 结束地址大于起始地址且没有整数溢出 && 结束地址仍位于有效地址内
-            assert(addr >= kDramBaseAddr && kRealIndexEnd >= kRealIndexStart && kRealIndexEnd < m_size);
+            if (!(addr >= kDramBaseAddr && kRealIndexEnd >= kRealIndexStart && kRealIndexEnd < m_size)) {
+#ifdef DEBUG
+                fmt::print(
+                    "dram invalid address range, addr[{:#018x}] kRealIndexStart[{:#018x}], kRealIndexEnd[{:#018x}],  now abort\n", addr,
+                    kRealIndexStart, kRealIndexEnd);
+#endif
+                exit(static_cast<int>(rv64_emulator::errorcode::DramErrorCode::kInvalidRange));
+            }
 
             for (uint64_t i = 0; i < kByteSize; i++) {
                 const uint64_t kIndex = kRealIndexStart + i;
-                m_memory.at(kIndex)   = static_cast<uint8_t>((val >> (i << 3)) & 0xff);
+                m_memory[kIndex]      = static_cast<uint8_t>((val >> (i << 3)) & 0xff);
             }
-            break;
-        }
+
+        } break;
+
         default:
 #ifdef DEBUG
-            fmt::print("dram invalid store to addr [{}] bit_size [{}] val [{}], now abort\n", addr, bit_size, val);
+            fmt::print("dram invalid store to addr[{:#018x}] bit_siz [{}] val[{:#018x}], now abort\n", addr, bit_size, val);
 #endif
-            assert(false);
+            exit(static_cast<int>(rv64_emulator::errorcode::DramErrorCode::kAccessBitsWidthUnaligned));
             break;
     }
 }

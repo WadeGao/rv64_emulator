@@ -133,7 +133,10 @@ bool CPU::CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMod
                 }
                 break;
             case PrivilegeMode::kReserved:
-                assert(false);
+#ifdef DEBUG
+                fmt::print("Unknown privilege mode[{}] when check interrupt bits valid, now abort\n", static_cast<int>(cur_pm));
+#endif
+                exit(static_cast<int>(rv64_emulator::errorcode::CpuErrorCode::kReservedPrivilegeMode));
             default:
                 break;
         }
@@ -232,7 +235,10 @@ void CPU::ModifyCsrStatusReg(const PrivilegeMode cur_pm, const PrivilegeMode new
         case PrivilegeMode::kUser:
         case PrivilegeMode::kReserved:
         default:
-            assert(false);
+#ifdef DEBUG
+            fmt::print("Unknown privilege mode[{}] when modify csr status reg, now abort\n", static_cast<int>(new_pm));
+#endif
+            exit(static_cast<int>(rv64_emulator::errorcode::CpuErrorCode::kReservedPrivilegeMode));
             break;
     }
 }
@@ -249,8 +255,10 @@ uint64_t CPU::GetTrapVectorNewPC(const uint64_t csr_tvec_addr, const uint64_t ex
             new_pc = (csr_tvec_val & (~0x3)) + 4 * exception_code;
             break;
         default:
-            // reversed
-            assert(false);
+#ifdef DEBUG
+            fmt::print("Unknown mode[{}] when cget tvec new pc, csr_tvec_val[{}], now abort\n", static_cast<int>(mode), csr_tvec_val);
+#endif
+            exit(static_cast<int>(rv64_emulator::errorcode::CpuErrorCode::kTrapVectorModeUndefined));
             break;
     }
     return new_pc;
@@ -363,14 +371,15 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
             m_wfi = false;
             return;
         } else {
+#ifdef DEBUG
             fmt::print("Interrupt bits invalid when handling trap\n");
+#endif
         }
     }
 }
 
 uint32_t CPU::Fetch() {
     uint32_t inst_word = m_bus->Load(GetPC(), kInstructionBits);
-    // m_pc += 4;
     return inst_word;
 }
 
