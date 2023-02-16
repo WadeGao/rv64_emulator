@@ -3,7 +3,13 @@
 #include "cpu/cpu.h"
 #include "cpu/decode.h"
 #include "cpu/trap.h"
+#include "error_code.h"
+
 #include "libs/utils.hpp"
+
+#include "fmt/format.h"
+
+#include <cstdlib>
 
 namespace rv64_emulator::cpu {
 
@@ -507,7 +513,10 @@ const Instruction kInstructionTable[] = {
                     break;
                 case PrivilegeMode::kReserved:
                 default:
-                    assert(false);
+#ifdef DEBUG
+                    fmt::print("ECALL unknown privilege mode[{}], now abort\n", static_cast<int>(pm));
+#endif
+                    exit(static_cast<int>(rv64_emulator::errorcode::CpuErrorCode::kExecuteFailure));
                     break;
             }
             return {

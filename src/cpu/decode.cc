@@ -1,5 +1,7 @@
 #include "cpu/decode.h"
 #include "conf.h"
+#include "error_code.h"
+
 #include "fmt/core.h"
 
 #include <cassert>
@@ -43,9 +45,9 @@ static int32_t GetImm(const uint32_t inst_word, const RV64InstructionFormatType 
     switch (type) {
         case RV64InstructionFormatType::kTypeR:
 #ifdef DEBUG
-            fmt::print("Imm not exists in R Type Instruction!\n");
-            assert(false);
+            fmt::print("instruction word[{}] not R type, now abort\n", inst_word);
 #endif
+            exit(static_cast<int>(rv64_emulator::errorcode::DecodeErrorCode::kFieldUndefined));
             break;
         case RV64InstructionFormatType::kTypeI:
             // imm[11:0] = inst[31:20]
