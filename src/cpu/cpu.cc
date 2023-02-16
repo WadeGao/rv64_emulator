@@ -5,6 +5,7 @@
 #include "cpu/decode.h"
 #include "cpu/instruction.h"
 #include "cpu/trap.h"
+#include "mmu.h"
 
 #include "libs/LRU.hpp"
 #include "libs/software_arithmetic.hpp"
@@ -58,17 +59,18 @@ const std::map<PrivilegeMode, uint64_t> kInterruptEnableReg = {
 
 uint32_t gpr_change_record = 0;
 
-CPU::CPU(PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus)
+CPU::CPU(PrivilegeMode privilege_mode, std::unique_ptr<mmu::Mmu> mmu)
     : m_clock(0)
     , m_instruction_count(0)
     , m_privilege_mode(privilege_mode)
-    , m_bus(std::move(bus))
+    , m_mmu(std::move(mmu))
     , m_decode_cache(kDecodeCacheEntryNum) {
     static_assert(sizeof(float) == 4, "float is not 4 bytes, can't assure the bit width of floating point reg");
     m_reg[0] = 0;
     m_reg[2] = kDramBaseAddr + kDramSize;
+    m_mmu->SetProcessor(this);
 #ifdef DEBUG
-    fmt::print("cpu init, bus addr is {}\n", fmt::ptr(m_bus.get()));
+    fmt::print("cpu init, mmu addr is {}\n", fmt::ptr(m_mmu.get()));
 #endif
 }
 
@@ -81,12 +83,12 @@ void CPU::Reset() {
     m_decode_cache.Reset();
 }
 
-uint64_t CPU::Load(const uint64_t addr, const uint64_t bit_size) const {
-    return m_bus->Load(addr, bit_size);
+trap::Trap CPU::Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) const {
+    return m_mmu->VirtualAddressLoad(addr, bytes, buffer);
 }
 
-void CPU::Store(const uint64_t addr, const uint64_t bit_size, const uint64_t val) {
-    m_bus->Store(addr, bit_size, val);
+trap::Trap CPU::Store(const uint64_t addr, const uint64_t bytes, const uint8_t* buffer) {
+    return m_mmu->VirtualAddressStore(addr, bytes, buffer);
 }
 
 void CPU::SetGeneralPurposeRegVal(const uint64_t reg_num, const uint64_t val) {
@@ -101,13 +103,11 @@ uint64_t CPU::GetGeneralPurposeRegVal(const uint64_t reg_num) const {
 
 bool CPU::CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMode new_pm, const trap::TrapType trap_type) const {
     // https://dingfen.github.io/assets/img/mie.png
-    const uint64_t cur_status = m_state.Read(kStatusReg.at(cur_pm));
-    const uint64_t ie         = m_state.Read(kInterruptEnableReg.at(new_pm));
+    const uint64_t kOriginMstatusVal = m_state.Read(kStatusReg.at(cur_pm));
 
-    // get the interrupt enable bit
-    bool cur_mie = (cur_status >> 3) & 1;
-    bool cur_sie = (cur_status >> 1) & 1;
-    bool cur_uie = cur_status & 1;
+    const csr::UstatusDesc* kUsDesc = reinterpret_cast<const csr::UstatusDesc*>(&kOriginMstatusVal);
+    const csr::SstatusDesc* kSsDesc = reinterpret_cast<const csr::SstatusDesc*>(&kOriginMstatusVal);
+    const csr::MstatusDesc* kMsDesc = reinterpret_cast<const csr::MstatusDesc*>(&kOriginMstatusVal);
 
     // 1. cur_privilege_mode < new_privilege_mode: Interrupt is always enabled
     // 2. cur_privilege_mode > new_privilege_mode: Interrupt is always disabled
@@ -117,17 +117,17 @@ bool CPU::CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMod
     } else if (new_pm == cur_pm) {
         switch (cur_pm) {
             case PrivilegeMode::kUser:
-                if (!cur_uie) {
+                if (!kUsDesc->uie) {
                     return false;
                 }
                 break;
             case PrivilegeMode::kSupervisor:
-                if (!cur_sie) {
+                if (!kSsDesc->sie) {
                     return false;
                 }
                 break;
             case PrivilegeMode::kMachine:
-                if (!cur_mie) {
+                if (!kMsDesc->mie) {
                     return false;
                 }
                 break;
@@ -135,70 +135,58 @@ bool CPU::CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMod
 #ifdef DEBUG
                 fmt::print("Unknown privilege mode[{}] when check interrupt bits valid, now abort\n", static_cast<int>(cur_pm));
 #endif
-                exit(static_cast<int>(rv64_emulator::errorcode::CpuErrorCode::kReservedPrivilegeMode));
+                exit(static_cast<int>(errorcode::CpuErrorCode::kReservedPrivilegeMode));
             default:
                 break;
         }
     }
 
-    // software interrupt-enable in x mode
-    bool msie = (ie >> 3) & 1;
-    bool ssie = (ie >> 1) & 1;
-    bool usie = ie & 1;
-
-    // timer interrupt-enable bit in x mode
-    bool mtie = (ie >> 7) & 1;
-    bool stie = (ie >> 5) & 1;
-    bool utie = (ie >> 4) & 1;
-
-    // external interrupt-enable in x mode
-    bool meie = (ie >> 11) & 1;
-    bool seie = (ie >> 9) & 1;
-    bool ueie = (ie >> 8) & 1;
+    const uint64_t      kXieVal  = m_state.Read(kInterruptEnableReg.at(new_pm));
+    const csr::MieDesc* kMieDesc = reinterpret_cast<const csr::MieDesc*>(&kXieVal);
 
     switch (trap_type) {
         case trap::TrapType::kUserSoftwareInterrupt:
-            if (!usie) {
+            if (!kMieDesc->usie) {
                 return false;
             }
             break;
         case trap::TrapType::kSupervisorSoftwareInterrupt:
-            if (!ssie) {
+            if (!kMieDesc->ssie) {
                 return false;
             }
             break;
         case trap::TrapType::kMachineSoftwareInterrupt:
-            if (!msie) {
+            if (!kMieDesc->msie) {
                 return false;
             }
             break;
         case trap::TrapType::kUserTimerInterrupt:
-            if (!utie) {
+            if (!kMieDesc->utie) {
                 return false;
             }
             break;
         case trap::TrapType::kSupervisorTimerInterrupt:
-            if (!stie) {
+            if (!kMieDesc->stie) {
                 return false;
             }
             break;
         case trap::TrapType::kMachineTimerInterrupt:
-            if (!mtie) {
+            if (!kMieDesc->mtie) {
                 return false;
             }
             break;
         case trap::TrapType::kUserExternalInterrupt:
-            if (!ueie) {
+            if (!kMieDesc->ueie) {
                 return false;
             }
             break;
         case trap::TrapType::kSupervisorExternalInterrupt:
-            if (!seie) {
+            if (!kMieDesc->seie) {
                 return false;
             }
             break;
         case trap::TrapType::kMachineExternalInterrupt:
-            if (!meie) {
+            if (!kMieDesc->meie) {
                 return false;
             }
             break;
@@ -237,72 +225,45 @@ void CPU::ModifyCsrStatusReg(const PrivilegeMode cur_pm, const PrivilegeMode new
 #ifdef DEBUG
             fmt::print("Unknown privilege mode[{}] when modify csr status reg, now abort\n", static_cast<int>(new_pm));
 #endif
-            exit(static_cast<int>(rv64_emulator::errorcode::CpuErrorCode::kReservedPrivilegeMode));
+            exit(static_cast<int>(errorcode::CpuErrorCode::kReservedPrivilegeMode));
             break;
     }
-}
-
-uint64_t CPU::GetTrapVectorNewPC(const uint64_t csr_tvec_addr, const uint64_t exception_code) const {
-    const uint64_t csr_tvec_val = m_state.Read(csr_tvec_addr);
-    const uint8_t  mode         = csr_tvec_val & 0x3;
-    uint64_t       new_pc       = 0;
-    switch (mode) {
-        case 0:
-            new_pc = csr_tvec_val;
-            break;
-        case 1:
-            new_pc = (csr_tvec_val & (~0x3)) + 4 * exception_code;
-            break;
-        default:
-#ifdef DEBUG
-            fmt::print("Unknown mode[{}] when cget tvec new pc, csr_tvec_val[{}], now abort\n", static_cast<int>(mode), csr_tvec_val);
-#endif
-            exit(static_cast<int>(rv64_emulator::errorcode::CpuErrorCode::kTrapVectorModeUndefined));
-            break;
-    }
-    return new_pc;
 }
 
 bool CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
-    const PrivilegeMode cur_privilege_mode = GetPrivilegeMode();
-    assert(cur_privilege_mode != PrivilegeMode::kReserved);
-    const auto [is_interrupt, origin_cause_bits] = GetTrapCauseBits(trap);
+    const PrivilegeMode kOriginPM = GetPrivilegeMode();
+    assert(kOriginPM != PrivilegeMode::kReserved);
 
-    uint64_t cause_bits = origin_cause_bits;
+    const csr::CauseDesc kCauseBits = {
+        .cause     = trap::kTrapToCauseTable.at(trap.m_trap_type),
+        .interrupt = trap.m_trap_type >= trap::TrapType::kUserSoftwareInterrupt,
+    };
 
-    if (is_interrupt) {
-        // clear interrupt bit
-        const uint64_t interrupt_bit = static_cast<uint64_t>(1) << (GetMaxXLen() - 1);
-        cause_bits &= (~interrupt_bit);
-    }
+    const uint64_t      kMxdleg      = m_state.Read(kCauseBits.interrupt ? csr::kCsrMideleg : csr::kCsrMedeleg);
+    const bool          kTrapToSMode = (kOriginPM <= PrivilegeMode::kSupervisor && kMxdleg & (1 << kCauseBits.cause));
+    const PrivilegeMode kNewPM       = kTrapToSMode ? PrivilegeMode::kSupervisor : PrivilegeMode::kMachine;
 
-    const uint64_t mxdeleg        = m_state.Read(is_interrupt ? csr::kCsrMideleg : csr::kCsrMedeleg);
-    const uint64_t exception_code = cause_bits;
-
-    bool switch_to_s_mode =
-        (cur_privilege_mode <= PrivilegeMode::kSupervisor && exception_code < GetMaxXLen() && mxdeleg & (1 << exception_code));
-    PrivilegeMode new_privilege_mode = switch_to_s_mode ? PrivilegeMode::kSupervisor : PrivilegeMode::kMachine;
-
-    if (is_interrupt) {
-        if (!CheckInterruptBitsValid(cur_privilege_mode, new_privilege_mode, trap.m_trap_type)) {
-            // TODO: 打印日志
+    if (kCauseBits.interrupt) {
+        if (!CheckInterruptBitsValid(kOriginPM, kNewPM, trap.m_trap_type)) {
             return false;
         }
     }
 
-    const uint64_t csr_tvec_addr  = kTvecReg.at(new_privilege_mode);
-    const uint64_t csr_epc_addr   = kEpcReg.at(new_privilege_mode);
-    const uint64_t csr_cause_addr = kCauseReg.at(new_privilege_mode);
-    const uint64_t csr_tval_addr  = kTvalReg.at(new_privilege_mode);
+    const uint64_t csr_tvec_addr  = kTvecReg.at(kNewPM);
+    const uint64_t csr_epc_addr   = kEpcReg.at(kNewPM);
+    const uint64_t csr_cause_addr = kCauseReg.at(kNewPM);
+    const uint64_t csr_tval_addr  = kTvalReg.at(kNewPM);
+    const uint64_t csr_tvec_val   = m_state.Read(csr_tvec_addr);
 
-    SetPC(GetTrapVectorNewPC(csr_tvec_addr, exception_code));
+    const uint64_t kTrapPc = trap::GetTrapPC(csr_tvec_val, kCauseBits.cause);
+    SetPC(kTrapPc);
 
     m_state.Write(csr_epc_addr, epc);
-    m_state.Write(csr_cause_addr, origin_cause_bits);
+    m_state.Write(csr_cause_addr, *reinterpret_cast<const uint64_t*>(&kCauseBits));
     m_state.Write(csr_tval_addr, trap.m_val);
 
-    ModifyCsrStatusReg(cur_privilege_mode, new_privilege_mode);
-    SetPrivilegeMode(new_privilege_mode);
+    ModifyCsrStatusReg(kOriginPM, kNewPM);
+    SetPrivilegeMode(kNewPM);
 
     return true;
 }
@@ -368,7 +329,6 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
         if (HandleTrap(trap, inst_addr)) {
             m_state.Write(csr::kCsrMip, mip & (~csr_mip_mask));
             m_wfi = false;
-            return;
         } else {
 #ifdef DEBUG
             fmt::print("Interrupt bits invalid when handling trap\n");
@@ -377,30 +337,36 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
     }
 }
 
-uint32_t CPU::Fetch() {
-    uint32_t inst_word = m_bus->Load(GetPC(), kInstructionBits);
-    return inst_word;
+trap::Trap CPU::Fetch(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {
+    CHECK_MISALIGN_INSTRUCTION(addr, this);
+
+    return m_mmu->VirtualFetch(addr, bytes, buffer);
 }
 
-int64_t CPU::Decode(const uint32_t inst_word) {
+trap::Trap CPU::Decode(const uint32_t word, int64_t& index) {
     int64_t inst_table_index = 0;
 
     // decode cache hit current instruction
-    if (m_decode_cache.Get(inst_word, inst_table_index)) {
-        return inst_table_index;
+    if (m_decode_cache.Get(word, inst_table_index)) {
+        index = inst_table_index;
+        return trap::kNoneTrap;
     }
 
     // decode cache miss, find the index in instruction table
     inst_table_index = 0;
     for (const auto& inst : instruction::kInstructionTable) {
-        if ((inst_word & inst.m_mask) == inst.m_data) {
-            m_decode_cache.Set(inst_word, inst_table_index);
-            return inst_table_index;
+        if ((word & inst.m_mask) == inst.m_data) {
+            m_decode_cache.Set(word, inst_table_index);
+            index = inst_table_index;
+            return trap::kNoneTrap;
         }
         inst_table_index++;
     }
 
-    return -1;
+    return {
+        .m_trap_type = trap::TrapType::kIllegalInstruction,
+        .m_val       = word,
+    };
 }
 
 trap::Trap CPU::TickOperate() {
@@ -416,26 +382,31 @@ trap::Trap CPU::TickOperate() {
         };
     }
 
-    const uint64_t inst_addr = GetPC();
-    const uint32_t inst_word = Fetch();
-    SetPC(inst_addr + 4);
+    const uint64_t kInstructionAddr = GetPC();
 
-    int64_t instruction_index = Decode(inst_word);
-    if (instruction_index == -1) {
-        return {
-            .m_trap_type = trap::TrapType::kIllegalInstruction,
-            .m_val       = inst_addr,
-        };
+    uint32_t inst_word;
+    // TODO
+    const trap::Trap kFetchTrap = Fetch(kInstructionAddr, sizeof(uint32_t), reinterpret_cast<uint8_t*>(&inst_word));
+    if (kFetchTrap.m_trap_type != trap::TrapType::kNone) {
+        return kFetchTrap;
+    }
+
+    SetPC(kInstructionAddr + 4); // TODO
+
+    int64_t          instruction_index = 0;
+    const trap::Trap kDecodeTrap       = Decode(inst_word, instruction_index);
+    if (kDecodeTrap.m_trap_type != trap::TrapType::kNone) {
+        return kDecodeTrap;
     }
 
 #ifdef DEBUG
-    Disassemble(inst_addr, inst_word, instruction_index);
+    Disassemble(kInstructionAddr, inst_word, instruction_index);
     uint64_t backup_reg[kGeneralPurposeRegNum] = { 0 };
     memcpy(backup_reg, m_reg, kGeneralPurposeRegNum * sizeof(uint64_t));
 #endif
 
     const trap::Trap trap = instruction::kInstructionTable[instruction_index].Exec(this, inst_word);
-    // in a emulator, there is not a GND hardwiring x0 to zero
+
     m_reg[0] = 0;
 
 #ifdef DEBUG
@@ -500,6 +471,12 @@ void CPU::DumpRegisters() const {
         }
         fmt::print("\n");
     }
+}
+
+bool CheckPcAlign(const uint64_t pc, const uint64_t isa) {
+    const csr::MisaDesc* kMisaDesc   = reinterpret_cast<const csr::MisaDesc*>(&isa);
+    const uint64_t       kAlignBytes = kMisaDesc->C ? 2 : 4;
+    return (pc % kAlignBytes) == 0;
 }
 
 } // namespace rv64_emulator::cpu

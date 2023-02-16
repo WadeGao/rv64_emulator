@@ -1,29 +1,28 @@
 #include "cpu/csr.h"
+#include "libs/software_arithmetic.hpp"
 
 #include <cstdint>
 
-constexpr uint64_t kIsaDesc = (static_cast<uint64_t>(2) << 62) | // MXL[1:0]=2 (XLEN is 64)
-                              (1 << 20) |                        // Extensions[20] (User mode implemented)
-                              (1 << 18) |                        // Extensions[18] (Supervisor mode implemented)
-                              (1 << 12) |                        // Extensions[12] (Integer Multiply/Divide extension)
-                              (1 << 8) |                         // Extensions[8] (RV32I/64I/128I base ISA)
-                              (1 << 5) |                         // Extensions[5] (Single-precision floating-point extension)
-                              (1 << 3) |                         // Extensions[3] (Double-precision floating-point extension)
-                              (1 << 2) |                         // Extensions[2] (Compressed extension)
-                              1;
-
 namespace rv64_emulator::cpu::csr {
-
-constexpr uint64_t kMstatusInitVal =
-    ((((uint64_t)(RiscvMXL::kRv64) * ((kCsrMstatusMaskSXL) & ~((kCsrMstatusMaskSXL) << 1))) & (uint64_t)(kCsrMstatusMaskSXL))) |
-    ((((uint64_t)(RiscvMXL::kRv64) * ((kCsrMstatusMaskUXL) & ~((kCsrMstatusMaskUXL) << 1))) & (uint64_t)(kCsrMstatusMaskUXL)));
-
-constexpr uint64_t kMstatusWriteMask = ((~(kCsrMstatusMaskSXL | kCsrMstatusMaskUXL)) | kMstatusInitVal);
 
 State::State()
     : m_csr(kCsrCapacity, 0) {
-    m_csr[kCsrMisa]    = kIsaDesc;
-    m_csr[kCsrMstatus] = kMstatusInitVal;
+    // set up MISA description
+    MisaDesc* misa_desc = reinterpret_cast<MisaDesc*>(&m_csr[kCsrMisa]);
+    misa_desc->mxl      = static_cast<uint64_t>(RiscvMXL::kRv64);
+    misa_desc->U        = 1; // User mode implemented
+    misa_desc->S        = 1; // Supervisor mode implemented
+    misa_desc->M        = 1; // Integer Multiply/Divide extension implemented
+    misa_desc->I        = 1; // RV32I/64I/128I base ISA implemented
+    misa_desc->F        = 0; // Single-precision floating-point extension implemented
+    misa_desc->D        = 0; // Double-precision floating-point extension implemented
+    misa_desc->C        = 0; // Compressed extension implemented
+    misa_desc->A        = 0; // Atomic extension implemented
+
+    // set up Mstatus val
+    MstatusDesc* mstatus_desc = reinterpret_cast<MstatusDesc*>(&m_csr[kCsrMstatus]);
+    mstatus_desc->sxl         = static_cast<uint64_t>(RiscvMXL::kRv64);
+    mstatus_desc->uxl         = static_cast<uint64_t>(RiscvMXL::kRv64);
 }
 
 uint64_t State::Read(const uint64_t addr) const {
@@ -39,8 +38,15 @@ uint64_t State::Read(const uint64_t addr) const {
         case kCsrSip:
             res = m_csr[kCsrMip] & m_csr[kCsrMideleg];
             break;
-        case kCsrMstatus:
-            res = (m_csr[kCsrMstatus] & (~(kCsrMstatusMaskSXL | kCsrMstatusMaskUXL))) | kMstatusInitVal;
+        case kCsrMstatus: {
+            MstatusDesc desc = *reinterpret_cast<const MstatusDesc*>(&m_csr[kCsrMstatus]);
+            desc.sxl         = static_cast<uint64_t>(RiscvMXL::kRv64);
+            desc.uxl         = static_cast<uint64_t>(RiscvMXL::kRv64);
+            res              = *reinterpret_cast<const uint64_t*>(&desc);
+        } break;
+        case kCsrTselect:
+        case kCsrTdata1:
+            res = 0;
             break;
         default:
             res = m_csr[addr];
@@ -51,12 +57,10 @@ uint64_t State::Read(const uint64_t addr) const {
 }
 
 void State::Write(const uint64_t addr, const uint64_t val) {
-
     switch (addr) {
         case kCsrSstatus: {
             const uint64_t kOriginMstatus = Read(kCsrMstatus);
-
-            m_csr[kCsrMstatus] = (kOriginMstatus & (~kCsrMstatusMaskSStatus)) | (val & kCsrMstatusMaskSStatus);
+            m_csr[kCsrMstatus]            = (kOriginMstatus & (~kCsrMstatusMaskSStatus)) | (val & kCsrMstatusMaskSStatus);
         } break;
         case kCsrSie:
             m_csr[kCsrMie] &= (~m_csr[kCsrMideleg]);
@@ -66,8 +70,18 @@ void State::Write(const uint64_t addr, const uint64_t val) {
             m_csr[kCsrMip] &= (~m_csr[kCsrMideleg]);
             m_csr[kCsrMip] |= (val & m_csr[kCsrMideleg]);
             break;
-        case kCsrMstatus:
-            m_csr[kCsrMstatus] = val & kMstatusWriteMask;
+        case kCsrMstatus: {
+            MstatusDesc desc   = *reinterpret_cast<const MstatusDesc*>(&val);
+            desc.sxl           = static_cast<uint64_t>(RiscvMXL::kRv64);
+            desc.uxl           = static_cast<uint64_t>(RiscvMXL::kRv64);
+            m_csr[kCsrMstatus] = *reinterpret_cast<const uint64_t*>(&desc);
+        } break;
+        case kCsrMisa:
+        case kCsrTselect:
+        case kCsrTdata1:
+        case kCsrMVendorId:
+        case kCsrMArchId:
+        case kCsrMImpId:
             break;
         default:
             m_csr[addr] = val;
@@ -76,8 +90,15 @@ void State::Write(const uint64_t addr, const uint64_t val) {
 }
 
 void State::Reset() {
+    const uint64_t kOriginMisa = m_csr[kCsrMisa];
     std::fill(m_csr.begin(), m_csr.end(), 0);
-    m_csr[kCsrMisa] = kIsaDesc;
+
+    m_csr[kCsrMisa] = kOriginMisa;
+
+    // set up Mstatus val
+    auto* mstatus_desc = reinterpret_cast<MstatusDesc*>(&m_csr[kCsrMstatus]);
+    mstatus_desc->sxl  = static_cast<uint64_t>(RiscvMXL::kRv64);
+    mstatus_desc->uxl  = static_cast<uint64_t>(RiscvMXL::kRv64);
 }
 
 } // namespace rv64_emulator::cpu::csr

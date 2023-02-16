@@ -7,45 +7,45 @@
 
 namespace rv64_emulator::cpu::decode {
 
-typedef struct FormatR {
+using FormatR = struct FormatR {
     uint8_t rd;
     uint8_t rs1;
     uint8_t rs2;
-} FormatR;
+};
 
-typedef struct FormatI {
+using FormatI = struct FormatI {
     uint8_t rd;
     uint8_t rs1;
     int32_t imm;
-} FormatI;
+};
 
-typedef struct FormatS {
+using FormatS = struct FormatS {
     uint8_t rs1;
     uint8_t rs2;
     int32_t imm;
-} FormatS;
+};
 
-typedef struct FormatB {
+using FormatB = struct FormatB {
     uint8_t rs1;
     uint8_t rs2;
     int32_t imm;
-} FormatB;
+};
 
 typedef struct FormatU {
     uint8_t rd;
     int32_t imm;
 } FormatU;
 
-typedef struct FormatJ {
+using FormatJ = struct FormatJ {
     uint8_t rd;
     int32_t imm;
-} FormatJ;
+};
 
-typedef struct FormatCsr {
+using FormatCsr = struct FormatCsr {
     uint16_t csr;
     uint8_t  rd;
     uint8_t  rs;
-} FormatCsr;
+};
 
 uint16_t GetCsr(const uint32_t inst_word);
 uint8_t  GetShamt(const uint32_t inst_word, const bool kRv32Arch /* = false */);

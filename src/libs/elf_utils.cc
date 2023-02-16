@@ -21,7 +21,7 @@ namespace libs::ElfUtils {
 
 void LoadElf(const ELFIO::elfio& reader, CPU* cpu) {
     const std::string& kErrMsg = reader.validate();
-    if (kErrMsg != "") {
+    if (!kErrMsg.empty()) {
         fmt::print("Error occurs while loading elf: {}\n", kErrMsg);
         exit(static_cast<int>(rv64_emulator::errorcode::ElfErrorCode::kInvalidFile));
     }
@@ -41,7 +41,7 @@ void LoadElf(const ELFIO::elfio& reader, CPU* cpu) {
         char const* bytes = segment->get_data();
         for (ELFIO::Elf_Xword i = kSegAddr; i < kSegAddr + kSegMemize; i++) {
             const uint8_t byte = i < kSegAddr + kSegFileSize ? bytes[i - kSegAddr] : 0;
-            cpu->Store(i, 8, byte);
+            cpu->Store(i, sizeof(uint8_t), &byte);
         }
     }
 }
@@ -58,10 +58,7 @@ std::tuple<bool, ELFIO::Elf64_Addr> CheckSectionExist(const ELFIO::elfio& reader
             const char* p = str_reader.get_string(kSectionOffset);
             if (strcmp(p, section_name) == 0) {
                 const ELFIO::Elf64_Addr kSectionAddr = reader.sections[i]->get_address();
-                return {
-                    true,
-                    kSectionAddr,
-                };
+                return { true, kSectionAddr };
             }
         }
     }

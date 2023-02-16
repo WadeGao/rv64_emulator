@@ -1,11 +1,11 @@
 #pragma once
 
-#include "bus.h"
 #include "conf.h"
 #include "cpu/csr.h"
 #include "cpu/decode.h"
 #include "cpu/trap.h"
 #include "libs/LRU.hpp"
+// #include "mmu.h"
 
 #include <cstdint>
 #include <map>
@@ -13,11 +13,15 @@
 #include <tuple>
 #include <vector>
 
-namespace rv64_emulator::cpu {
+namespace rv64_emulator {
+
+namespace mmu {
+class Mmu;
+}
+namespace cpu {
 
 constexpr uint64_t kGeneralPurposeRegNum = 32;
 constexpr uint64_t kFloatingPointRegNum  = 32;
-constexpr uint64_t kInstructionBits      = 32;
 
 enum class PrivilegeMode {
     kUser = 0,
@@ -63,30 +67,31 @@ private:
 
     */
 
-    std::unique_ptr<rv64_emulator::bus::Bus> m_bus;
+    std::unique_ptr<mmu::Mmu> m_mmu;
 
-    // decode cache, key: inst_word, val: inst_table_index
-    rv64_emulator::libs::LRUCache<uint32_t, int64_t> m_decode_cache;
+    libs::LRUCache<uint32_t, int64_t> m_decode_cache;
 
     bool CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMode new_pm, const trap::TrapType trap_type) const;
 
-    void     ModifyCsrStatusReg(const PrivilegeMode cur_pm, const PrivilegeMode new_pm);
-    uint64_t GetTrapVectorNewPC(const uint64_t csr_tvec_addr, const uint64_t exception_code) const;
+    void ModifyCsrStatusReg(const PrivilegeMode cur_pm, const PrivilegeMode new_pm);
 
     trap::Trap TickOperate();
+
+    bool HandleTrap(const trap::Trap trap, const uint64_t inst_addr);
+    void HandleInterrupt(const uint64_t inst_addr);
 
 public:
     csr::State m_state;
 
-    CPU(PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus);
+    CPU(PrivilegeMode privilege_mode, std::unique_ptr<mmu::Mmu> mmu);
     void Reset();
 
-    uint64_t Load(const uint64_t addr, const uint64_t bit_size) const;
-    void     Store(const uint64_t addr, const uint64_t bit_size, const uint64_t val);
+    trap::Trap Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) const;
+    trap::Trap Store(const uint64_t addr, const uint64_t bytes, const uint8_t* buffer);
 
-    uint32_t Fetch();
-    int64_t  Decode(const uint32_t inst_word);
-    void     Tick();
+    trap::Trap Fetch(const uint64_t addr, const uint64_t bytes, uint8_t* buffer);
+    trap::Trap Decode(const uint32_t word, int64_t& index);
+    void       Tick();
 
     void     SetGeneralPurposeRegVal(const uint64_t reg_num, const uint64_t val);
     uint64_t GetGeneralPurposeRegVal(const uint64_t reg_num) const;
@@ -97,10 +102,6 @@ public:
 
     inline uint64_t GetPC() const {
         return m_pc;
-    }
-
-    inline uint64_t GetMaxXLen() const {
-        return 64;
     }
 
     inline PrivilegeMode GetPrivilegeMode() const {
@@ -119,13 +120,13 @@ public:
         m_wfi = wfi;
     }
 
-    bool HandleTrap(const trap::Trap trap, const uint64_t inst_addr);
-    void HandleInterrupt(const uint64_t inst_addr);
-
     void Disassemble(const uint64_t pc, const uint32_t word, const int64_t instruction_table_index) const;
     void DumpRegisters() const;
 
     ~CPU();
 };
 
-} // namespace rv64_emulator::cpu
+bool CheckPcAlign(const uint64_t pc, const uint64_t isa);
+
+} // namespace cpu
+} // namespace rv64_emulator

@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <map>
-#include <tuple>
 
 namespace rv64_emulator::cpu::trap {
 
@@ -63,11 +62,16 @@ const std::map<TrapType, uint64_t> kTrapToCauseTable = {
     { TrapType::kMachineExternalInterrupt, 11 },
 };
 
-typedef struct Trap {
+using Trap = struct Trap {
     TrapType m_trap_type;
     uint64_t m_val;
-} Trap;
+};
 
-std::tuple<bool, uint64_t> GetTrapCauseBits(const trap::Trap trap);
+constexpr Trap kNoneTrap = {
+    .m_trap_type = trap::TrapType::kNone,
+    .m_val       = 0,
+};
+
+uint64_t GetTrapPC(const uint64_t csr_tvec_addr, const uint64_t cause);
 
 } // namespace rv64_emulator::cpu::trap
