@@ -4,12 +4,19 @@
 #include "cpu/csr.h"
 #include "cpu/trap.h"
 #include "dram.h"
+
+#include "elfio/elf_types.hpp"
+#include "elfio/elfio.hpp"
+#include "elfio/elfio_segment.hpp"
 #include "fmt/core.h"
 #include "gtest/gtest.h"
 
+#include <algorithm>
 #include <cstdint>
+#include <filesystem>
 #include <map>
 #include <memory>
+#include <tuple>
 
 class CpuTest : public testing::Test {
 protected:
@@ -33,6 +40,29 @@ protected:
 
     std::unique_ptr<rv64_emulator::cpu::CPU> m_cpu;
 };
+
+static std::tuple<bool, ELFIO::Elf64_Addr> CheckSectionExist(const ELFIO::elfio& reader, const char* section_name) {
+    const ELFIO::Elf_Half kShStrIndex = reader.get_section_name_str_index();
+    const ELFIO::Elf_Half kSectionNum = reader.sections.size();
+
+    if (ELFIO::SHN_UNDEF != kShStrIndex) {
+        ELFIO::string_section_accessor str_reader(reader.sections[kShStrIndex]);
+        for (ELFIO::Elf_Half i = 0; i < kSectionNum; ++i) {
+            const ELFIO::Elf_Word kSectionOffset = reader.sections[i]->get_name_string_offset();
+
+            const char* p = str_reader.get_string(kSectionOffset);
+            if (strcmp(p, section_name) == 0) {
+                const ELFIO::Elf64_Addr kSectionAddr = reader.sections[i]->get_address();
+                return {
+                    true,
+                    kSectionAddr,
+                };
+            }
+        }
+    }
+
+    return { false, 0 };
+}
 
 TEST_F(CpuTest, HandleTrap) {
     const uint64_t handler_vector = 0x10000000;
@@ -109,4 +139,45 @@ TEST_F(CpuTest, Wfi) {
     m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMtvec, 0);
     m_cpu->Tick();
     ASSERT_EQ(0, m_cpu->GetPC());
+}
+
+TEST_F(CpuTest, OfficalTests) {
+    ELFIO::elfio reader;
+    reader.load("/Users/wade/Desktop/rv64_emulator/third_party/riscv-tests/isa/rv64ui-p-add");
+
+    const auto [kToHostSectionExist, kToHostSectionAddr] = CheckSectionExist(reader, ".tohost\0");
+
+    ASSERT_TRUE(kToHostSectionExist) << "input file is not offical test case";
+
+    const ELFIO::Elf_Half kSegmentNum = reader.segments.size();
+    for (uint16_t i = 0; i < kSegmentNum; i++) {
+        const ELFIO::segment* segment      = reader.segments[i];
+        const ELFIO::Elf_Word kSegmentType = segment->get_type();
+        if (kSegmentType != ELFIO::PT_LOAD) {
+            continue;
+        }
+
+        const ELFIO::Elf_Xword kSegFileSize = segment->get_file_size();
+        const ELFIO::Elf_Xword kSegMemize   = segment->get_memory_size();
+        const ELFIO::Elf_Xword kSegAddr     = segment->get_virtual_address();
+
+        char const* bytes = segment->get_data();
+        for (ELFIO::Elf_Xword i = kSegAddr; i < kSegAddr + kSegMemize; i++) {
+            const uint8_t byte = i < kSegAddr + kSegFileSize ? bytes[i - kSegAddr] : 0;
+            m_cpu->Store(i, 8, byte);
+        }
+    }
+
+    const uint64_t kEntryAddr = reader.get_entry();
+    m_cpu->SetPC(kEntryAddr);
+
+    while (true) {
+        m_cpu->Tick();
+
+        const uint64_t val = m_cpu->Load(kToHostSectionAddr, 8);
+        if (val != 0) {
+            ASSERT_EQ(val, 1) << "Test Failed with .tohost section val = " << val;
+            break;
+        }
+    }
 }

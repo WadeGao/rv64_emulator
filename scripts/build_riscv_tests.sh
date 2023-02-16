@@ -14,9 +14,11 @@ while IFS= read -r line; do
 done < <(ls -lrt | awk '{print $9}'|xargs file|grep  ELF| awk '{print $1}'|tr -d ':')
 
 mkdir -p "$root_dir/test/bin"
+mkdir -p "$root_dir/test/elf"
+
 for value in ${rv64_elf_exe[*]}
-do 
-  echo "generating $value.bin"
+do
   riscv64-unknown-elf-objcopy -O binary "$value" "$value".bin
   cp "$value.bin" "$root_dir/test/bin"
+  cp "$value" "$root_dir/test/elf"
 done
