@@ -5,7 +5,7 @@
 #include "cpu/trap.h"
 #include "error_code.h"
 
-#include "libs/utils.hpp"
+#include "libs/soft_arithmetic.hpp"
 
 #include "fmt/format.h"
 

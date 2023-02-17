@@ -7,7 +7,7 @@
 #include "cpu/trap.h"
 
 #include "libs/LRU.hpp"
-#include "libs/utils.hpp"
+#include "libs/soft_arithmetic.hpp"
 
 #include "fmt/color.h"
 #include "fmt/core.h"
