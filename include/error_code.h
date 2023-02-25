@@ -7,6 +7,7 @@ enum class ErrorCode : int {
     kDramErrorCodeBase   = -100,
     kDecodeErrorCodeBase = -200,
     kCpuErrorCodeBase    = -300,
+    kElfErrorCodeBase    = -400,
 };
 
 enum class DramErrorCode : int {
@@ -25,6 +26,11 @@ enum class CpuErrorCode : int {
     kExecuteFailure          = static_cast<int>(ErrorCode::kCpuErrorCodeBase) - 1,
     kReservedPrivilegeMode   = static_cast<int>(ErrorCode::kCpuErrorCodeBase) - 2,
     kTrapVectorModeUndefined = static_cast<int>(ErrorCode::kCpuErrorCodeBase) - 3,
+};
+
+enum class ElfErrorCode : int {
+    kSuccess      = 0,
+    kInvalidFile = static_cast<int>(ErrorCode::kElfErrorCodeBase) - 1,
 };
 
 } // namespace rv64_emulator::errorcode

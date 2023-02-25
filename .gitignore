@@ -1,6 +1,9 @@
 .vscode
 .xmake
 build/
+test/elf/
+test/bin/
+test/dump/
 *.bin
 *.gcno
 *.gcda

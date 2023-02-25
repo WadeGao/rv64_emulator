@@ -5,7 +5,7 @@
 #include "cpu/trap.h"
 #include "error_code.h"
 
-#include "libs/soft_arithmetic.hpp"
+#include "libs/software_arithmetic.hpp"
 
 #include "fmt/format.h"
 
@@ -910,7 +910,7 @@ const Instruction kInstructionTable[] = {
             const bool     kNegativeRes = (a < 0) ^ (b < 0);
             const uint64_t abs_a        = static_cast<uint64_t>(a < 0 ? -a : a);
             const uint64_t abs_b        = static_cast<uint64_t>(b < 0 ? -b : b);
-            const uint64_t res          = rv64_emulator::libs::MulUnsignedHi(abs_a, abs_b);
+            const uint64_t res          = rv64_emulator::libs::SoftwareArithmetic::MulUnsignedHi(abs_a, abs_b);
 
             // use ~res directly because of UINT64^$_MAX^2 = 0xfffffffffffffffe0000000000000001
             const int64_t val = kNegativeRes ? (~res + (a * b == 0)) : res;
@@ -932,7 +932,7 @@ const Instruction kInstructionTable[] = {
             // TODO
             const bool     kNegativeRes = a < 0;
             const uint64_t abs_a        = static_cast<uint64_t>(a < 0 ? -a : a);
-            const uint64_t res          = rv64_emulator::libs::MulUnsignedHi(abs_a, b);
+            const uint64_t res          = rv64_emulator::libs::SoftwareArithmetic::MulUnsignedHi(abs_a, b);
 
             const int64_t val = kNegativeRes ? (~res + (a * b == 0)) : res;
 
@@ -950,7 +950,7 @@ const Instruction kInstructionTable[] = {
             const auto&    f   = decode::ParseFormatR(inst_word);
             const uint64_t a   = cpu->GetGeneralPurposeRegVal(f.rs1);
             const uint64_t b   = cpu->GetGeneralPurposeRegVal(f.rs2);
-            const uint64_t val = rv64_emulator::libs::MulUnsignedHi(a, b);
+            const uint64_t val = rv64_emulator::libs::SoftwareArithmetic::MulUnsignedHi(a, b);
 
             cpu->SetGeneralPurposeRegVal(f.rd, val);
             return kNoneTrap;

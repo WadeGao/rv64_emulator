@@ -4,12 +4,20 @@
 #include "cpu/csr.h"
 #include "cpu/trap.h"
 #include "dram.h"
+#include "libs/elf_utils.h"
+
+#include "elfio/elf_types.hpp"
+#include "elfio/elfio.hpp"
+#include "elfio/elfio_segment.hpp"
 #include "fmt/core.h"
 #include "gtest/gtest.h"
 
+#include <algorithm>
 #include <cstdint>
+#include <filesystem>
 #include <map>
 #include <memory>
+#include <tuple>
 
 class CpuTest : public testing::Test {
 protected:
@@ -109,4 +117,42 @@ TEST_F(CpuTest, Wfi) {
     m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMtvec, 0);
     m_cpu->Tick();
     ASSERT_EQ(0, m_cpu->GetPC());
+}
+
+TEST_F(CpuTest, OfficalTests) {
+    const char* filename = "/Users/wade/Desktop/rv64_emulator/third_party/riscv-tests/isa/rv64ui-p-add";
+
+    const char* kElfDir = "test/elf";
+
+    std::filesystem::path p(kElfDir);
+    ASSERT_TRUE(std::filesystem::exists(p)) << kElfDir << " not exists\n";
+    ASSERT_TRUE(std::filesystem::directory_entry(kElfDir).is_directory()) << kElfDir << " is not a directory\n";
+
+    for (const auto& item : std::filesystem::directory_iterator(kElfDir)) {
+        const std::string& filename = fmt::format("{}/{}", kElfDir, item.path().filename().filename().c_str());
+
+        ELFIO::elfio reader;
+        reader.load(filename);
+
+        const auto [kToHostSectionExist, kToHostSectionAddr] = rv64_emulator::libs::ElfUtils::CheckSectionExist(reader, ".tohost\0");
+        ASSERT_TRUE(kToHostSectionExist) << "input file is not offical test case";
+
+        rv64_emulator::libs::ElfUtils::LoadElf(reader, m_cpu.get());
+
+        const uint64_t kEntryAddr = reader.get_entry();
+        m_cpu->SetPC(kEntryAddr);
+
+        fmt::print("now start run {}\n", filename);
+
+        while (true) {
+            m_cpu->Tick();
+
+            const uint64_t val = m_cpu->Load(kToHostSectionAddr, 8);
+            if (val != 0) {
+                m_cpu->DumpRegisters();
+                EXPECT_EQ(val, 1) << fmt::format("Test {} Failed with .tohost section val = {}", filename, val);
+                break;
+            }
+        }
+    }
 }

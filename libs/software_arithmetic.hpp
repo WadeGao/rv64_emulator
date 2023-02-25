@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <type_traits>
 
-namespace rv64_emulator::libs {
+namespace rv64_emulator::libs::SoftwareArithmetic {
 
 template <typename T>
 std::enable_if_t<(std::is_unsigned_v<T> && sizeof(T) > sizeof(uint8_t) && sizeof(T) <= sizeof(uint64_t)), T>
