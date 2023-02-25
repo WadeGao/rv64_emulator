@@ -7,7 +7,7 @@
 #include "cpu/trap.h"
 
 #include "libs/LRU.hpp"
-#include "libs/soft_arithmetic.hpp"
+#include "libs/software_arithmetic.hpp"
 
 #include "fmt/color.h"
 #include "fmt/core.h"
@@ -62,7 +62,6 @@ CPU::CPU(PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> 
     : m_clock(0)
     , m_instruction_count(0)
     , m_privilege_mode(privilege_mode)
-    , m_pc(kDramBaseAddr)
     , m_bus(std::move(bus))
     , m_decode_cache(decode::kDecodeCacheEntryNum) {
     static_assert(sizeof(float) == 4, "float is not 4 bytes, can't assure the bit width of floating point reg");

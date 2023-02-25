@@ -4,6 +4,7 @@
 #include "cpu/csr.h"
 #include "cpu/trap.h"
 #include "dram.h"
+#include "libs/elf_utils.h"
 
 #include "elfio/elf_types.hpp"
 #include "elfio/elfio.hpp"
@@ -40,29 +41,6 @@ protected:
 
     std::unique_ptr<rv64_emulator::cpu::CPU> m_cpu;
 };
-
-static std::tuple<bool, ELFIO::Elf64_Addr> CheckSectionExist(const ELFIO::elfio& reader, const char* section_name) {
-    const ELFIO::Elf_Half kShStrIndex = reader.get_section_name_str_index();
-    const ELFIO::Elf_Half kSectionNum = reader.sections.size();
-
-    if (ELFIO::SHN_UNDEF != kShStrIndex) {
-        ELFIO::string_section_accessor str_reader(reader.sections[kShStrIndex]);
-        for (ELFIO::Elf_Half i = 0; i < kSectionNum; ++i) {
-            const ELFIO::Elf_Word kSectionOffset = reader.sections[i]->get_name_string_offset();
-
-            const char* p = str_reader.get_string(kSectionOffset);
-            if (strcmp(p, section_name) == 0) {
-                const ELFIO::Elf64_Addr kSectionAddr = reader.sections[i]->get_address();
-                return {
-                    true,
-                    kSectionAddr,
-                };
-            }
-        }
-    }
-
-    return { false, 0 };
-}
 
 TEST_F(CpuTest, HandleTrap) {
     const uint64_t handler_vector = 0x10000000;
@@ -142,42 +120,39 @@ TEST_F(CpuTest, Wfi) {
 }
 
 TEST_F(CpuTest, OfficalTests) {
-    ELFIO::elfio reader;
-    reader.load("/Users/wade/Desktop/rv64_emulator/third_party/riscv-tests/isa/rv64ui-p-add");
+    const char* filename = "/Users/wade/Desktop/rv64_emulator/third_party/riscv-tests/isa/rv64ui-p-add";
 
-    const auto [kToHostSectionExist, kToHostSectionAddr] = CheckSectionExist(reader, ".tohost\0");
+    const char* kElfDir = "test/elf";
 
-    ASSERT_TRUE(kToHostSectionExist) << "input file is not offical test case";
+    std::filesystem::path p(kElfDir);
+    ASSERT_TRUE(std::filesystem::exists(p)) << kElfDir << " not exists\n";
+    ASSERT_TRUE(std::filesystem::directory_entry(kElfDir).is_directory()) << kElfDir << " is not a directory\n";
 
-    const ELFIO::Elf_Half kSegmentNum = reader.segments.size();
-    for (uint16_t i = 0; i < kSegmentNum; i++) {
-        const ELFIO::segment* segment      = reader.segments[i];
-        const ELFIO::Elf_Word kSegmentType = segment->get_type();
-        if (kSegmentType != ELFIO::PT_LOAD) {
-            continue;
-        }
+    for (const auto& item : std::filesystem::directory_iterator(kElfDir)) {
+        const std::string& filename = fmt::format("{}/{}", kElfDir, item.path().filename().filename().c_str());
 
-        const ELFIO::Elf_Xword kSegFileSize = segment->get_file_size();
-        const ELFIO::Elf_Xword kSegMemize   = segment->get_memory_size();
-        const ELFIO::Elf_Xword kSegAddr     = segment->get_virtual_address();
+        ELFIO::elfio reader;
+        reader.load(filename);
 
-        char const* bytes = segment->get_data();
-        for (ELFIO::Elf_Xword i = kSegAddr; i < kSegAddr + kSegMemize; i++) {
-            const uint8_t byte = i < kSegAddr + kSegFileSize ? bytes[i - kSegAddr] : 0;
-            m_cpu->Store(i, 8, byte);
-        }
-    }
+        const auto [kToHostSectionExist, kToHostSectionAddr] = rv64_emulator::libs::ElfUtils::CheckSectionExist(reader, ".tohost\0");
+        ASSERT_TRUE(kToHostSectionExist) << "input file is not offical test case";
 
-    const uint64_t kEntryAddr = reader.get_entry();
-    m_cpu->SetPC(kEntryAddr);
+        rv64_emulator::libs::ElfUtils::LoadElf(reader, m_cpu.get());
 
-    while (true) {
-        m_cpu->Tick();
+        const uint64_t kEntryAddr = reader.get_entry();
+        m_cpu->SetPC(kEntryAddr);
 
-        const uint64_t val = m_cpu->Load(kToHostSectionAddr, 8);
-        if (val != 0) {
-            ASSERT_EQ(val, 1) << "Test Failed with .tohost section val = " << val;
-            break;
+        fmt::print("now start run {}\n", filename);
+
+        while (true) {
+            m_cpu->Tick();
+
+            const uint64_t val = m_cpu->Load(kToHostSectionAddr, 8);
+            if (val != 0) {
+                m_cpu->DumpRegisters();
+                EXPECT_EQ(val, 1) << fmt::format("Test {} Failed with .tohost section val = {}", filename, val);
+                break;
+            }
         }
     }
 }
