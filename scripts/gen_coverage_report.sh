@@ -6,6 +6,9 @@ PLATFORM=$(xmake show | grep plat | awk '{print $3}' | sed -r "s/\x1B\[([0-9]{1,
 ARCH=$(xmake show | grep arch | awk '{print $3}' | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g")
 MODE=$(xmake show | grep mode | awk '{print $3}' | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g")
 
+find . -name "*.gcda" -exec rm {} \;
+find . -name "*.gcno" -exec rm {} \;
+
 "$BUILD_DIR"/unit_test
 
 OBJS_DIR="$PROJECT_DIR/$BUILD_DIR/.objs/unit_test/$PLATFORM/$ARCH/$MODE"
@@ -18,11 +21,17 @@ GCDA_FILES=($(find . -name "*.gcda"))
 for((i=0;i<${#GCNO_FILES[@]};i++))
 do
     cp "${GCNO_FILES[i]}" "$PROJECT_DIR/${GCNO_FILES[i]}"
+done;
+
+for((i=0;i<${#GCDA_FILES[@]};i++))
+do
     cp "${GCDA_FILES[i]}" "$PROJECT_DIR/${GCDA_FILES[i]}"
 done;
 
 cd "$PROJECT_DIR" || exit
 LCOV_CMD="lcov"
+
+# 从索引 1 开始，排除 find 出来的第一项："."
 for((i=1;i<${#SRC_DIR[@]};i++))
 do
     LCOV_CMD="$LCOV_CMD -d ${SRC_DIR[i]}"

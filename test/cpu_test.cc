@@ -120,8 +120,6 @@ TEST_F(CpuTest, Wfi) {
 }
 
 TEST_F(CpuTest, OfficalTests) {
-    const char* filename = "/Users/wade/Desktop/rv64_emulator/third_party/riscv-tests/isa/rv64ui-p-add";
-
     const char* kElfDir = "test/elf";
 
     std::filesystem::path p(kElfDir);
