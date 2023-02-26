@@ -1,5 +1,3 @@
-#pragma once
-
 #include "libs/elf_utils.h"
 #include "cpu/cpu.h"
 #include "error_code.h"

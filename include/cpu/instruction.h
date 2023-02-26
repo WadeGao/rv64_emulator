@@ -644,9 +644,10 @@ const Instruction kInstructionTable[] = {
         .m_data = 0x0000501b,
         .m_name = "SRLIW",
         .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-            const auto&   f     = decode::ParseFormatI(inst_word);
-            const uint8_t shamt = decode::GetShamt(inst_word, true);
-            const int64_t val   = (int64_t)(int32_t)(cpu->GetGeneralPurposeRegVal(f.rs1) >> shamt);
+            const auto&    f     = decode::ParseFormatI(inst_word);
+            const uint32_t rs1   = (uint32_t)cpu->GetGeneralPurposeRegVal(f.rs1);
+            const uint8_t  shamt = decode::GetShamt(inst_word, true);
+            const int64_t  val   = (int64_t)(int32_t)(rs1 >> shamt);
             cpu->SetGeneralPurposeRegVal(f.rd, val);
             return kNoneTrap;
         },
@@ -706,8 +707,10 @@ const Instruction kInstructionTable[] = {
         .m_data = 0x0000503b,
         .m_name = "SRLW",
         .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-            const auto&   f   = decode::ParseFormatR(inst_word);
-            const int64_t val = (int64_t)((uint32_t)cpu->GetGeneralPurposeRegVal(f.rs1) >> (uint32_t)cpu->GetGeneralPurposeRegVal(f.rs2));
+            const auto&    f   = decode::ParseFormatR(inst_word);
+            const uint32_t rs1 = (uint32_t)cpu->GetGeneralPurposeRegVal(f.rs1);
+            const uint32_t rs2 = (uint32_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+            const int64_t  val = (int64_t)(int32_t)(rs1 >> rs2);
             cpu->SetGeneralPurposeRegVal(f.rd, val);
             return kNoneTrap;
         },
