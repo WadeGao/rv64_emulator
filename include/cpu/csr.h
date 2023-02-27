@@ -26,6 +26,11 @@ constexpr uint16_t kCsrMstatus = 0x300;
 constexpr uint16_t kCsrSstatus = 0x100;
 constexpr uint16_t kCsrUstatus = 0x000;
 
+// MStatus masks
+constexpr uint64_t kCsrMstatusMaskUXL     = 0x300000000;
+constexpr uint64_t kCsrMstatusMaskSXL     = 0xc00000000;
+constexpr uint64_t kCsrMstatusMaskSStatus = 0x80000003000de162;
+
 constexpr uint16_t kCsrMisa       = 0x301; // ISA and extensions
 constexpr uint16_t kCsrMedeleg    = 0x302; // Machine exception delegation register
 constexpr uint16_t kCsrMideleg    = 0x303; // Machine interrupt delegation register
@@ -73,6 +78,14 @@ constexpr uint16_t kCsrMsipMask = 0x008;
 constexpr uint16_t kCsrSeipMask = 0x200;
 constexpr uint16_t kCsrStipMask = 0x020;
 constexpr uint16_t kCsrSsipMask = 0x002;
+
+// mstatus各字段描述：https://blog.csdn.net/dai_xiangjun/article/details/123373456
+// SXL/UXL取值范围：https://www.mail-archive.com/qemu-devel@nongnu.org/msg845227.html
+enum class RiscvMXL : uint64_t {
+    kRv32  = 1,
+    kRv64  = 2,
+    kRv128 = 3,
+};
 
 class State {
 private:
