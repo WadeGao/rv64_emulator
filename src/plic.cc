@@ -1,167 +1,315 @@
 #include "plic.h"
+#include "cpu/cpu.h"
 #include "cpu/csr.h"
+#include "error_code.h"
+
+#include "fmt/core.h"
 
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <type_traits>
 
-namespace rv64_emulator::cpu::plic {
+namespace rv64_emulator::plic {
 
-void PLIC::Tick(bool virtio_ip, bool uart_ip, uint64_t& mip) {
-    m_clock = (m_clock + 1) % UINT64_MAX;
+template <typename T>
+static std::enable_if_t<(std::is_unsigned_v<T>), std::tuple<T, T>> GetQuoRem(const T id, const T group_bits) {
+    const T quotient = id / group_bits;
+    const T remain   = id % group_bits;
+    return { quotient, remain };
+}
 
-    // edge-triggered interrupt
-    if (m_virtio_ip_cache != virtio_ip) {
-        if (virtio_ip) {
-            SetInterruptPending((uint32_t)Irq::kVirtIO);
+static void AssertAddressAligned(const uint64_t addr, const uint64_t align_bytes) {
+    if (addr % align_bytes != 0) {
+#ifdef DEBUG
+        fmt::print("addr misalignde, addr[{}], now abort\n", addr);
+#endif
+        exit(static_cast<int>(errorcode::PlicErrorCode::kAddrMisAlign));
+    }
+}
+
+PLIC::PLIC(std::vector<CPU*> processors, bool is_s_mode, uint64_t device_num)
+    : m_processors(processors)
+    , m_contexts(processors.size() * (is_s_mode ? 2 : 1))
+    , m_device_num(device_num)
+    , m_device_num_word((device_num + kWordBits - 1) / kWordBits) {
+
+    const uint8_t context_per_hart = is_s_mode ? 2 : 1;
+
+    for (size_t i = 0; i < m_contexts.size(); i++) {
+        m_contexts[i].context_id        = i;
+        m_contexts[i].cpu               = processors[i / context_per_hart];
+        m_contexts[i].m_is_machine_mode = is_s_mode ? (i % context_per_hart == 0) : true;
+    }
+}
+
+bool PLIC::IsInterruptEnabled(const uint64_t context_id, const uint32_t irq) const {
+    const auto [index, offset] = GetQuoRem(irq, static_cast<decltype(irq)>(kWordBits));
+    return ((m_contexts[context_id].m_enabled[index] >> offset) & 1) == 1;
+}
+
+uint32_t PLIC::PriorityRead(const uint64_t addr) const {
+    const uint64_t index = (addr - kSourcePriorityBase) >> 2;
+    if (index > 0 && index < m_device_num) {
+        return m_priority[index];
+    }
+
+#ifdef DEBUG
+    fmt::print("read plic priority failed, addr[{}], index[{}], m_device_num[{}]. now abort\n", addr, index, m_device_num);
+#endif
+
+    exit(static_cast<int>(errorcode::PlicErrorCode::kPriorityReadFailure));
+    return 0;
+}
+
+void PLIC::PriorityWrite(const uint64_t addr, const uint32_t data) {
+    const uint64_t index = (addr - kSourcePriorityBase) >> 2;
+
+    if (index > 0 && index < m_device_num) {
+        m_priority[index] = data;
+    }
+
+#ifdef DEBUG
+    fmt::print("write plic priority failed, addr[{}], index[{}], m_device_num[{}], data[{}]. now abort\n", addr, index, m_device_num, data);
+#endif
+
+    exit(static_cast<int>(errorcode::PlicErrorCode::kPriorityWriteFailure));
+}
+
+uint32_t PLIC::ContextEnableRead(const uint64_t context_id, const uint64_t offset) const {
+    const uint64_t index = offset >> 2;
+
+    if (index < m_device_num_word) {
+        return m_contexts[context_id].m_enabled[index];
+    }
+
+#ifdef DEBUG
+    fmt::print(
+        "read context enable field failed, context_id[{}], offset[{}], m_device_num[{}]. now abort\n", context_id, offset, m_device_num);
+#endif
+
+    exit(static_cast<int>(errorcode::PlicErrorCode::kContextEnableReadFailure));
+    return 0;
+}
+
+void PLIC::ContextEnableWrite(const uint64_t context_id, const uint64_t offset, const uint32_t val) {
+    const uint64_t index = offset >> 2;
+
+    if (index >= m_device_num_word) {
+#ifdef DEBUG
+        fmt::print(
+            "context enable write failure,index greater than device num, context_id[{}], offset[{}]. now abort\n", context_id, offset);
+#endif
+        exit(static_cast<int>(errorcode::PlicErrorCode::kContextEnableWriteFailure));
+    }
+
+    PlicContext& c = m_contexts[context_id];
+
+    const uint32_t old_val = c.m_enabled[index];
+    const uint32_t new_val = index == 0 ? (val & ~(uint32_t)1) : val;
+    const uint32_t xor_val = new_val & old_val;
+
+    c.m_enabled[index] = new_val;
+
+    for (uint64_t i = 0; i < kWordBits; i++) {
+        const uint64_t id          = index * kWordBits + i;
+        const uint32_t mask        = 1 << i;
+        uint32_t       id_priority = m_priority[id];
+
+        // 当前中断没有改变 enable 位
+        if (!(xor_val & mask)) {
+            continue;
         }
-        m_virtio_ip_cache = virtio_ip;
-    }
 
-    if (uart_ip) {
-        SetInterruptPending((uint32_t)Irq::kUART);
-    }
-    if (m_needs_update_irq) {
-        m_needs_update_irq = false;
-        UpdateIrq(mip);
-    }
-}
-
-bool PLIC::IsInterruptEnabled(const uint8_t context, const uint32_t irq) const {
-    const uint32_t index  = irq / 32;
-    const uint32_t offset = irq % 32;
-    return ((m_enabled[context * 32 + index] >> offset) & 1) == 1;
-}
-
-void PLIC::UpdateClaim(const uint32_t irq) {
-    if (IsInterruptEnabled(1, irq) || irq == 0) {
-        m_claim[1] = irq;
+        // 此中断没有被 enable
+        if (!(new_val & mask)) {
+            c.m_pending[index] &= ~mask;
+            c.m_claim[index] &= ~mask;
+            c.m_priority[id] = 0;
+        } else {
+            // TODO: 需要设置 level
+        }
     }
 }
 
-void PLIC::SetInterruptPending(const uint32_t irq) {
-    const uint32_t index  = irq / 32;
-    const uint32_t offset = irq % 32;
-    m_pending[index] |= (1 << offset);
+uint64_t PLIC::ContextRead(const uint64_t context_id, const uint64_t offset) {
+    switch (offset) {
+        case 0:
+            return m_contexts[context_id].m_threshold;
+        case 4:
+            return ContextClaim(context_id);
+        default:
+            break;
+    }
 
-    // TODO: 使用哪个版本
-    m_needs_update_irq = true;
-    UpdateClaim(irq);
+#ifdef DEBUG
+    fmt::print("read context failed, context_id[{}], offset[{}]. now abort\n", context_id, offset);
+#endif
+
+    exit(static_cast<int>(errorcode::PlicErrorCode::kContextReadFailure));
+
+    return 0;
 }
 
-void PLIC::ClearInterruptPending(const uint32_t irq) {
-    const uint32_t index  = irq / 32;
-    const uint32_t offset = irq % 32;
-    m_pending[index] &= ~(1 << offset);
+void PLIC::ContextWrite(const uint64_t context_id, const uint64_t offset, const uint32_t val) {
+    PlicContext& c = m_contexts[context_id];
 
-    // TODO: 使用哪个版本
-    m_needs_update_irq = true;
-    UpdateClaim(0);
+    bool write_succ = true;
+    bool update     = false;
+    switch (offset) {
+        case 0:
+            if (val <= kMaxPriority) {
+                c.m_threshold = val;
+                update        = true;
+            } else {
+                write_succ = false;
+            }
+            break;
+        case 4: {
+            // now val is device index
+            const auto [word, offset] = GetQuoRem(val, static_cast<decltype(val)>(kWordBits));
+            const uint32_t mask       = (1 << offset);
+            // 设备号有效，且本设备中断开启
+            if ((val < m_device_num) && (c.m_enabled[word] & mask)) {
+                c.m_claim[word] &= ~mask;
+                update = true;
+            }
+        } break;
+        default:
+            write_succ = false;
+            break;
+    }
+
+    if (!write_succ) {
+#ifdef DEBUG
+        fmt::print("write context failed, context_id[{}], offset[{}] val[{}]. now abort\n", context_id, offset, val);
+#endif
+        exit(static_cast<int>(errorcode::PlicErrorCode::kContextWriteFailure));
+    }
+
+    if (update) {
+        ContextUpdate(context_id);
+    }
 }
 
-void PLIC::UpdateIrq(uint64_t& mip) {
-    bool virtio_ip = (m_pending[(uint32_t)Irq::kVirtIO / 8] >> ((uint32_t)Irq::kVirtIO % 8)) & 1;
-    bool uart_ip   = (m_pending[(uint32_t)Irq::kUART / 8] >> ((uint32_t)Irq::kUART % 8)) & 1;
+// 选出本 context 中没被 claim 的且被挂起的优先级最高的中断号
+uint64_t PLIC::SelectBestPending(const uint64_t context_id) const {
+    uint32_t best_pending_priority = 0;
+    uint64_t best_pending_id       = 0;
 
-    bool virtio_enabled = (m_enabled[(uint32_t)Irq::kVirtIO / 8] >> ((uint32_t)Irq::kVirtIO % 8)) & 1;
-    bool uart_enabled   = (m_enabled[(uint32_t)Irq::kUART / 8] >> ((uint32_t)Irq::kUART % 8)) & 1;
+    const auto& c = m_contexts[context_id];
 
-    const uint32_t virtio_priority = m_priority[(uint32_t)Irq::kVirtIO];
-    const uint32_t uart_priority   = m_priority[(uint32_t)Irq::kUART];
+    for (uint64_t i = 0; i < m_device_num_word; i++) {
+        // 本组 32 个中断号全部没有被 pending，跳过
+        if (!c.m_pending[i]) {
+            continue;
+        }
 
-    uint32_t irq      = 0;
-    uint32_t priority = 0;
+        for (uint8_t j = 0; j < kWordBits; j++) {
+            const uint64_t id = i * kWordBits + j;
+            // 当前 id 超过了最大设备数 || 本 id 没有被 pending || 本 id 已经被 claim
+            if ((id >= m_device_num) || !(c.m_pending[i] & (1 << j)) || (c.m_claim[i] & (1 << j))) {
+                continue;
+            }
 
-    // TODO: 这里有针对 virtio 和 uart 中断设置优先级吗
-    if (virtio_ip && virtio_enabled && virtio_priority > priority && virtio_priority > m_threshold[1]) {
-        irq      = (uint32_t)Irq::kVirtIO;
-        priority = virtio_priority;
+            // 当前 id 的优先级更大
+            if (!best_pending_id || best_pending_priority < c.m_priority[id]) {
+                best_pending_id       = id;
+                best_pending_priority = c.m_priority[id];
+            }
+        }
     }
 
-    if (uart_ip && uart_enabled && uart_priority > priority && uart_priority > m_threshold[1]) {
-        irq      = (uint32_t)Irq::kVirtIO;
-        priority = virtio_priority;
+    return best_pending_id;
+}
+
+uint64_t PLIC::ContextClaim(const uint64_t context_id) {
+    const uint64_t best_id            = SelectBestPending(context_id);
+    const auto [best_id_word, offset] = GetQuoRem(best_id, kWordBits);
+    const uint32_t mask               = (1 << offset);
+
+    if (best_id) {
+        m_contexts[context_id].m_claim[best_id_word] |= mask;
+        m_contexts[context_id].m_pending[best_id_word] &= ~mask;
     }
 
-    m_irq = irq;
-    if (m_irq != 0) {
-        mip |= csr::kCsrSeipMask;
-    }
+    ContextUpdate(context_id);
+    return best_id;
+}
+
+void PLIC::ContextUpdate(const uint64_t context_id) {
+    const uint64_t best_id = SelectBestPending(context_id);
+    const uint64_t mask    = m_contexts[context_id].m_is_machine_mode ? cpu::csr::kCsrMeipMask : cpu::csr::kCsrSeipMask;
+    const uint64_t val     = m_contexts[context_id].cpu->m_state.Read(cpu::csr::kCsrMip);
+    // 中断号为 0，始终清除 eip 位
+    // 中断号非 0，设置 eip 位
+    const uint64_t new_val = (val & ~mask) | (best_id ? mask : 0);
+    m_contexts[context_id].cpu->m_state.Write(cpu::csr::kCsrMip, new_val);
 }
 
 // https://github.com/riscv/riscv-plic-spec/blob/master/riscv-plic.adoc#memory-map
 uint64_t PLIC::Load(const uint64_t addr) {
-    if (addr >= kSourcePriorityBase && addr <= kSourcePriorityEnd) {
-        assert((addr - kSourcePriorityBase) % 4 == 0);
-        const uint32_t index = (addr - kSourcePriorityBase) / 4;
-        return m_priority[index];
+    AssertAddressAligned(addr, 4);
+
+    if (kSourcePriorityBase <= addr && addr < kEnableBase) {
+        return PriorityRead(addr);
     }
 
-    if (addr >= kPendingBase && addr <= kPendingEnd) {
-        assert((addr - kPendingBase) % 4 == 0);
-        const uint32_t index = (addr - kPendingBase) / 4;
-        return m_pending[index];
-    }
-
-    if (addr >= kEnableBase && addr <= kEnableEnd) {
-        assert((addr - kEnableBase) % 4 == 0);
-        const uint32_t index = (addr - kEnableBase) / 4;
-        return m_enabled[index];
-    }
-
-    if (addr >= kThresholdAndClaimBase && addr <= kThresholdAndClaimEnd) {
-        const uint8_t  context = (addr - kThresholdAndClaimBase) / 0x1000;
-        const uint64_t offset  = (addr - kThresholdAndClaimBase) % 0x1000;
-        switch (offset) {
-            case 0:
-                return m_threshold[context];
-            case 4:
-                return m_claim[context];
-            default:
-                break;
+    if (kEnableBase <= addr && addr < kContextBase) {
+        const auto [context_id, offset] = GetQuoRem((addr - kEnableBase), kEnableBytesPerHart);
+        if (context_id < m_contexts.size()) {
+            return ContextEnableRead(context_id, offset);
         }
     }
 
-    assert(false);
+    if (kContextBase <= addr && addr <= kContextEnd) {
+        const auto [context_id, offset] = GetQuoRem((addr - kContextBase), kContextBytesPerHart);
+        if (context_id < m_contexts.size()) {
+            return ContextRead(context_id, offset);
+        }
+    }
+
+#ifdef DEBUG
+    fmt::print("load plic failed, addr[{}]. now abort\n", addr);
+#endif
+
+    exit(static_cast<int>(errorcode::PlicErrorCode::kLoadFailure));
+
     return 0;
 }
 
-void PLIC::Store(const uint64_t addr, const uint32_t data) {
-    if (addr >= kSourcePriorityBase && addr <= kSourcePriorityEnd) {
-        assert((addr - kSourcePriorityBase) % 4 == 0);
-        const uint32_t index = (addr - kSourcePriorityBase) / 4;
-        m_priority[index]    = data;
+void PLIC::Store(const uint64_t addr, const uint32_t val) {
+    AssertAddressAligned(addr, 4);
+
+    if (kSourcePriorityBase <= addr && addr < kEnableBase) {
+        PriorityWrite(addr, val);
         return;
     }
 
-    if (addr >= kPendingBase && addr <= kPendingEnd) {
-        assert((addr - kPendingBase) % 4 == 0);
-        const uint32_t index = (addr - kPendingBase) / 4;
-        m_pending[index]     = data;
-    }
-
-    if (addr >= kEnableBase && addr <= kEnableEnd) {
-        assert((addr - kEnableBase) % 4 == 0);
-        const uint32_t index = (addr - kEnableBase) / 4;
-        m_enabled[index]     = data;
-        return;
-    }
-
-    if (addr >= kThresholdAndClaimBase && addr <= kThresholdAndClaimEnd) {
-        const uint8_t  context = (addr - kThresholdAndClaimBase) / 0x1000;
-        const uint64_t offset  = (addr - kThresholdAndClaimBase) % 0x1000;
-        switch (offset) {
-            case 0:
-                m_threshold[context] = data;
-                break;
-            case 4:
-                ClearInterruptPending(data);
-                break;
-            default:
-                break;
+    if (kEnableBase <= addr && addr < kContextBase) {
+        const auto [context_id, offset] = GetQuoRem(addr - kEnableBase, kEnableBytesPerHart);
+        if (context_id < m_contexts.size()) {
+            ContextEnableWrite(context_id, offset, val);
+            return;
         }
     }
+
+    if (kContextBase <= addr && addr <= kContextEnd) {
+        const auto [context_id, offset] = GetQuoRem((addr - kContextBase), kContextBytesPerHart);
+        if (context_id < m_contexts.size()) {
+            ContextWrite(context_id, offset, val);
+            return;
+        }
+    }
+
+#ifdef DEBUG
+    fmt::print("store plic failed, addr[{}] val[{}]. now abort\n", addr, val);
+#endif
+
+    exit(static_cast<int>(errorcode::PlicErrorCode::kStoreFailure));
 
     assert(false);
 }
 
-} // namespace rv64_emulator::cpu::plic
+} // namespace rv64_emulator::plic

@@ -7,3 +7,4 @@ test/dump/
 *.bin
 *.gcno
 *.gcda
+*.dump

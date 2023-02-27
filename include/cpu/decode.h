@@ -7,8 +7,6 @@
 
 namespace rv64_emulator::cpu::decode {
 
-constexpr uint64_t kDecodeCacheEntryNum = 4096;
-
 typedef struct FormatR {
     uint8_t rd;
     uint8_t rs1;

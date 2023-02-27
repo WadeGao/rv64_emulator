@@ -63,7 +63,7 @@ CPU::CPU(PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> 
     , m_instruction_count(0)
     , m_privilege_mode(privilege_mode)
     , m_bus(std::move(bus))
-    , m_decode_cache(decode::kDecodeCacheEntryNum) {
+    , m_decode_cache(kDecodeCacheEntryNum) {
     static_assert(sizeof(float) == 4, "float is not 4 bytes, can't assure the bit width of floating point reg");
     m_reg[0] = 0;
     m_reg[2] = kDramBaseAddr + kDramSize;

@@ -1,52 +1,80 @@
 #pragma once
 
 #include "conf.h"
+#include "cpu/cpu.h"
+
 #include <cstdint>
+#include <tuple>
+#include <vector>
 
-namespace rv64_emulator::cpu::plic {
+namespace rv64_emulator {
 
-enum class Irq {
-    kVirtIO = 1,
-    kUART   = 10,
-};
+namespace cpu {
+class CPU;
+}
+using cpu::CPU;
+
+namespace plic {
 
 constexpr uint64_t kSourcePriorityBase = kPlicBase;
 constexpr uint64_t kSourcePriorityEnd  = kSourcePriorityBase + 0xfff;
 
 constexpr uint64_t kPendingBase = kPlicBase + 0x1000;
-constexpr uint64_t kPendingEnd  = kPlicBase + 0x107f;
 
-// two context
 constexpr uint64_t kEnableBase = kPlicBase + 0x2000;
-constexpr uint64_t kEnableEnd  = kPlicBase + 0x20ff;
 
-// two context
-constexpr uint64_t kThresholdAndClaimBase = kPlicBase + 0x200000;
-constexpr uint64_t kThresholdAndClaimEnd  = kPlicBase + 0x201007;
+constexpr uint64_t kContextBase = kPlicBase + 0x200000;
+constexpr uint64_t kContextEnd  = kPlicBase + 0x3ffffff;
+
+constexpr uint64_t kEnableBytesPerHart  = 0x80;
+constexpr uint64_t kContextBytesPerHart = 0x1000;
+
+constexpr uint32_t kMaxPriority = UINT32_MAX;
+constexpr uint64_t kWordBits    = sizeof(uint32_t) * 8;
 
 class PLIC {
 private:
-    uint64_t m_clock = 0;
-    uint32_t m_irq;
-    uint32_t m_threshold[2]   = { 0 };
-    uint32_t m_claim[2]       = { 0 };
-    uint32_t m_priority[1024] = { 0 };
-    uint32_t m_pending[32]    = { 0 };
-    uint32_t m_enabled[64]    = { 0 };
-    bool     m_needs_update_irq;
-    bool     m_virtio_ip_cache;
+    typedef struct PlicContext {
+        bool     m_is_machine_mode;
+        uint64_t context_id;
+        uint32_t m_threshold;
+        CPU*     cpu;
 
-    bool IsInterruptEnabled(const uint8_t context, const uint32_t irq) const;
+        uint32_t m_enabled[kPlicMaxDevices / kWordBits] = { 0 };
+        uint32_t m_pending[kPlicMaxDevices / kWordBits] = { 0 };
+        uint32_t m_claim[kPlicMaxDevices / kWordBits]   = { 0 };
+
+        uint32_t m_priority[kPlicMaxDevices] = { 0 };
+    } PlicContext;
+
+    std::vector<CPU*>        m_processors;
+    std::vector<PlicContext> m_contexts;
+    uint64_t                 m_device_num;
+    uint64_t                 m_device_num_word;
+    uint32_t                 m_priority[kPlicMaxDevices] = { 0 };
+
+    bool IsInterruptEnabled(const uint64_t context, const uint32_t irq) const;
     void UpdateClaim(const uint32_t irq);
-    void UpdateIrq(uint64_t& mip);
-    void SetInterruptPending(const uint32_t irq);
-    void ClearInterruptPending(const uint32_t irq);
+
+    uint32_t PriorityRead(const uint64_t addr) const;
+    void     PriorityWrite(const uint64_t addr, const uint32_t data);
+
+    uint64_t ContextRead(const uint64_t context_id, const uint64_t offset);
+    void     ContextWrite(const uint64_t context_id, const uint64_t offset, const uint32_t val);
+
+    uint32_t ContextEnableRead(const uint64_t context_id, const uint64_t offset) const;
+    void     ContextEnableWrite(const uint64_t context_id, const uint64_t offset, const uint32_t val);
+
+    uint64_t ContextClaim(const uint64_t context_id);
+    void     ContextUpdate(const uint64_t context_id);
+
+    uint64_t SelectBestPending(const uint64_t context_id) const;
 
 public:
-    PLIC();
-    void     Tick(bool virtio_ip, bool uart_ip, uint64_t& mip);
+    PLIC(std::vector<CPU*> processors, bool is_s_mode, uint64_t device_num);
     uint64_t Load(const uint64_t addr);
     void     Store(const uint64_t addr, const uint32_t data);
 };
 
-} // namespace rv64_emulator::cpu::plic
+} // namespace plic
+} // namespace rv64_emulator
