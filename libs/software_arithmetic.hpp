@@ -31,4 +31,4 @@ MulUnsignedHi(const T a, const T b) {
     return res;
 }
 
-} // namespace rv64_emulator::libs
+} // namespace rv64_emulator::libs::SoftwareArithmetic

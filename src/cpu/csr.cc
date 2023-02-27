@@ -12,13 +12,18 @@ constexpr uint64_t kIsaDesc = (static_cast<uint64_t>(2) << 62) | // MXL[1:0]=2 (
                               (1 << 2) |                         // Extensions[2] (Compressed extension)
                               1;
 
-constexpr uint64_t kCsrSStatusMask = 0x80000003000de162;
-
 namespace rv64_emulator::cpu::csr {
+
+constexpr uint64_t kMstatusInitVal =
+    ((((uint64_t)(RiscvMXL::kRv64) * ((kCsrMstatusMaskSXL) & ~((kCsrMstatusMaskSXL) << 1))) & (uint64_t)(kCsrMstatusMaskSXL))) |
+    ((((uint64_t)(RiscvMXL::kRv64) * ((kCsrMstatusMaskUXL) & ~((kCsrMstatusMaskUXL) << 1))) & (uint64_t)(kCsrMstatusMaskUXL)));
+
+constexpr uint64_t kMstatusWriteMask = ((~(kCsrMstatusMaskSXL | kCsrMstatusMaskUXL)) | kMstatusInitVal);
 
 State::State()
     : m_csr(kCsrCapacity, 0) {
-    m_csr[kCsrMisa] = kIsaDesc;
+    m_csr[kCsrMisa]    = kIsaDesc;
+    m_csr[kCsrMstatus] = kMstatusInitVal;
 }
 
 uint64_t State::Read(const uint64_t addr) const {
@@ -26,13 +31,16 @@ uint64_t State::Read(const uint64_t addr) const {
 
     switch (addr) {
         case kCsrSstatus:
-            res = m_csr[kCsrMstatus] & kCsrSStatusMask;
+            res = Read(kCsrMstatus) & kCsrMstatusMaskSStatus;
             break;
         case kCsrSie:
             res = m_csr[kCsrMie] & m_csr[kCsrMideleg];
             break;
         case kCsrSip:
             res = m_csr[kCsrMip] & m_csr[kCsrMideleg];
+            break;
+        case kCsrMstatus:
+            res = (m_csr[kCsrMstatus] & (~(kCsrMstatusMaskSXL | kCsrMstatusMaskUXL))) | kMstatusInitVal;
             break;
         default:
             res = m_csr[addr];
@@ -43,18 +51,23 @@ uint64_t State::Read(const uint64_t addr) const {
 }
 
 void State::Write(const uint64_t addr, const uint64_t val) {
+
     switch (addr) {
-        case kCsrSstatus:
-            m_csr[csr::kCsrMstatus] &= (~kCsrSStatusMask);
-            m_csr[csr::kCsrMstatus] |= (val & kCsrSStatusMask);
-            break;
+        case kCsrSstatus: {
+            const uint64_t kOriginMstatus = Read(kCsrMstatus);
+
+            m_csr[kCsrMstatus] = (kOriginMstatus & (~kCsrMstatusMaskSStatus)) | (val & kCsrMstatusMaskSStatus);
+        } break;
         case kCsrSie:
-            m_csr[csr::kCsrMie] &= (~m_csr[kCsrMideleg]);
-            m_csr[csr::kCsrMie] |= (val & m_csr[kCsrMideleg]);
+            m_csr[kCsrMie] &= (~m_csr[kCsrMideleg]);
+            m_csr[kCsrMie] |= (val & m_csr[kCsrMideleg]);
             break;
         case kCsrSip:
-            m_csr[csr::kCsrMip] &= (~m_csr[kCsrMideleg]);
-            m_csr[csr::kCsrMip] |= (val & m_csr[kCsrMideleg]);
+            m_csr[kCsrMip] &= (~m_csr[kCsrMideleg]);
+            m_csr[kCsrMip] |= (val & m_csr[kCsrMideleg]);
+            break;
+        case kCsrMstatus:
+            m_csr[kCsrMstatus] = val & kMstatusWriteMask;
             break;
         default:
             m_csr[addr] = val;
