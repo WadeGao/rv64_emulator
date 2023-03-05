@@ -532,7 +532,10 @@ const Instruction kInstructionTable[] = {
         .m_name = "EBREAK",
         .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
             // TODO: implement
-            return kNoneTrap;
+            return {
+                .m_trap_type = trap::TrapType::kBreakpoint,
+                .m_val       = cpu->GetPC(),
+            };
         },
     },
 
