@@ -121,6 +121,8 @@ public:
 
     bool PhysicalAddressLoad(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) const;
     bool PhysicalAddressStore(const uint64_t addr, const uint64_t bytes, const uint8_t* buffer);
+
+    void FlushTlb(const uint64_t vaddr, const uint64_t asid);
 };
 
 class Mmu {
@@ -131,6 +133,7 @@ private:
 public:
     Mmu(std::unique_ptr<Sv39> sv39);
     void SetProcessor(CPU* cpu);
+    void FlushTlb(const uint64_t vaddr, const uint64_t asid);
     Trap VirtualFetch(const uint64_t addr, const uint64_t bytes, uint8_t* buffer);
     Trap VirtualAddressLoad(const uint64_t addr, const uint64_t bytes, uint8_t* buffer);
     Trap VirtualAddressStore(const uint64_t addr, const uint64_t bytes, const uint8_t* buffer);

@@ -120,13 +120,13 @@ public:
         m_wfi = wfi;
     }
 
+    void FlushTlb(const uint64_t vaddr, const uint64_t asid);
+
     void Disassemble(const uint64_t pc, const uint32_t word, const int64_t instruction_table_index) const;
     void DumpRegisters() const;
 
     ~CPU();
 };
-
-bool CheckPcAlign(const uint64_t pc, const uint64_t isa);
 
 } // namespace cpu
 } // namespace rv64_emulator

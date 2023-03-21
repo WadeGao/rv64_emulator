@@ -12,36 +12,48 @@
 
 #include <cstdlib>
 
-#define CHECK_MISALIGN_INSTRUCTION(pc, proc)                                           \
-    const bool kNewPcAlign = cpu::CheckPcAlign(pc, proc->m_state.Read(csr::kCsrMisa)); \
-    if (!kNewPcAlign) {                                                                \
-        return {                                                                       \
-            .m_trap_type = trap::TrapType::kInstructionAddressMisaligned,              \
-            .m_val       = pc,                                                         \
-        };                                                                             \
+static bool CheckPcAlign(const uint64_t pc, const uint64_t isa) {
+    using rv64_emulator::cpu::csr::MisaDesc;
+    const MisaDesc* kMisaDesc   = reinterpret_cast<const MisaDesc*>(&isa);
+    const uint64_t  kAlignBytes = kMisaDesc->C ? 2 : 4;
+    return (pc & (kAlignBytes - 1)) == 0;
+}
+
+#define CHECK_MISALIGN_INSTRUCTION(pc, proc)                              \
+    const uint64_t kMisaVal    = (proc)->m_state.Read(csr::kCsrMisa);     \
+    const bool     kNewPcAlign = CheckPcAlign((pc), kMisaVal);            \
+    if (!kNewPcAlign) {                                                   \
+        return {                                                          \
+            .m_trap_type = trap::TrapType::kInstructionAddressMisaligned, \
+            .m_val       = (pc),                                          \
+        };                                                                \
     }
 
-#define CHECK_CSR_ACCESS_PRIVILEGE(csr_num, write, proc)                                                \
-    const bool kIsPrivileged = cpu::PrivilegeMode(((csr_num) >> 8) & 0b11) <= proc->GetPrivilegeMode(); \
-    /* CsrAddress[11:10]表示是否可写。取指为11时表示只读，否则为可读写 */         \
-    const bool kReadOnly = ((csr_num) >> 10) == 0b11;                                                   \
-    if (!kIsPrivileged || (write && kReadOnly)) {                                                       \
-        return {                                                                                        \
-            .m_trap_type = trap::TrapType::kIllegalInstruction,                                         \
-            .m_val       = proc->GetPC() - 4,                                                           \
-        };                                                                                              \
+#define CHECK_CSR_ACCESS_PRIVILEGE(csr_num, write, proc)                             \
+    bool is_privileged = false;                                                      \
+    if (cpu::PrivilegeMode(((csr_num) >> 8) & 0b11) <= (proc)->GetPrivilegeMode()) { \
+        is_privileged = true;                                                        \
+    }                                                                                \
+    const bool kReadOnly = ((csr_num) >> 10) == 0b11;                                \
+    if (!is_privileged || ((write) && kReadOnly)) {                                  \
+        return {                                                                     \
+            .m_trap_type = trap::TrapType::kIllegalInstruction,                      \
+            .m_val       = (proc)->GetPC() - 4,                                      \
+        };                                                                           \
     }
 
-#define LOAD_FROM_VIRTUAL_MEMORY(type, data)                                                       \
-    const trap::Trap kLoadTrap = cpu->Load(addr, sizeof(type), reinterpret_cast<uint8_t*>(&data)); \
-    if (kLoadTrap.m_trap_type != trap::TrapType::kNone) {                                          \
-        return kLoadTrap;                                                                          \
+#define LOAD_FROM_VIRTUAL_MEMORY(type, data)                          \
+    uint8_t*         ptr       = reinterpret_cast<uint8_t*>(&(data)); \
+    const trap::Trap kLoadTrap = cpu->Load(addr, sizeof(type), ptr);  \
+    if (kLoadTrap.m_trap_type != trap::TrapType::kNone) {             \
+        return kLoadTrap;                                             \
     }
 
-#define STORE_FROM_VIRTUAL_MEMORY(type, data)                                                              \
-    const trap::Trap kStoreTrap = cpu->Store(addr, sizeof(type), reinterpret_cast<const uint8_t*>(&data)); \
-    if (kStoreTrap.m_trap_type != trap::TrapType::kNone) {                                                 \
-        return kStoreTrap;                                                                                 \
+#define STORE_FROM_VIRTUAL_MEMORY(type, data)                                \
+    const uint8_t*   kPtr       = reinterpret_cast<const uint8_t*>(&(data)); \
+    const trap::Trap kStoreTrap = cpu->Store(addr, sizeof(type), kPtr);      \
+    if (kStoreTrap.m_trap_type != trap::TrapType::kNone) {                   \
+        return kStoreTrap;                                                   \
     }
 
 namespace rv64_emulator::cpu {
@@ -1231,6 +1243,7 @@ const Instruction kInstructionTable[] = {
         },
     },
 
+    /*********** rv_s instructions ***********/
     {
         .m_mask = 0xffffffff,
         .m_data = 0x10200073,
@@ -1265,6 +1278,18 @@ const Instruction kInstructionTable[] = {
         },
     },
 
+    {
+        .m_mask = 0xfe007fff,
+        .m_data = 0x12000073,
+        .m_name = "SFENCE.VMA",
+        .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
+            const auto& f = decode::ParseFormatR(inst_word);
+            const int64_t kVirtAddr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1);
+            const int64_t kAsid = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+            cpu->FlushTlb(kVirtAddr, kAsid & 0xffff);
+            return trap::kNoneTrap;
+        },
+    },
 };
 
 } // namespace instruction

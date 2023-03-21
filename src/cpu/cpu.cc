@@ -438,6 +438,10 @@ void CPU::Tick() {
     m_state.Write(csr::kCsrMinstret, ++m_instruction_count);
 }
 
+void CPU::FlushTlb(const uint64_t vaddr, const uint64_t asid) {
+    m_mmu->FlushTlb(vaddr, asid);
+}
+
 CPU::~CPU() {
 #ifdef DEBUG
     fmt::print("destroy a cpu\n");
@@ -471,12 +475,6 @@ void CPU::DumpRegisters() const {
         }
         fmt::print("\n");
     }
-}
-
-bool CheckPcAlign(const uint64_t pc, const uint64_t isa) {
-    const csr::MisaDesc* kMisaDesc   = reinterpret_cast<const csr::MisaDesc*>(&isa);
-    const uint64_t       kAlignBytes = kMisaDesc->C ? 2 : 4;
-    return (pc % kAlignBytes) == 0;
 }
 
 } // namespace rv64_emulator::cpu

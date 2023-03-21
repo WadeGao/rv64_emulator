@@ -29,21 +29,31 @@ uint64_t State::Read(const uint64_t addr) const {
     uint64_t res = 0;
 
     switch (addr) {
-        case kCsrSstatus:
-            res = Read(kCsrMstatus) & kCsrMstatusMaskSStatus;
-            break;
+        case kCsrSstatus: {
+            auto*       ss_desc = reinterpret_cast<SstatusDesc*>(&res);
+            const auto* ms_desc = reinterpret_cast<const MstatusDesc*>(&m_csr[kCsrMstatus]);
+
+            ss_desc->sie  = ms_desc->sie;
+            ss_desc->spie = ms_desc->spie;
+            ss_desc->ube  = ms_desc->ube;
+            ss_desc->spp  = ms_desc->spp;
+            ss_desc->vs   = ms_desc->vs;
+            ss_desc->fs   = ms_desc->fs;
+            ss_desc->xs   = ms_desc->xs;
+            ss_desc->sum  = ms_desc->sum;
+            ss_desc->mxr  = ms_desc->mxr;
+            ss_desc->uxl  = ms_desc->uxl;
+            ss_desc->sd   = ms_desc->sd;
+        } break;
         case kCsrSie:
             res = m_csr[kCsrMie] & m_csr[kCsrMideleg];
             break;
         case kCsrSip:
             res = m_csr[kCsrMip] & m_csr[kCsrMideleg];
             break;
-        case kCsrMstatus: {
-            MstatusDesc desc = *reinterpret_cast<const MstatusDesc*>(&m_csr[kCsrMstatus]);
-            desc.sxl         = static_cast<uint64_t>(RiscvMXL::kRv64);
-            desc.uxl         = static_cast<uint64_t>(RiscvMXL::kRv64);
-            res              = *reinterpret_cast<const uint64_t*>(&desc);
-        } break;
+        case kCsrMstatus:
+            res = m_csr[kCsrMstatus];
+            break;
         case kCsrTselect:
         case kCsrTdata1:
             res = 0;
@@ -59,8 +69,14 @@ uint64_t State::Read(const uint64_t addr) const {
 void State::Write(const uint64_t addr, const uint64_t val) {
     switch (addr) {
         case kCsrSstatus: {
-            const uint64_t kOriginMstatus = Read(kCsrMstatus);
-            m_csr[kCsrMstatus]            = (kOriginMstatus & (~kCsrMstatusMaskSStatus)) | (val & kCsrMstatusMaskSStatus);
+            const auto* val_desc = reinterpret_cast<const SstatusDesc*>(&val);
+            auto*       ms_desc  = reinterpret_cast<SstatusDesc*>(&m_csr[kCsrMstatus]);
+
+            ms_desc->sie  = val_desc->sie;
+            ms_desc->spie = val_desc->spie;
+            ms_desc->spp  = val_desc->spp;
+            ms_desc->sum  = val_desc->sum;
+            ms_desc->mxr  = val_desc->mxr;
         } break;
         case kCsrSie:
             m_csr[kCsrMie] &= (~m_csr[kCsrMideleg]);
@@ -71,10 +87,21 @@ void State::Write(const uint64_t addr, const uint64_t val) {
             m_csr[kCsrMip] |= (val & m_csr[kCsrMideleg]);
             break;
         case kCsrMstatus: {
-            MstatusDesc desc   = *reinterpret_cast<const MstatusDesc*>(&val);
-            desc.sxl           = static_cast<uint64_t>(RiscvMXL::kRv64);
-            desc.uxl           = static_cast<uint64_t>(RiscvMXL::kRv64);
-            m_csr[kCsrMstatus] = *reinterpret_cast<const uint64_t*>(&desc);
+            const auto* val_desc = reinterpret_cast<const MstatusDesc*>(&val);
+            auto*       ms_desc  = reinterpret_cast<MstatusDesc*>(&m_csr[kCsrMstatus]);
+
+            ms_desc->sie  = val_desc->sie;
+            ms_desc->mie  = val_desc->mie;
+            ms_desc->spie = val_desc->spie;
+            ms_desc->mpie = val_desc->mpie;
+            ms_desc->spp  = val_desc->spp;
+            ms_desc->mpp  = val_desc->mpp;
+            ms_desc->mprv = val_desc->mprv;
+            ms_desc->sum  = val_desc->sum; // always true
+            ms_desc->mxr  = val_desc->mxr; // always true
+            ms_desc->tvm  = val_desc->tvm;
+            ms_desc->tw   = val_desc->tw; // not supported but wfi impl as nop
+            ms_desc->tsr  = val_desc->tsr;
         } break;
         case kCsrMisa:
         case kCsrTselect:

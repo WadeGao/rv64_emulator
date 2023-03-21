@@ -16,26 +16,28 @@ namespace rv64_emulator::mmu {
 
 using cpu::PrivilegeMode;
 
-#define CHECK_RANGE_PAGE_ALIGN(addr, bytes, raised_trap_type)                \
-    const bool kPageMisalign = ((addr >> 12) != ((addr + bytes - 1) >> 12)); \
-    if (kPageMisalign) {                                                     \
-        return {                                                             \
-            .m_trap_type = raised_trap_type,                                 \
-            .m_val       = addr,                                             \
-        };                                                                   \
+#define CHECK_RANGE_PAGE_ALIGN(addr, bytes, raised_trap_type)                    \
+    const bool kPageMisalign = (((addr) >> 12) != (((addr) + (bytes)-1) >> 12)); \
+    if (kPageMisalign) {                                                         \
+        return {                                                                 \
+            .m_trap_type = (raised_trap_type),                                   \
+            .m_val       = (addr),                                               \
+        };                                                                       \
     }
 
-#define CHECK_VIRTUAL_MEMORY_ACCESS_PRIVILEGE(cur_mode, mstatus_desc, tlb_entry, vaddr, step)                                 \
-    const PrivilegeMode kRealMode =                                                                                           \
-        (mstatus_desc.mprv && cur_mode == PrivilegeMode::kMachine) ? static_cast<PrivilegeMode>(mstatus_desc.mpp) : cur_mode; \
-    if (kRealMode == PrivilegeMode::kUser && !tlb_entry->U) {                                                                 \
-        return {                                                                                                              \
-            .m_trap_type = cpu::trap::TrapType::k##step##PageFault,                                                           \
-            .m_val       = vaddr,                                                                                             \
-        };                                                                                                                    \
-    }                                                                                                                         \
-    if (!mstatus_desc.sum && kRealMode == PrivilegeMode::kSupervisor && tlb_entry->U) {                                       \
-        return k##step##AccessTrap;                                                                                           \
+#define CHECK_VIRTUAL_MEMORY_ACCESS_PRIVILEGE(cur_mode, mstatus_desc, tlb_entry, vaddr, step) \
+    PrivilegeMode real_mode = cur_mode;                                                       \
+    if ((mstatus_desc).mprv && (cur_mode) == PrivilegeMode::kMachine) {                       \
+        real_mode = static_cast<PrivilegeMode>((mstatus_desc).mpp);                           \
+    }                                                                                         \
+    if (real_mode == PrivilegeMode::kUser && !(tlb_entry)->U) {                               \
+        return {                                                                              \
+            .m_trap_type = cpu::trap::TrapType::k##step##PageFault,                           \
+            .m_val       = (vaddr),                                                           \
+        };                                                                                    \
+    }                                                                                         \
+    if (!(mstatus_desc).sum && real_mode == PrivilegeMode::kSupervisor && (tlb_entry)->U) {   \
+        return k##step##AccessTrap;                                                           \
     }
 
 static uint64_t MapVirtualAddress(const Sv39TlbEntry* entry, const uint64_t virtual_addr) {
@@ -45,11 +47,24 @@ static uint64_t MapVirtualAddress(const Sv39TlbEntry* entry, const uint64_t virt
 }
 
 static uint64_t GetPpnByPageTableEntry(const Sv39PageTableEntry* entry) {
-    return ((((entry->ppn_2 << 9) | entry->ppn_1) << 9) | entry->ppn_0) << 12;
+    const Sv39VirtualAddress kPpnDesc = {
+        .page_offset = 0,
+        .vpn_0       = entry->ppn_0,
+        .vpn_1       = entry->ppn_1,
+        .vpn_2       = entry->ppn_2,
+        .blank       = 0,
+    };
+
+    return *reinterpret_cast<const uint64_t*>(&kPpnDesc);
 }
 
 static uint64_t GetTagVirtualAddress(const uint64_t virtual_address, const uint64_t page_size) {
     return virtual_address - virtual_address % page_size;
+}
+
+static uint64_t GetTagMask(const uint64_t page_size) {
+    const uint64_t kTagMask = UINT64_MAX & (~((uint64_t(1) << (12 + (page_size - 1) * 9)) - 1));
+    return kTagMask;
 }
 
 Sv39::Sv39(std::unique_ptr<Bus> bus)
@@ -71,13 +86,13 @@ Sv39TlbEntry* Sv39::LookUpTlb(const SatpDesc satp, const uint64_t virtual_addres
         if (entry->asid == satp.asid || entry->G) {
             if (entry->page_size > 0) {
                 // clear (huge) page offset field bits:
-                const uint64_t kTagMask = UINT64_MAX & (~((uint64_t(1) << (12 + (entry->page_size - 1) * 9)) - 1));
+                const uint64_t kTagMask = GetTagMask(entry->page_size);
                 const uint64_t kTag     = virtual_address & kTagMask;
                 if (kTag == entry->tag) {
                     res = entry;
+                    break;
                 }
-            }
-            break;
+            };
         }
     }
 
@@ -150,19 +165,19 @@ Sv39TlbEntry* Sv39::GetTlbEntry(const SatpDesc satp, const uint64_t virtual_addr
 
     // cache miss, now walk the page table
     Sv39PageTableEntry pte;
-    uint64_t           page_size;
+    uint64_t           out_size;
 
-    bool success = PageTableWalk(satp, virtual_address, pte, page_size);
+    bool success = PageTableWalk(satp, virtual_address, pte, out_size);
 
     if (!success) {
         return nullptr;
     }
 
-    const uint64_t kTlbPageSizeField = (page_size == (1 << 12)) ? 1 : (page_size == (1 << 21)) ? 2 : 3;
+    const uint64_t kTlbPageSizeField = (out_size == (1 << 12)) ? 1 : (out_size == (1 << 21)) ? 2 : 3;
 
     m_tlb[m_full_associative_index] = {
         .ppn       = GetPpnByPageTableEntry(&pte),
-        .tag       = GetTagVirtualAddress(virtual_address, page_size),
+        .tag       = GetTagVirtualAddress(virtual_address, out_size),
         .R         = pte.R,
         .W         = pte.W,
         .X         = pte.X,
@@ -202,6 +217,24 @@ bool Sv39::PhysicalAddressStore(const uint64_t addr, const uint64_t bytes, const
     return m_bus->Store(addr, bytes, buffer);
 }
 
+void Sv39::FlushTlb(const uint64_t vaddr, const uint64_t asid) {
+    for (uint64_t i = 0; i < kTlbSize; i++) {
+        Sv39TlbEntry* entry = m_tlb + i;
+        if (asid == 0 || entry->asid == asid) {
+            if (vaddr == 0) {
+                entry->page_size = 0;
+            } else {
+                if (entry->page_size > 0) {
+                    const uint64_t kTagMask = GetTagMask(entry->page_size);
+                    if ((entry->tag & kTagMask) == (vaddr & kTagMask)) {
+                        entry->page_size = 0;
+                    }
+                }
+            }
+        }
+    }
+}
+
 Mmu::Mmu(std::unique_ptr<Sv39> sv39)
     : m_cpu(nullptr)
     , m_sv39(std::move(sv39)) {
@@ -212,6 +245,10 @@ Mmu::Mmu(std::unique_ptr<Sv39> sv39)
 
 void Mmu::SetProcessor(CPU* cpu) {
     m_cpu = cpu;
+}
+
+void Mmu::FlushTlb(const uint64_t vaddr, const uint64_t asid) {
+    m_sv39->FlushTlb(vaddr, asid);
 }
 
 Trap Mmu::VirtualFetch(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {

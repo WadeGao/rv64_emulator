@@ -157,11 +157,8 @@ TEST_F(CpuTest, OfficalTests) {
 #endif
             uint8_t val = UINT8_MAX;
 
-            const rv64_emulator::cpu::trap::Trap kLoadTrap = m_cpu->Load(kToHostSectionAddr, sizeof(uint8_t), &val);
-
-            if (kLoadTrap.m_trap_type != rv64_emulator::cpu::trap::TrapType::kNone) {
-                ASSERT_TRUE(false) << fmt::format("load virt memory failed, addr[{:#018x}]\n", kToHostSectionAddr);
-            }
+            const bool kSucc = m_cpu->m_mmu->m_sv39->m_bus->Load(kToHostSectionAddr, sizeof(uint8_t), &val);
+            ASSERT_TRUE(kSucc);
 
             if (val != 0) {
                 EXPECT_EQ(val, 1) << fmt::format("Test {} Failed with .tohost section val = {}", filename, val);
