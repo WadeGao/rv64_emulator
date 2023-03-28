@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
     auto bus  = std::make_unique<rv64_emulator::bus::Bus>(std::move(dram));
     auto sv39 = std::make_unique<rv64_emulator::mmu::Sv39>(std::move(bus));
     auto mmu  = std::make_unique<rv64_emulator::mmu::Mmu>(std::move(sv39));
-    auto cpu  = std::make_unique<rv64_emulator::cpu::CPU>(rv64_emulator::cpu::PrivilegeMode::kMachine, std::move(mmu));
+    auto cpu  = std::make_unique<rv64_emulator::cpu::CPU>(std::move(mmu));
 
     ELFIO::elfio reader;
     reader.load(argv[1]);

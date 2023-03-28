@@ -35,7 +35,7 @@ protected:
         auto bus  = std::make_unique<rv64_emulator::bus::Bus>(std::move(dram));
         auto sv39 = std::make_unique<rv64_emulator::mmu::Sv39>(std::move(bus));
         auto mmu  = std::make_unique<rv64_emulator::mmu::Mmu>(std::move(sv39));
-        auto cpu  = std::make_unique<rv64_emulator::cpu::CPU>(rv64_emulator::cpu::PrivilegeMode::kMachine, std::move(mmu));
+        auto cpu  = std::make_unique<rv64_emulator::cpu::CPU>(std::move(mmu));
         m_cpu     = std::move(cpu);
     }
 
@@ -46,6 +46,7 @@ protected:
 };
 
 constexpr uint64_t kProgramEntry             = 0;
+constexpr uint64_t kMaxInstructions          = 100000;
 constexpr uint64_t kArbitrarilyHandlerVector = 0x100000;
 
 TEST_F(CpuTest, HandleTrap) {
@@ -58,15 +59,11 @@ TEST_F(CpuTest, HandleTrap) {
 
     ASSERT_EQ(kArbitrarilyHandlerVector, m_cpu->GetPC());
 
-    const uint64_t val = m_cpu->m_state.Read(rv64_emulator::cpu::csr::kCsrMcause);
-    ASSERT_EQ(rv64_emulator::cpu::trap::kTrapToCauseTable.at(rv64_emulator::cpu::trap::TrapType::kEnvironmentCallFromMMode), val);
+    const uint64_t kVal = m_cpu->m_state.Read(rv64_emulator::cpu::csr::kCsrMcause);
+    ASSERT_EQ(rv64_emulator::cpu::trap::kTrapToCauseTable.at(rv64_emulator::cpu::trap::TrapType::kEnvironmentCallFromMMode), kVal);
 }
 
 TEST_F(CpuTest, HandleInterrupt) {
-    // write "addi x0, x0, 1" instruction
-    const uint32_t kAddiWord = 0x00100013;
-    m_cpu->Store(kProgramEntry, sizeof(uint32_t), reinterpret_cast<const uint8_t*>(&kAddiWord));
-
     const std::map<uint16_t, rv64_emulator::cpu::trap::TrapType> kInterruptTable = {
         { rv64_emulator::cpu::csr::kCsrMeipMask, rv64_emulator::cpu::trap::TrapType::kMachineExternalInterrupt },
         { rv64_emulator::cpu::csr::kCsrMtipMask, rv64_emulator::cpu::trap::TrapType::kMachineTimerInterrupt },
@@ -77,6 +74,9 @@ TEST_F(CpuTest, HandleInterrupt) {
     };
 
     for (const auto [mask, trap_type] : kInterruptTable) {
+        // write "addi x0, x0, 1" instruction
+        constexpr uint32_t kAddiWord = 0x00100013;
+        m_cpu->Store(kProgramEntry, sizeof(uint32_t), reinterpret_cast<const uint8_t*>(&kAddiWord));
         m_cpu->SetPC(kProgramEntry);
 
         m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMie, mask);
@@ -85,7 +85,7 @@ TEST_F(CpuTest, HandleInterrupt) {
 
         m_cpu->Tick();
         // now the interrupt can't be caught because mie is disabled
-        ASSERT_EQ(kProgramEntry + 4, m_cpu->GetPC());
+        ASSERT_EQ(kProgramEntry + 4, m_cpu->GetPC()) << fmt::format("trap type: {}", static_cast<uint64_t>(trap_type)) << std::endl;
 
         // enable mie
         m_cpu->SetPC(kProgramEntry);
@@ -95,7 +95,7 @@ TEST_F(CpuTest, HandleInterrupt) {
 
         const rv64_emulator::cpu::csr::CauseDesc kCause = {
             .cause     = rv64_emulator::cpu::trap::kTrapToCauseTable.at(trap_type),
-            .interrupt = trap_type >= rv64_emulator::cpu::trap::TrapType::kUserSoftwareInterrupt,
+            .interrupt = static_cast<uint64_t>(trap_type >= rv64_emulator::cpu::trap::TrapType::kUserSoftwareInterrupt),
         };
 
         const uint64_t kRealMCauseBits = m_cpu->m_state.Read(rv64_emulator::cpu::csr::kCsrMcause);
@@ -143,6 +143,7 @@ TEST_F(CpuTest, OfficalTests) {
         const auto [kToHostSectionExist, kToHostSectionAddr] = rv64_emulator::libs::ElfUtils::CheckSectionExist(reader, ".tohost\0");
         ASSERT_TRUE(kToHostSectionExist) << "input file is not offical test case";
 
+        m_cpu->Reset();
         rv64_emulator::libs::ElfUtils::LoadElf(reader, m_cpu.get());
 
         const uint64_t kEntryAddr = reader.get_entry();
@@ -162,6 +163,12 @@ TEST_F(CpuTest, OfficalTests) {
 
             if (val != 0) {
                 EXPECT_EQ(val, 1) << fmt::format("Test {} Failed with .tohost section val = {}", filename, val);
+                break;
+            }
+
+            const uint64_t kCycles = m_cpu->m_state.Read(rv64_emulator::cpu::csr::kCsrMCycle);
+            if (kCycles > kMaxInstructions) {
+                EXPECT_TRUE(false) << fmt::format("Test {} timeout!", filename);
                 break;
             }
         }

@@ -235,6 +235,12 @@ void Sv39::FlushTlb(const uint64_t vaddr, const uint64_t asid) {
     }
 }
 
+void Sv39::Reset() {
+    m_full_associative_index = 0;
+    memset(m_tlb, 0, sizeof(m_tlb));
+    m_bus->Reset();
+}
+
 Mmu::Mmu(std::unique_ptr<Sv39> sv39)
     : m_cpu(nullptr)
     , m_sv39(std::move(sv39)) {
@@ -395,6 +401,10 @@ Mmu::~Mmu() {
 #ifdef DEBUG
     fmt::print("destroy a mmu\n");
 #endif
+}
+
+void Mmu::Reset() {
+    m_sv39->Reset();
 }
 
 } // namespace rv64_emulator::mmu

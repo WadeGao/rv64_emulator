@@ -46,6 +46,10 @@ bool DRAM::Store(const uint64_t addr, const uint64_t bytes, const uint8_t* buffe
     return false;
 }
 
+void DRAM::Reset() {
+    std::fill(m_memory.begin(), m_memory.end(), 0);
+}
+
 DRAM::~DRAM() {
 #ifdef DEBUG
     fmt::print("destroy a dram, size {} bytes\n", m_size);

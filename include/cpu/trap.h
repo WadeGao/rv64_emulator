@@ -9,29 +9,34 @@ enum class TrapType {
     kInstructionAddressMisaligned = 0,
     kInstructionAccessFault,
     kIllegalInstruction,
+
     kBreakpoint,
+
     kLoadAddressMisaligned,
     kLoadAccessFault,
     kStoreAddressMisaligned,
     kStoreAccessFault,
+
     kEnvironmentCallFromUMode,
     kEnvironmentCallFromSMode,
-    kReserved,
     kEnvironmentCallFromMMode,
+
     kInstructionPageFault,
     kLoadPageFault,
-    kReservedForFutureStandard,
     kStorePageFault,
     /* ----------- belows are interrupts: software, timer, external----------- */
     kUserSoftwareInterrupt,
     kSupervisorSoftwareInterrupt,
     kMachineSoftwareInterrupt,
+
     kUserTimerInterrupt,
     kSupervisorTimerInterrupt,
     kMachineTimerInterrupt,
+
     kUserExternalInterrupt,
     kSupervisorExternalInterrupt,
     kMachineExternalInterrupt,
+
     kNone
 };
 

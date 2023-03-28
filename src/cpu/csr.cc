@@ -8,21 +8,21 @@ namespace rv64_emulator::cpu::csr {
 State::State()
     : m_csr(kCsrCapacity, 0) {
     // set up MISA description
-    MisaDesc* misa_desc = reinterpret_cast<MisaDesc*>(&m_csr[kCsrMisa]);
-    misa_desc->mxl      = static_cast<uint64_t>(RiscvMXL::kRv64);
-    misa_desc->U        = 1; // User mode implemented
-    misa_desc->S        = 1; // Supervisor mode implemented
-    misa_desc->M        = 1; // Integer Multiply/Divide extension implemented
-    misa_desc->I        = 1; // RV32I/64I/128I base ISA implemented
-    misa_desc->F        = 0; // Single-precision floating-point extension implemented
-    misa_desc->D        = 0; // Double-precision floating-point extension implemented
-    misa_desc->C        = 0; // Compressed extension implemented
-    misa_desc->A        = 0; // Atomic extension implemented
+    auto* misa_desc = reinterpret_cast<MisaDesc*>(&m_csr[kCsrMisa]);
+    misa_desc->mxl  = static_cast<uint64_t>(RiscvMXL::kRv64);
+    misa_desc->U    = 1; // User mode implemented
+    misa_desc->S    = 1; // Supervisor mode implemented
+    misa_desc->M    = 1; // Integer Multiply/Divide extension implemented
+    misa_desc->I    = 1; // RV32I/64I/128I base ISA implemented
+    misa_desc->F    = 0; // Single-precision floating-point extension implemented
+    misa_desc->D    = 0; // Double-precision floating-point extension implemented
+    misa_desc->C    = 0; // Compressed extension implemented
+    misa_desc->A    = 0; // Atomic extension implemented
 
     // set up Mstatus val
-    MstatusDesc* mstatus_desc = reinterpret_cast<MstatusDesc*>(&m_csr[kCsrMstatus]);
-    mstatus_desc->sxl         = static_cast<uint64_t>(RiscvMXL::kRv64);
-    mstatus_desc->uxl         = static_cast<uint64_t>(RiscvMXL::kRv64);
+    auto* mstatus_desc = reinterpret_cast<MstatusDesc*>(&m_csr[kCsrMstatus]);
+    mstatus_desc->sxl  = static_cast<uint64_t>(RiscvMXL::kRv64);
+    mstatus_desc->uxl  = static_cast<uint64_t>(RiscvMXL::kRv64);
 }
 
 uint64_t State::Read(const uint64_t addr) const {
@@ -46,13 +46,10 @@ uint64_t State::Read(const uint64_t addr) const {
             ss_desc->sd   = ms_desc->sd;
         } break;
         case kCsrSie:
-            res = m_csr[kCsrMie] & m_csr[kCsrMideleg];
+            res = m_csr[kCsrMie] & kCsrSInterruptMask;
             break;
         case kCsrSip:
-            res = m_csr[kCsrMip] & m_csr[kCsrMideleg];
-            break;
-        case kCsrMstatus:
-            res = m_csr[kCsrMstatus];
+            res = m_csr[kCsrMip] & kCsrSInterruptMask;
             break;
         case kCsrTselect:
         case kCsrTdata1:
@@ -78,13 +75,17 @@ void State::Write(const uint64_t addr, const uint64_t val) {
             ms_desc->sum  = val_desc->sum;
             ms_desc->mxr  = val_desc->mxr;
         } break;
+        case kCsrMie:
+        case kCsrMip:
+            m_csr[addr] = val & kCsrMInterruptMask;
+            break;
         case kCsrSie:
-            m_csr[kCsrMie] &= (~m_csr[kCsrMideleg]);
-            m_csr[kCsrMie] |= (val & m_csr[kCsrMideleg]);
+            m_csr[kCsrMie] &= (~kCsrSInterruptMask);
+            m_csr[kCsrMie] |= (val & kCsrSInterruptMask);
             break;
         case kCsrSip:
-            m_csr[kCsrMip] &= (~m_csr[kCsrMideleg]);
-            m_csr[kCsrMip] |= (val & m_csr[kCsrMideleg]);
+            m_csr[kCsrMip] &= (~kCsrSInterruptMask);
+            m_csr[kCsrMip] |= (val & kCsrSInterruptMask);
             break;
         case kCsrMstatus: {
             const auto* val_desc = reinterpret_cast<const MstatusDesc*>(&val);
@@ -100,9 +101,15 @@ void State::Write(const uint64_t addr, const uint64_t val) {
             ms_desc->sum  = val_desc->sum; // always true
             ms_desc->mxr  = val_desc->mxr; // always true
             ms_desc->tvm  = val_desc->tvm;
-            ms_desc->tw   = val_desc->tw; // not supported but wfi impl as nop
+            ms_desc->tw   = val_desc->tw;  // not supported but wfi impl as nop
             ms_desc->tsr  = val_desc->tsr;
         } break;
+        case kCsrMideleg:
+            m_csr[addr] = val & kCsrSInterruptMask;
+            break;
+        case kCsrMedeleg:
+            m_csr[addr] = val & kCsrSExceptionMask;
+            break;
         case kCsrMisa:
         case kCsrTselect:
         case kCsrTdata1:

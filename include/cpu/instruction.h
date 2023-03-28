@@ -869,7 +869,7 @@ const Instruction kInstructionTable[] = {
         .m_data = 0x10500073,
         .m_name = "WFI",
         .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-            // cpu->SetWfi(true);
+            cpu->SetWfi(true);
             return trap::kNoneTrap;
         },
     },
@@ -1283,9 +1283,9 @@ const Instruction kInstructionTable[] = {
         .m_data = 0x12000073,
         .m_name = "SFENCE.VMA",
         .Exec   = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-            const auto& f = decode::ParseFormatR(inst_word);
+            const auto&   f         = decode::ParseFormatR(inst_word);
             const int64_t kVirtAddr = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1);
-            const int64_t kAsid = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
+            const int64_t kAsid     = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs2);
             cpu->FlushTlb(kVirtAddr, kAsid & 0xffff);
             return trap::kNoneTrap;
         },

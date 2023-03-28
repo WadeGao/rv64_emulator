@@ -45,8 +45,8 @@ enum class AddressMode {
 };
 
 using Sv39TlbEntry = struct Sv39TlbEntry {
-    uint64_t ppn; // 56 bits
-    uint64_t tag; // 52 bits
+    uint64_t ppn;           // 56 bits
+    uint64_t tag;           // 52 bits
 
     uint64_t R         : 1; // read
     uint64_t W         : 1; // write
@@ -123,6 +123,7 @@ public:
     bool PhysicalAddressStore(const uint64_t addr, const uint64_t bytes, const uint8_t* buffer);
 
     void FlushTlb(const uint64_t vaddr, const uint64_t asid);
+    void Reset();
 };
 
 class Mmu {
@@ -137,6 +138,7 @@ public:
     Trap VirtualFetch(const uint64_t addr, const uint64_t bytes, uint8_t* buffer);
     Trap VirtualAddressLoad(const uint64_t addr, const uint64_t bytes, uint8_t* buffer);
     Trap VirtualAddressStore(const uint64_t addr, const uint64_t bytes, const uint8_t* buffer);
+    void Reset();
     ~Mmu();
 };
 

@@ -21,6 +21,10 @@ bool Bus::Store(const uint64_t addr, const uint64_t bytes, const uint8_t* buffer
     return m_dram->Store(addr, bytes, buffer);
 }
 
+void Bus::Reset() {
+    m_dram->Reset();
+}
+
 Bus::~Bus() {
 #ifdef DEBUG
     fmt::print("destroy a bus\n");

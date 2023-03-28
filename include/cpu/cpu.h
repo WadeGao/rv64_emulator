@@ -36,17 +36,14 @@ private:
     uint64_t      m_instruction_count;
     PrivilegeMode m_privilege_mode;
     uint64_t      m_pc;
+    bool          m_wfi;
 
-    bool m_wfi = false;
-
-    // TODO: 把 gpr 的类型迁移到 int64_t
     uint64_t m_reg[kGeneralPurposeRegNum] = { 0 };
 
     // F 拓展说明：https://tclin914.github.io/3d45634e/
     float m_fp_reg[kFloatingPointRegNum] = { 0.0 };
 
     /*
-
     +───────────+───────────+────────────────────────────────────+────────+
     | Register  | ABI Name  | Description                        | Saver  |
     +───────────+───────────+────────────────────────────────────+────────+
@@ -64,26 +61,21 @@ private:
     | x18 - 27  | s2 - 11   | Saved registers                    | Callee |
     | x28 - 31  | t3 - 6    | Temporaries                        | Caller |
     +───────────+───────────+────────────────────────────────────+────────+
-
     */
 
     std::unique_ptr<mmu::Mmu> m_mmu;
 
     libs::LRUCache<uint32_t, int64_t> m_decode_cache;
 
-    bool CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMode new_pm, const trap::TrapType trap_type) const;
-
-    void ModifyCsrStatusReg(const PrivilegeMode cur_pm, const PrivilegeMode new_pm);
-
     trap::Trap TickOperate();
 
-    bool HandleTrap(const trap::Trap trap, const uint64_t inst_addr);
+    void HandleTrap(const trap::Trap trap, const uint64_t inst_addr);
     void HandleInterrupt(const uint64_t inst_addr);
 
 public:
     csr::State m_state;
 
-    CPU(PrivilegeMode privilege_mode, std::unique_ptr<mmu::Mmu> mmu);
+    CPU(std::unique_ptr<mmu::Mmu> mmu);
     void Reset();
 
     trap::Trap Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) const;

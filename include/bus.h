@@ -17,6 +17,7 @@ public:
     Bus(std::unique_ptr<rv64_emulator::dram::DRAM> dram);
     bool Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) const override;
     bool Store(const uint64_t addr, const uint64_t bytes, const uint8_t* buffer) override;
+    void Reset() override;
     ~Bus() override;
 };
 
