@@ -4,7 +4,7 @@
 #include "cpu/csr.h"
 #include "cpu/decode.h"
 #include "cpu/trap.h"
-#include "libs/LRU.hpp"
+#include "libs/lru.hpp"
 // #include "mmu.h"
 
 #include <cstdint>

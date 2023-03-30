@@ -15,7 +15,8 @@ private:
     uint64_t m_hit_count;
     uint64_t m_miss_count;
 
-    std::list<std::pair<Tkey, Tval>>                                              m_list;
+    std::list<std::pair<Tkey, Tval>> m_list;
+
     std::unordered_map<Tkey, typename std::list<std::pair<Tkey, Tval>>::iterator> m_cache;
 
 public:
@@ -57,16 +58,13 @@ public:
             m_list.splice(m_list.begin(), m_list, m_cache[key]);
             m_cache[key]           = m_list.begin();
             m_list.begin()->second = value;
-            return;
-        } else {
-            m_cache.erase(m_list.back().first);
-
-            m_list.splice(m_list.begin(), m_list, std::prev(m_list.end()));
-            m_list.begin()->first  = key;
-            m_list.begin()->second = value;
-
-            m_cache.emplace(key, m_list.begin());
         }
+
+        m_cache.erase(m_list.back().first);
+        m_list.splice(m_list.begin(), m_list, std::prev(m_list.end()));
+        m_list.begin()->first  = key;
+        m_list.begin()->second = value;
+        m_cache.emplace(key, m_list.begin());
     }
 
     const std::list<std::pair<Tkey, Tval>>& View() const {

@@ -1,4 +1,4 @@
-#include "libs/LRU.hpp"
+#include "libs/lru.hpp"
 
 #include "fmt/core.h"
 #include "gtest/gtest.h"
