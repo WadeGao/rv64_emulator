@@ -85,8 +85,8 @@ TEST_F(CpuTest, HandleInterrupt) {
 
         m_cpu->Tick();
 
-        // now the interrupt can't be caught because mie is disabled
-        ASSERT_EQ(kProgramEntry + 4, m_cpu->GetPC()) << fmt::format("trap type: {}\n", static_cast<uint64_t>(t));
+        // mie is disabled
+        ASSERT_EQ(kProgramEntry + 4, m_cpu->GetPC()) << fmt::format("trap type: {}", static_cast<uint64_t>(t));
 
         // enable mie
         m_cpu->SetPC(kProgramEntry);
