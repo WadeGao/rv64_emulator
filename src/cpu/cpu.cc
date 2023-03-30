@@ -7,8 +7,9 @@
 #include "cpu/trap.h"
 #include "mmu.h"
 
-#include "libs/LRU.hpp"
+#include "libs/lru.hpp"
 #include "libs/software_arithmetic.hpp"
+#include "libs/utils.h"
 
 #include "fmt/color.h"
 #include "fmt/core.h"
@@ -58,33 +59,6 @@ const std::map<PrivilegeMode, uint64_t> kInterruptEnableReg = {
 };
 
 uint32_t gpr_change_record = 0;
-
-static uint64_t TrapToMask(const trap::TrapType t) {
-    if (t == trap::TrapType::kNone) {
-        return 0;
-    }
-
-    const uint64_t kIndex = 1 << trap::kTrapToCauseTable.at(t);
-    return kIndex;
-}
-
-static trap::TrapType InterruptBitsToTrap(const uint64_t bits) {
-    // 中断优先级：MEI > MSI > MTI > SEI > SSI > STI
-    for (const auto t : {
-             trap::TrapType::kMachineExternalInterrupt,
-             trap::TrapType::kMachineSoftwareInterrupt,
-             trap::TrapType::kMachineTimerInterrupt,
-             trap::TrapType::kSupervisorExternalInterrupt,
-             trap::TrapType::kSupervisorSoftwareInterrupt,
-             trap::TrapType::kSupervisorTimerInterrupt,
-         }) {
-        if (TrapToMask(t) & bits) {
-            return t;
-        }
-    }
-
-    return trap::TrapType::kNone;
-}
 
 CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
     : m_clock(0)
@@ -194,6 +168,9 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
         .m_trap_type = trap::TrapType::kNone,
         .m_val       = GetPC(),
     };
+
+    using libs::util::InterruptBitsToTrap;
+    using libs::util::TrapToMask;
 
     if (kCurPM == PrivilegeMode::kMachine) {
         const uint64_t kMmodeIntBits = kInterruptBits & (~kMidelegVal);

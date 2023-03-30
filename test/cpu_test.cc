@@ -4,19 +4,19 @@
 #include "cpu/csr.h"
 #include "cpu/trap.h"
 #include "dram.h"
-#include "libs/elf_utils.h"
+#include "libs/utils.h"
+#include "mmu.h"
 
 #include "elfio/elf_types.hpp"
 #include "elfio/elfio.hpp"
 #include "elfio/elfio_segment.hpp"
+#include "fmt/color.h"
 #include "fmt/core.h"
-#include "mmu.h"
 #include "gtest/gtest.h"
 
 #include <algorithm>
 #include <cstdint>
 #include <filesystem>
-#include <map>
 #include <memory>
 #include <tuple>
 
@@ -64,38 +64,40 @@ TEST_F(CpuTest, HandleTrap) {
 }
 
 TEST_F(CpuTest, HandleInterrupt) {
-    const std::map<uint16_t, rv64_emulator::cpu::trap::TrapType> kInterruptTable = {
-        { rv64_emulator::cpu::csr::kCsrMeipMask, rv64_emulator::cpu::trap::TrapType::kMachineExternalInterrupt },
-        { rv64_emulator::cpu::csr::kCsrMtipMask, rv64_emulator::cpu::trap::TrapType::kMachineTimerInterrupt },
-        { rv64_emulator::cpu::csr::kCsrMsipMask, rv64_emulator::cpu::trap::TrapType::kMachineSoftwareInterrupt },
-        { rv64_emulator::cpu::csr::kCsrSeipMask, rv64_emulator::cpu::trap::TrapType::kSupervisorExternalInterrupt },
-        { rv64_emulator::cpu::csr::kCsrStipMask, rv64_emulator::cpu::trap::TrapType::kSupervisorTimerInterrupt },
-        { rv64_emulator::cpu::csr::kCsrSsipMask, rv64_emulator::cpu::trap::TrapType::kSupervisorSoftwareInterrupt },
-    };
-
-    for (const auto [mask, trap_type] : kInterruptTable) {
+    for (const auto t : {
+             rv64_emulator::cpu::trap::TrapType::kMachineExternalInterrupt,
+             rv64_emulator::cpu::trap::TrapType::kMachineTimerInterrupt,
+             rv64_emulator::cpu::trap::TrapType::kMachineSoftwareInterrupt,
+             rv64_emulator::cpu::trap::TrapType::kSupervisorExternalInterrupt,
+             rv64_emulator::cpu::trap::TrapType::kSupervisorTimerInterrupt,
+             rv64_emulator::cpu::trap::TrapType::kSupervisorSoftwareInterrupt,
+         }) {
         // write "addi x0, x0, 1" instruction
         constexpr uint32_t kAddiWord = 0x00100013;
         m_cpu->Store(kProgramEntry, sizeof(uint32_t), reinterpret_cast<const uint8_t*>(&kAddiWord));
         m_cpu->SetPC(kProgramEntry);
 
-        m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMie, mask);
-        m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMip, mask);
+        const uint64_t kMask = rv64_emulator::libs::util::TrapToMask(t);
+
+        m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMie, kMask);
+        m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMip, kMask);
         m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMtvec, kArbitrarilyHandlerVector);
 
         m_cpu->Tick();
+
         // now the interrupt can't be caught because mie is disabled
-        ASSERT_EQ(kProgramEntry + 4, m_cpu->GetPC()) << fmt::format("trap type: {}", static_cast<uint64_t>(trap_type)) << std::endl;
+        ASSERT_EQ(kProgramEntry + 4, m_cpu->GetPC()) << fmt::format("trap type: {}\n", static_cast<uint64_t>(t));
 
         // enable mie
         m_cpu->SetPC(kProgramEntry);
         m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMstatus, 0b1000);
         m_cpu->Tick();
+
         ASSERT_EQ(kArbitrarilyHandlerVector, m_cpu->GetPC());
 
         const rv64_emulator::cpu::csr::CauseDesc kCause = {
-            .cause     = rv64_emulator::cpu::trap::kTrapToCauseTable.at(trap_type),
-            .interrupt = static_cast<uint64_t>(trap_type >= rv64_emulator::cpu::trap::TrapType::kUserSoftwareInterrupt),
+            .cause     = rv64_emulator::cpu::trap::kTrapToCauseTable.at(t),
+            .interrupt = static_cast<uint64_t>(t >= rv64_emulator::cpu::trap::TrapType::kUserSoftwareInterrupt),
         };
 
         const uint64_t kRealMCauseBits = m_cpu->m_state.Read(rv64_emulator::cpu::csr::kCsrMcause);
@@ -119,8 +121,10 @@ TEST_F(CpuTest, Wfi) {
         ASSERT_EQ(kProgramEntry + 4, m_cpu->GetPC());
     }
 
-    m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMie, rv64_emulator::cpu::csr::kCsrMtipMask);
-    m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMip, rv64_emulator::cpu::csr::kCsrMtipMask);
+    constexpr auto kTrap     = rv64_emulator::cpu::trap::TrapType::kMachineTimerInterrupt;
+    const uint64_t kMtipMask = rv64_emulator::libs::util::TrapToMask(kTrap);
+    m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMie, kMtipMask);
+    m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMip, kMtipMask);
     m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMstatus, 0x8);
     m_cpu->m_state.Write(rv64_emulator::cpu::csr::kCsrMtvec, 0);
     m_cpu->Tick();
@@ -135,21 +139,24 @@ TEST_F(CpuTest, OfficalTests) {
     ASSERT_TRUE(std::filesystem::directory_entry(kElfDir).is_directory()) << kElfDir << " is not a directory\n";
 
     for (const auto& item : std::filesystem::directory_iterator(kElfDir)) {
-        const std::string& filename = fmt::format("{}/{}", kElfDir, item.path().filename().filename().c_str());
+        const auto& kFileName = fmt::format("{}/{}", kElfDir, item.path().filename().filename().c_str());
 
         ELFIO::elfio reader;
-        reader.load(filename);
+        reader.load(kFileName);
 
-        const auto [kToHostSectionExist, kToHostSectionAddr] = rv64_emulator::libs::ElfUtils::CheckSectionExist(reader, ".tohost\0");
+        ELFIO::Elf64_Addr tohost_addr = 0;
+
+        const bool kToHostSectionExist = rv64_emulator::libs::util::CheckSectionExist(reader, ".tohost\0", tohost_addr);
+
         ASSERT_TRUE(kToHostSectionExist) << "input file is not offical test case";
 
         m_cpu->Reset();
-        rv64_emulator::libs::ElfUtils::LoadElf(reader, m_cpu.get());
+        rv64_emulator::libs::util::LoadElf(reader, m_cpu.get());
 
         const uint64_t kEntryAddr = reader.get_entry();
         m_cpu->SetPC(kEntryAddr);
 
-        fmt::print("now start run {}\n", filename);
+        fmt::print("now start run {}\n", kFileName);
 
         while (true) {
             m_cpu->Tick();
@@ -158,17 +165,17 @@ TEST_F(CpuTest, OfficalTests) {
 #endif
             uint8_t val = UINT8_MAX;
 
-            const bool kSucc = m_cpu->m_mmu->m_sv39->m_bus->Load(kToHostSectionAddr, sizeof(uint8_t), &val);
+            const bool kSucc = m_cpu->m_mmu->m_sv39->m_bus->Load(tohost_addr, sizeof(uint8_t), &val);
             ASSERT_TRUE(kSucc);
 
             if (val != 0) {
-                EXPECT_EQ(val, 1) << fmt::format("Test {} Failed with .tohost section val = {}", filename, val);
+                EXPECT_EQ(val, 1) << fmt::format(fmt::fg(fmt::color::red), "{} Failed with .tohost section val = {}", kFileName, val);
                 break;
             }
 
             const uint64_t kCycles = m_cpu->m_state.Read(rv64_emulator::cpu::csr::kCsrMCycle);
             if (kCycles > kMaxInstructions) {
-                EXPECT_TRUE(false) << fmt::format("Test {} timeout!", filename);
+                EXPECT_TRUE(false) << fmt::format(fmt::fg(fmt::color::red), "{} timeout!", kFileName);
                 break;
             }
         }

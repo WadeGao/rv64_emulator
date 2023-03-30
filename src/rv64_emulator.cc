@@ -2,7 +2,7 @@
 #include "conf.h"
 #include "cpu/cpu.h"
 #include "dram.h"
-#include "libs/elf_utils.h"
+#include "libs/utils.h"
 #include "mmu.h"
 
 #include "elfio/elfio.hpp"
@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
     ELFIO::elfio reader;
     reader.load(argv[1]);
 
-    rv64_emulator::libs::ElfUtils::LoadElf(reader, cpu.get());
+    rv64_emulator::libs::util::LoadElf(reader, cpu.get());
 
     cpu->SetPC(reader.get_entry());
 
