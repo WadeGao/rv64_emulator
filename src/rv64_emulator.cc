@@ -3,6 +3,7 @@
 #include "cpu/cpu.h"
 #include "dram.h"
 #include "libs/elf_utils.h"
+#include "mmu.h"
 
 #include "elfio/elfio.hpp"
 #include "fmt/core.h"
@@ -18,13 +19,16 @@ int main(int argc, char* argv[]) {
 
     auto dram = std::make_unique<rv64_emulator::dram::DRAM>(kDramSize);
     auto bus  = std::make_unique<rv64_emulator::bus::Bus>(std::move(dram));
-    auto cpu  = std::make_unique<rv64_emulator::cpu::CPU>(rv64_emulator::cpu::PrivilegeMode::kMachine, std::move(bus));
+    auto sv39 = std::make_unique<rv64_emulator::mmu::Sv39>(std::move(bus));
+    auto mmu  = std::make_unique<rv64_emulator::mmu::Mmu>(std::move(sv39));
+    auto cpu  = std::make_unique<rv64_emulator::cpu::CPU>(std::move(mmu));
 
     ELFIO::elfio reader;
     reader.load(argv[1]);
 
     rv64_emulator::libs::ElfUtils::LoadElf(reader, cpu.get());
-    cpu->SetPC(kDramBaseAddr);
+
+    cpu->SetPC(reader.get_entry());
 
     while (true) {
         cpu->Tick();

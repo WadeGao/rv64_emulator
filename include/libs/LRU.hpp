@@ -11,17 +11,19 @@ class LRUCache {
 private:
     uint64_t m_capacity;
 
-    // inline initialization need C++11 and above
-    uint64_t m_current_size = 0;
-    uint64_t m_hit_count    = 0;
-    uint64_t m_miss_count   = 0;
+    uint64_t m_current_size;
+    uint64_t m_hit_count;
+    uint64_t m_miss_count;
 
     std::list<std::pair<Tkey, Tval>>                                              m_list;
     std::unordered_map<Tkey, typename std::list<std::pair<Tkey, Tval>>::iterator> m_cache;
 
 public:
     LRUCache(const uint64_t capacity)
-        : m_capacity(capacity) {
+        : m_capacity(capacity)
+        , m_current_size(0)
+        , m_hit_count(0)
+        , m_miss_count(0) {
     }
 
     bool Get(Tkey key, Tval& ret_val) {
@@ -65,6 +67,10 @@ public:
 
             m_cache.emplace(key, m_list.begin());
         }
+    }
+
+    const std::list<std::pair<Tkey, Tval>>& View() const {
+        return m_list;
     }
 
     void Reset() {

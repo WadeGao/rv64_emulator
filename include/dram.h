@@ -1,21 +1,24 @@
 #pragma once
 
+#include "bidirectional_interface.hpp"
+
 #include <cstdint>
 #include <vector>
 
 namespace rv64_emulator::dram {
 
-class DRAM {
+class DRAM : public BidirectionalInterface {
 private:
     const uint64_t       m_size;
     std::vector<uint8_t> m_memory;
 
 public:
     DRAM(const uint64_t mem_size);
-    uint64_t Load(const uint64_t addr, const uint64_t bit_size) const;
-    void     Store(const uint64_t addr, const uint64_t bit_size, const uint64_t val);
+    bool     Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) const override;
+    bool     Store(const uint64_t addr, const uint64_t bytes, const uint8_t* buffer) override;
     uint64_t GetSize() const;
-    ~DRAM();
+    void     Reset() override;
+    ~DRAM() override;
 };
 
 } // namespace rv64_emulator::dram

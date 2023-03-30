@@ -9,6 +9,7 @@ enum class ErrorCode : int {
     kCpuErrorCodeBase    = -300,
     kElfErrorCodeBase    = -400,
     kPlicErrorCodeBase   = -500,
+    kMmuErrorCodeBase    = -600,
 };
 
 enum class DramErrorCode : int {
@@ -47,4 +48,9 @@ enum class PlicErrorCode : int {
     kContextEnableWriteFailure = static_cast<int>(ErrorCode::kPlicErrorCodeBase) - 9,
 };
 
+enum class MmuErrorCode : int {
+    kSuccess                        = 0,
+    kIllegalSv39Address             = static_cast<int>(ErrorCode::kMmuErrorCodeBase) - 1,
+    kTlbMissMatchAfterPageTableWalk = static_cast<int>(ErrorCode::kMmuErrorCodeBase) - 1,
+};
 } // namespace rv64_emulator::errorcode

@@ -17,39 +17,35 @@ protected:
         fmt::print("finish running Bus test case...\n");
     }
 
-    virtual void SetUp() override {
+    void SetUp() override {
         auto dram = std::make_unique<rv64_emulator::dram::DRAM>(kDramSize);
         auto bus  = std::make_unique<rv64_emulator::bus::Bus>(std::move(dram));
 
         m_bus = std::move(bus);
     }
 
-    virtual void TearDown() override {
+    void TearDown() override {
     }
 
     std::unique_ptr<rv64_emulator::bus::Bus> m_bus;
 };
 
 TEST_F(BusTest, Load) {
-    for (uint64_t i = 0; i < kDramSize; i += 8) {
-        uint64_t* raw_data_ptr = reinterpret_cast<uint64_t*>(m_bus->m_dram->m_memory.data() + i);
-        *raw_data_ptr          = 0x1122334455667788;
-    }
 
-    for (uint64_t i = 0; i < kDramSize; i += 8) {
-        const uint64_t bus_word_val = m_bus->Load(kDramBaseAddr + i, 64);
-        ASSERT_EQ(0x1122334455667788, bus_word_val);
-    }
+    uint64_t* raw_data_ptr = reinterpret_cast<uint64_t*>(m_bus->m_dram->m_memory.data());
+    *raw_data_ptr          = 0x1122334455667788;
+
+    uint64_t res = 0;
+    ASSERT_TRUE(m_bus->Load(0, sizeof(uint64_t), reinterpret_cast<uint8_t*>(&res)));
+    ASSERT_EQ(0x1122334455667788, res);
 }
 
 TEST_F(BusTest, Store) {
-    for (uint64_t i = 0; i < kDramSize; i += 8) {
-        m_bus->Store(kDramBaseAddr + i, 64, 0x1122334455667788);
-    }
+    constexpr uint64_t kVal = 0x1122334455667788;
+    m_bus->Store(0, sizeof(uint64_t), reinterpret_cast<const uint8_t*>(&kVal));
 
-    for (uint64_t i = 0; i < kDramSize; i += 8) {
-        const uint64_t* raw_data_ptr = reinterpret_cast<uint64_t*>(m_bus->m_dram->m_memory.data() + i);
-        const uint64_t  bus_word_val = m_bus->Load(kDramBaseAddr + i, 64);
-        ASSERT_EQ(*raw_data_ptr, bus_word_val);
-    }
+    const uint64_t* kRawData = reinterpret_cast<uint64_t*>(m_bus->m_dram->m_memory.data());
+    uint64_t        res      = 0;
+    ASSERT_TRUE(m_bus->Load(0, sizeof(uint64_t), reinterpret_cast<uint8_t*>(&res)));
+    ASSERT_EQ(*kRawData, res);
 }

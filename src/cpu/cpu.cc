@@ -5,6 +5,7 @@
 #include "cpu/decode.h"
 #include "cpu/instruction.h"
 #include "cpu/trap.h"
+#include "mmu.h"
 
 #include "libs/LRU.hpp"
 #include "libs/software_arithmetic.hpp"
@@ -58,35 +59,69 @@ const std::map<PrivilegeMode, uint64_t> kInterruptEnableReg = {
 
 uint32_t gpr_change_record = 0;
 
-CPU::CPU(PrivilegeMode privilege_mode, std::unique_ptr<rv64_emulator::bus::Bus> bus)
+static uint64_t TrapToMask(const trap::TrapType t) {
+    if (t == trap::TrapType::kNone) {
+        return 0;
+    }
+
+    const uint64_t kIndex = 1 << trap::kTrapToCauseTable.at(t);
+    return kIndex;
+}
+
+static trap::TrapType InterruptBitsToTrap(const uint64_t bits) {
+    // 中断优先级：MEI > MSI > MTI > SEI > SSI > STI
+    for (const auto t : {
+             trap::TrapType::kMachineExternalInterrupt,
+             trap::TrapType::kMachineSoftwareInterrupt,
+             trap::TrapType::kMachineTimerInterrupt,
+             trap::TrapType::kSupervisorExternalInterrupt,
+             trap::TrapType::kSupervisorSoftwareInterrupt,
+             trap::TrapType::kSupervisorTimerInterrupt,
+         }) {
+        if (TrapToMask(t) & bits) {
+            return t;
+        }
+    }
+
+    return trap::TrapType::kNone;
+}
+
+CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
     : m_clock(0)
     , m_instruction_count(0)
-    , m_privilege_mode(privilege_mode)
-    , m_bus(std::move(bus))
+    , m_privilege_mode(PrivilegeMode::kMachine)
+    , m_pc(0)
+    , m_wfi(false)
+    , m_mmu(std::move(mmu))
     , m_decode_cache(kDecodeCacheEntryNum) {
     static_assert(sizeof(float) == 4, "float is not 4 bytes, can't assure the bit width of floating point reg");
-    m_reg[0] = 0;
-    m_reg[2] = kDramBaseAddr + kDramSize;
+    m_mmu->SetProcessor(this);
 #ifdef DEBUG
-    fmt::print("cpu init, bus addr is {}\n", fmt::ptr(m_bus.get()));
+    fmt::print("cpu init, mmu addr is {}\n", fmt::ptr(m_mmu.get()));
 #endif
 }
 
 void CPU::Reset() {
     m_clock             = 0;
     m_instruction_count = 0;
-    m_pc                = kDramBaseAddr;
+    m_privilege_mode    = PrivilegeMode::kMachine;
+    m_pc                = 0;
+    m_wfi               = false;
 
-    m_state.Reset();
+    memset(m_reg, 0, sizeof(m_reg));
+    memset(m_fp_reg, 0, sizeof(m_fp_reg));
+
+    m_mmu->Reset();
     m_decode_cache.Reset();
+    m_state.Reset();
 }
 
-uint64_t CPU::Load(const uint64_t addr, const uint64_t bit_size) const {
-    return m_bus->Load(addr, bit_size);
+trap::Trap CPU::Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) const {
+    return m_mmu->VirtualAddressLoad(addr, bytes, buffer);
 }
 
-void CPU::Store(const uint64_t addr, const uint64_t bit_size, const uint64_t val) {
-    m_bus->Store(addr, bit_size, val);
+trap::Trap CPU::Store(const uint64_t addr, const uint64_t bytes, const uint8_t* buffer) {
+    return m_mmu->VirtualAddressStore(addr, bytes, buffer);
 }
 
 void CPU::SetGeneralPurposeRegVal(const uint64_t reg_num, const uint64_t val) {
@@ -99,308 +134,123 @@ uint64_t CPU::GetGeneralPurposeRegVal(const uint64_t reg_num) const {
     return m_reg[reg_num];
 }
 
-bool CPU::CheckInterruptBitsValid(const PrivilegeMode cur_pm, const PrivilegeMode new_pm, const trap::TrapType trap_type) const {
-    // https://dingfen.github.io/assets/img/mie.png
-    const uint64_t cur_status = m_state.Read(kStatusReg.at(cur_pm));
-    const uint64_t ie         = m_state.Read(kInterruptEnableReg.at(new_pm));
+void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
+    const PrivilegeMode kOriginPM = GetPrivilegeMode();
+    assert(kOriginPM != PrivilegeMode::kReserved);
 
-    // get the interrupt enable bit
-    bool cur_mie = (cur_status >> 3) & 1;
-    bool cur_sie = (cur_status >> 1) & 1;
-    bool cur_uie = cur_status & 1;
+    const csr::CauseDesc kCauseBits = {
+        .cause     = trap::kTrapToCauseTable.at(trap.m_trap_type),
+        .interrupt = trap.m_trap_type >= trap::TrapType::kUserSoftwareInterrupt,
+    };
 
-    // 1. cur_privilege_mode < new_privilege_mode: Interrupt is always enabled
-    // 2. cur_privilege_mode > new_privilege_mode: Interrupt is always disabled
-    // 3. cur_privilege_mode == new_privilege_mode: Interrupt is enabled if xIE in xstatus is 1
-    if (new_pm < cur_pm) {
-        return false;
-    } else if (new_pm == cur_pm) {
-        switch (cur_pm) {
-            case PrivilegeMode::kUser:
-                if (!cur_uie) {
-                    return false;
-                }
-                break;
-            case PrivilegeMode::kSupervisor:
-                if (!cur_sie) {
-                    return false;
-                }
-                break;
-            case PrivilegeMode::kMachine:
-                if (!cur_mie) {
-                    return false;
-                }
-                break;
-            case PrivilegeMode::kReserved:
-#ifdef DEBUG
-                fmt::print("Unknown privilege mode[{}] when check interrupt bits valid, now abort\n", static_cast<int>(cur_pm));
-#endif
-                exit(static_cast<int>(rv64_emulator::errorcode::CpuErrorCode::kReservedPrivilegeMode));
-            default:
-                break;
-        }
+    const uint64_t      kMxdeleg     = m_state.Read(kCauseBits.interrupt ? csr::kCsrMideleg : csr::kCsrMedeleg);
+    const bool          kTrapToSMode = (kOriginPM <= PrivilegeMode::kSupervisor && (kMxdeleg & (1 << kCauseBits.cause)));
+    const PrivilegeMode kNewPM       = kTrapToSMode ? PrivilegeMode::kSupervisor : PrivilegeMode::kMachine;
+
+    const uint64_t kCsrTvecAddr   = kTvecReg.at(kNewPM);
+    const uint64_t kCsrEpcAddr    = kEpcReg.at(kNewPM);
+    const uint64_t kCsrCauseAddr  = kCauseReg.at(kNewPM);
+    const uint64_t kCstTvalAddr   = kTvalReg.at(kNewPM);
+    const uint64_t kCsrStatusAddr = kTrapToSMode ? csr::kCsrSstatus : csr::kCsrMstatus;
+
+    const uint64_t kStatus     = m_state.Read(kCsrStatusAddr);
+    const uint64_t kCsrTvecVal = m_state.Read(kCsrTvecAddr);
+    const uint64_t kTrapPc     = trap::GetTrapPC(kCsrTvecVal, kCauseBits.cause);
+
+    SetPC(kTrapPc);
+    m_state.Write(kCsrEpcAddr, epc);
+    m_state.Write(kCsrCauseAddr, *reinterpret_cast<const uint64_t*>(&kCauseBits));
+    m_state.Write(kCstTvalAddr, trap.m_val);
+
+    if (kTrapToSMode) {
+        auto kSsDesc = *reinterpret_cast<const csr::SstatusDesc*>(&kStatus);
+        kSsDesc.spie = kSsDesc.sie;
+        kSsDesc.sie  = 0;
+        kSsDesc.spp  = static_cast<uint64_t>(kOriginPM);
+        m_state.Write(kCsrStatusAddr, *reinterpret_cast<const uint64_t*>(&kSsDesc));
+    } else {
+        auto kMsDesc = *reinterpret_cast<const csr::MstatusDesc*>(&kStatus);
+        kMsDesc.mpie = kMsDesc.mie;
+        kMsDesc.mie  = 0;
+        kMsDesc.mpp  = static_cast<uint64_t>(kOriginPM);
+        m_state.Write(kCsrStatusAddr, *reinterpret_cast<const uint64_t*>(&kMsDesc));
     }
 
-    // software interrupt-enable in x mode
-    bool msie = (ie >> 3) & 1;
-    bool ssie = (ie >> 1) & 1;
-    bool usie = ie & 1;
-
-    // timer interrupt-enable bit in x mode
-    bool mtie = (ie >> 7) & 1;
-    bool stie = (ie >> 5) & 1;
-    bool utie = (ie >> 4) & 1;
-
-    // external interrupt-enable in x mode
-    bool meie = (ie >> 11) & 1;
-    bool seie = (ie >> 9) & 1;
-    bool ueie = (ie >> 8) & 1;
-
-    switch (trap_type) {
-        case trap::TrapType::kUserSoftwareInterrupt:
-            if (!usie) {
-                return false;
-            }
-            break;
-        case trap::TrapType::kSupervisorSoftwareInterrupt:
-            if (!ssie) {
-                return false;
-            }
-            break;
-        case trap::TrapType::kMachineSoftwareInterrupt:
-            if (!msie) {
-                return false;
-            }
-            break;
-        case trap::TrapType::kUserTimerInterrupt:
-            if (!utie) {
-                return false;
-            }
-            break;
-        case trap::TrapType::kSupervisorTimerInterrupt:
-            if (!stie) {
-                return false;
-            }
-            break;
-        case trap::TrapType::kMachineTimerInterrupt:
-            if (!mtie) {
-                return false;
-            }
-            break;
-        case trap::TrapType::kUserExternalInterrupt:
-            if (!ueie) {
-                return false;
-            }
-            break;
-        case trap::TrapType::kSupervisorExternalInterrupt:
-            if (!seie) {
-                return false;
-            }
-            break;
-        case trap::TrapType::kMachineExternalInterrupt:
-            if (!meie) {
-                return false;
-            }
-            break;
-        default:
-            return false;
-    }
-
-    return true;
-}
-
-void CPU::ModifyCsrStatusReg(const PrivilegeMode cur_pm, const PrivilegeMode new_pm) {
-    switch (new_pm) {
-        case PrivilegeMode::kMachine: {
-            const uint64_t status = m_state.Read(csr::kCsrMstatus);
-
-            bool mie = (status >> 3) & 1;
-            // 1. clear MPP(BIT 12, 11), MPIE(BIT 7), MIE(BIT 3)
-            // 2. override MPP[12:11] with current privilege encoding
-            // 3. set MIE(bit 3) to MPIE(bit 7)
-            const uint64_t new_status = (status & (~0x1888)) | (mie << 7) | ((uint64_t)cur_pm << 11);
-            m_state.Write(csr::kCsrMstatus, new_status);
-        } break;
-        case PrivilegeMode::kSupervisor: {
-            uint64_t status = m_state.Read(csr::kCsrSstatus);
-
-            bool sie = (status >> 1) & 1;
-            // 1. clear SIE(bit 1), SPIE(bit 5), SPP(bit 8)
-            // 2. override SPP(bit 8) with current privilege encoding
-            // 3. set SIE(bit 1) to SPIE(bit 5)
-            const uint64_t new_status = (status & (~0x122)) | (sie << 5) | (((uint64_t)cur_pm & 1) << 8);
-            m_state.Write(csr::kCsrSstatus, new_status);
-        } break;
-        case PrivilegeMode::kUser:
-        case PrivilegeMode::kReserved:
-        default:
-#ifdef DEBUG
-            fmt::print("Unknown privilege mode[{}] when modify csr status reg, now abort\n", static_cast<int>(new_pm));
-#endif
-            exit(static_cast<int>(rv64_emulator::errorcode::CpuErrorCode::kReservedPrivilegeMode));
-            break;
-    }
-}
-
-uint64_t CPU::GetTrapVectorNewPC(const uint64_t csr_tvec_addr, const uint64_t exception_code) const {
-    const uint64_t csr_tvec_val = m_state.Read(csr_tvec_addr);
-    const uint8_t  mode         = csr_tvec_val & 0x3;
-    uint64_t       new_pc       = 0;
-    switch (mode) {
-        case 0:
-            new_pc = csr_tvec_val;
-            break;
-        case 1:
-            new_pc = (csr_tvec_val & (~0x3)) + 4 * exception_code;
-            break;
-        default:
-#ifdef DEBUG
-            fmt::print("Unknown mode[{}] when cget tvec new pc, csr_tvec_val[{}], now abort\n", static_cast<int>(mode), csr_tvec_val);
-#endif
-            exit(static_cast<int>(rv64_emulator::errorcode::CpuErrorCode::kTrapVectorModeUndefined));
-            break;
-    }
-    return new_pc;
-}
-
-bool CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
-    const PrivilegeMode cur_privilege_mode = GetPrivilegeMode();
-    assert(cur_privilege_mode != PrivilegeMode::kReserved);
-    const auto [is_interrupt, origin_cause_bits] = GetTrapCauseBits(trap);
-
-    uint64_t cause_bits = origin_cause_bits;
-
-    if (is_interrupt) {
-        // clear interrupt bit
-        const uint64_t interrupt_bit = static_cast<uint64_t>(1) << (GetMaxXLen() - 1);
-        cause_bits &= (~interrupt_bit);
-    }
-
-    const uint64_t mxdeleg        = m_state.Read(is_interrupt ? csr::kCsrMideleg : csr::kCsrMedeleg);
-    const uint64_t exception_code = cause_bits;
-
-    bool switch_to_s_mode =
-        (cur_privilege_mode <= PrivilegeMode::kSupervisor && exception_code < GetMaxXLen() && mxdeleg & (1 << exception_code));
-    PrivilegeMode new_privilege_mode = switch_to_s_mode ? PrivilegeMode::kSupervisor : PrivilegeMode::kMachine;
-
-    if (is_interrupt) {
-        if (!CheckInterruptBitsValid(cur_privilege_mode, new_privilege_mode, trap.m_trap_type)) {
-            // TODO: 打印日志
-            return false;
-        }
-    }
-
-    const uint64_t csr_tvec_addr  = kTvecReg.at(new_privilege_mode);
-    const uint64_t csr_epc_addr   = kEpcReg.at(new_privilege_mode);
-    const uint64_t csr_cause_addr = kCauseReg.at(new_privilege_mode);
-    const uint64_t csr_tval_addr  = kTvalReg.at(new_privilege_mode);
-
-    SetPC(GetTrapVectorNewPC(csr_tvec_addr, exception_code));
-
-    m_state.Write(csr_epc_addr, epc);
-    m_state.Write(csr_cause_addr, origin_cause_bits);
-    m_state.Write(csr_tval_addr, trap.m_val);
-
-    ModifyCsrStatusReg(cur_privilege_mode, new_privilege_mode);
-    SetPrivilegeMode(new_privilege_mode);
-
-    return true;
+    SetPrivilegeMode(kNewPM);
 }
 
 void CPU::HandleInterrupt(const uint64_t inst_addr) {
-    const uint64_t mip = m_state.Read(csr::kCsrMip);
-    const uint64_t mie = m_state.Read(csr::kCsrMie);
+    const uint64_t kMip        = m_state.Read(csr::kCsrMip);
+    const uint64_t kMie        = m_state.Read(csr::kCsrMie);
+    const uint64_t kMsVal      = m_state.Read(csr::kCsrMstatus);
+    const uint64_t kMidelegVal = m_state.Read(csr::kCsrMideleg);
 
-    const uint64_t machine_interrupts = mip & mie;
+    const auto  kCurPM  = GetPrivilegeMode();
+    const auto* kMsDesc = reinterpret_cast<const csr::MstatusDesc*>(&kMsVal);
 
-    trap::TrapType trap_type    = trap::TrapType::kNone;
-    uint16_t       csr_mip_mask = 0;
+    const uint64_t kInterruptBits = kMip & kMie;
 
-    // 中断优先级：MEI > MSI > MTI > SEI > SSI > STI
-    do {
-        if (!machine_interrupts) {
-            break;
-        }
-
-        if (machine_interrupts & csr::kCsrMeipMask) {
-            trap_type    = trap::TrapType::kMachineExternalInterrupt;
-            csr_mip_mask = csr::kCsrMeipMask;
-            break;
-        }
-
-        if (machine_interrupts & csr::kCsrMsipMask) {
-            trap_type    = trap::TrapType::kMachineSoftwareInterrupt;
-            csr_mip_mask = csr::kCsrMsipMask;
-            break;
-        }
-
-        if (machine_interrupts & csr::kCsrMtipMask) {
-            trap_type    = trap::TrapType::kMachineTimerInterrupt;
-            csr_mip_mask = csr::kCsrMtipMask;
-            break;
-        }
-
-        if (machine_interrupts & csr::kCsrSeipMask) {
-            trap_type    = trap::TrapType::kSupervisorExternalInterrupt;
-            csr_mip_mask = csr::kCsrSeipMask;
-            break;
-        }
-
-        if (machine_interrupts & csr::kCsrSsipMask) {
-            trap_type    = trap::TrapType::kSupervisorSoftwareInterrupt;
-            csr_mip_mask = csr::kCsrSsipMask;
-            break;
-        }
-
-        if (machine_interrupts & csr::kCsrStipMask) {
-            trap_type    = trap::TrapType::kSupervisorTimerInterrupt;
-            csr_mip_mask = csr::kCsrStipMask;
-            break;
-        }
-    } while (false);
-
-    const trap::Trap trap = {
-        .m_trap_type = trap_type,
+    trap::Trap final_interrupt = {
+        .m_trap_type = trap::TrapType::kNone,
         .m_val       = GetPC(),
     };
 
-    if (trap.m_trap_type != trap::TrapType::kNone) {
-        if (HandleTrap(trap, inst_addr)) {
-            m_state.Write(csr::kCsrMip, mip & (~csr_mip_mask));
-            m_wfi = false;
-            return;
-        } else {
-#ifdef DEBUG
-            fmt::print("Interrupt bits invalid when handling trap\n");
-#endif
+    if (kCurPM == PrivilegeMode::kMachine) {
+        const uint64_t kMmodeIntBits = kInterruptBits & (~kMidelegVal);
+        if (kMmodeIntBits && kMsDesc->mie) {
+            final_interrupt.m_trap_type = InterruptBitsToTrap(kMmodeIntBits);
         }
+    } else {
+        const trap::TrapType kInterruptType = InterruptBitsToTrap(kInterruptBits);
+        if (TrapToMask(kInterruptType) & kMidelegVal) {
+            if (kMsDesc->sie || kCurPM < PrivilegeMode::kSupervisor) {
+                final_interrupt.m_trap_type = kInterruptType;
+            }
+        } else {
+            if (kMsDesc->mie || kCurPM < PrivilegeMode::kMachine) {
+                final_interrupt.m_trap_type = kInterruptType;
+            }
+        }
+    }
+
+    const uint64_t kCsrMipMask = TrapToMask(final_interrupt.m_trap_type);
+    if (final_interrupt.m_trap_type != trap::TrapType::kNone) {
+        HandleTrap(final_interrupt, inst_addr);
+        m_state.Write(csr::kCsrMip, kMip & (~kCsrMipMask));
+        m_wfi = false;
     }
 }
 
-uint32_t CPU::Fetch() {
-    uint32_t inst_word = m_bus->Load(GetPC(), kInstructionBits);
-    return inst_word;
+trap::Trap CPU::Fetch(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {
+    CHECK_MISALIGN_INSTRUCTION(addr, this);
+
+    return m_mmu->VirtualFetch(addr, bytes, buffer);
 }
 
-int64_t CPU::Decode(const uint32_t inst_word) {
+trap::Trap CPU::Decode(const uint32_t word, int64_t& index) {
     int64_t inst_table_index = 0;
 
     // decode cache hit current instruction
-    if (m_decode_cache.Get(inst_word, inst_table_index)) {
-        return inst_table_index;
+    if (m_decode_cache.Get(word, inst_table_index)) {
+        index = inst_table_index;
+        return trap::kNoneTrap;
     }
 
     // decode cache miss, find the index in instruction table
     inst_table_index = 0;
     for (const auto& inst : instruction::kInstructionTable) {
-        if ((inst_word & inst.m_mask) == inst.m_data) {
-            m_decode_cache.Set(inst_word, inst_table_index);
-            return inst_table_index;
+        if ((word & inst.m_mask) == inst.m_data) {
+            m_decode_cache.Set(word, inst_table_index);
+            index = inst_table_index;
+            return trap::kNoneTrap;
         }
         inst_table_index++;
     }
 
-    return -1;
+    return {
+        .m_trap_type = trap::TrapType::kIllegalInstruction,
+        .m_val       = word,
+    };
 }
 
 trap::Trap CPU::TickOperate() {
@@ -410,32 +260,36 @@ trap::Trap CPU::TickOperate() {
         if (mie & mip) {
             m_wfi = false;
         }
-        return {
-            .m_trap_type = trap::TrapType::kNone,
-            .m_val       = 0,
-        };
+        return trap::kNoneTrap;
     }
 
-    const uint64_t inst_addr = GetPC();
-    const uint32_t inst_word = Fetch();
-    SetPC(inst_addr + 4);
+    const uint64_t kInstructionAddr = GetPC();
 
-    int64_t instruction_index = Decode(inst_word);
-    if (instruction_index == -1) {
-        return {
-            .m_trap_type = trap::TrapType::kIllegalInstruction,
-            .m_val       = inst_addr,
-        };
+    int64_t  index = 0;
+    uint32_t word  = 0;
+
+    // TODO
+    const trap::Trap kFetchTrap = Fetch(kInstructionAddr, sizeof(uint32_t), reinterpret_cast<uint8_t*>(&word));
+    if (kFetchTrap.m_trap_type != trap::TrapType::kNone) {
+        return kFetchTrap;
+    }
+
+    // TODO
+    SetPC(kInstructionAddr + 4);
+
+    const trap::Trap kDecodeTrap = Decode(word, index);
+    if (kDecodeTrap.m_trap_type != trap::TrapType::kNone) {
+        return kDecodeTrap;
     }
 
 #ifdef DEBUG
-    Disassemble(inst_addr, inst_word, instruction_index);
+    Disassemble(kInstructionAddr, word, index);
     uint64_t backup_reg[kGeneralPurposeRegNum] = { 0 };
     memcpy(backup_reg, m_reg, kGeneralPurposeRegNum * sizeof(uint64_t));
 #endif
 
-    const trap::Trap trap = instruction::kInstructionTable[instruction_index].Exec(this, inst_word);
-    // in a emulator, there is not a GND hardwiring x0 to zero
+    const trap::Trap kExecTrap = instruction::kInstructionTable[index].Exec(this, word);
+
     m_reg[0] = 0;
 
 #ifdef DEBUG
@@ -447,24 +301,27 @@ trap::Trap CPU::TickOperate() {
     }
 #endif
 
-    return trap;
+    return kExecTrap;
 }
 
 void CPU::Tick() {
-    const uint64_t   epc  = GetPC();
-    const trap::Trap trap = TickOperate();
-    if (trap.m_trap_type != trap::TrapType::kNone) {
-        if (!HandleTrap(trap, epc)) {
-            fmt::print("Interrupt bits invalid when handling trap\n");
-        }
+    // pre exec
+    m_state.Write(csr::kCsrMCycle, ++m_clock);
+
+    const uint64_t   kEpc  = GetPC();
+    const trap::Trap kTrap = TickOperate();
+    if (kTrap.m_trap_type != trap::TrapType::kNone) {
+        HandleTrap(kTrap, kEpc);
     }
 
     HandleInterrupt(GetPC());
 
-    // rust style 'wrapping_add' not need
-    // risc-v cycle, time, instret regs: risc-v1.com/thread-968-1-1.html
-    m_state.Write(csr::kCsrMCycle, ++m_clock);
+    // post exec
     m_state.Write(csr::kCsrMinstret, ++m_instruction_count);
+}
+
+void CPU::FlushTlb(const uint64_t vaddr, const uint64_t asid) {
+    m_mmu->FlushTlb(vaddr, asid);
 }
 
 CPU::~CPU() {

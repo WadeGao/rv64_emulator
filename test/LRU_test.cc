@@ -14,12 +14,12 @@ protected:
         fmt::print("finish running LRU test case...\n");
     }
 
-    virtual void SetUp() override {
+    void SetUp() override {
         auto lru = std::make_unique<rv64_emulator::libs::LRUCache<std::string, int>>(3);
         m_lru    = std::move(lru);
     }
 
-    virtual void TearDown() override {
+    void TearDown() override {
     }
 
     std::unique_ptr<rv64_emulator::libs::LRUCache<std::string, int>> m_lru;
