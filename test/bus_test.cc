@@ -31,7 +31,6 @@ protected:
 };
 
 TEST_F(BusTest, Load) {
-
     uint64_t* raw_data_ptr = reinterpret_cast<uint64_t*>(m_bus->m_dram->m_memory.data());
     *raw_data_ptr          = 0x1122334455667788;
 

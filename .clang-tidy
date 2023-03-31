@@ -92,6 +92,11 @@ CheckOptions:
   - { key: readability-identifier-naming.ClassMemberSuffix,      value: _          }
   - { key: readability-identifier-naming.PrivateMemberSuffix,    value: _          }
   - { key: readability-identifier-naming.ProtectedMemberSuffix,  value: _          }
+  - { key: readability-identifier-naming.ConstantParameterCase,           value: lower_case }
+  - { key: readability-identifier-naming.ConstantPointerParameterCase, value: CamelCase }
+  - { key: readability-identifier-naming.ConstantPointerParameterPrefix,       value: k }
+  - { key: readability-identifier-naming.LocalConstantPointerCase, value: CamelCase }
+  - { key: readability-identifier-naming.LocalConstantPointerPrefix,       value: k }
   - { key: readability-identifier-naming.ConstantCase,         value: CamelCase }
   - { key: readability-identifier-naming.ConstantPrefix,       value: k         }
   - { key: readability-identifier-naming.EnumConstantCase,         value: CamelCase }

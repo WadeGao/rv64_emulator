@@ -77,6 +77,6 @@ constexpr Trap kNoneTrap = {
     .m_val       = 0,
 };
 
-uint64_t GetTrapPC(const uint64_t csr_tvec_addr, const uint64_t cause);
+uint64_t GetTrapPC(const uint64_t tvec_val, const uint64_t cause);
 
 } // namespace rv64_emulator::cpu::trap

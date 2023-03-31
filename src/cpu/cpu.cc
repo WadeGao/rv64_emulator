@@ -7,8 +7,8 @@
 #include "cpu/trap.h"
 #include "mmu.h"
 
+#include "libs/arithmetic.hpp"
 #include "libs/lru.hpp"
-#include "libs/software_arithmetic.hpp"
 #include "libs/utils.h"
 
 #include "fmt/color.h"
@@ -109,6 +109,10 @@ uint64_t CPU::GetGeneralPurposeRegVal(const uint64_t reg_num) const {
 }
 
 void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
+    if (trap.m_trap_type == trap::TrapType::kNone) {
+        return;
+    }
+
     const PrivilegeMode kOriginPM = GetPrivilegeMode();
     assert(kOriginPM != PrivilegeMode::kReserved);
 
@@ -191,11 +195,9 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
     }
 
     const uint64_t kCsrMipMask = TrapToMask(final_interrupt.m_trap_type);
-    if (final_interrupt.m_trap_type != trap::TrapType::kNone) {
-        HandleTrap(final_interrupt, inst_addr);
-        m_state.Write(csr::kCsrMip, kMip & (~kCsrMipMask));
-        m_wfi = false;
-    }
+    HandleTrap(final_interrupt, inst_addr);
+    m_state.Write(csr::kCsrMip, kMip & (~kCsrMipMask));
+    m_wfi = (kCsrMipMask != 0) ? false : m_wfi;
 }
 
 trap::Trap CPU::Fetch(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {
@@ -287,10 +289,8 @@ void CPU::Tick() {
 
     const uint64_t   kEpc  = GetPC();
     const trap::Trap kTrap = TickOperate();
-    if (kTrap.m_trap_type != trap::TrapType::kNone) {
-        HandleTrap(kTrap, kEpc);
-    }
 
+    HandleTrap(kTrap, kEpc);
     HandleInterrupt(GetPC());
 
     // post exec

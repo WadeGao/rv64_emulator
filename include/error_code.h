@@ -13,9 +13,7 @@ enum class ErrorCode : int {
 };
 
 enum class DramErrorCode : int {
-    kSuccess                  = 0,
-    kInvalidRange             = static_cast<int>(ErrorCode::kDramErrorCodeBase) - 1,
-    kAccessBitsWidthUnaligned = static_cast<int>(ErrorCode::kDramErrorCodeBase) - 2,
+    kSuccess = 0,
 };
 
 enum class DecodeErrorCode : int {
@@ -24,10 +22,8 @@ enum class DecodeErrorCode : int {
 };
 
 enum class CpuErrorCode : int {
-    kSuccess                 = 0,
-    kExecuteFailure          = static_cast<int>(ErrorCode::kCpuErrorCodeBase) - 1,
-    kReservedPrivilegeMode   = static_cast<int>(ErrorCode::kCpuErrorCodeBase) - 2,
-    kTrapVectorModeUndefined = static_cast<int>(ErrorCode::kCpuErrorCodeBase) - 3,
+    kSuccess        = 0,
+    kExecuteFailure = static_cast<int>(ErrorCode::kCpuErrorCodeBase) - 1,
 };
 
 enum class ElfErrorCode : int {
