@@ -39,7 +39,7 @@ TEST_F(DRAMTest, Store) {
 
     const uint8_t* kRawBytes = m_dram->m_memory.data();
 
-    const uint64_t* kDwordRawData = reinterpret_cast<const uint64_t*>(kRawBytes);
+    const auto* kDwordRawData = reinterpret_cast<const uint64_t*>(kRawBytes);
     ASSERT_EQ(*kDwordRawData, kArbitraryVal);
 
     ASSERT_FALSE(m_dram->Store(m_dram->GetSize() - 7, sizeof(uint64_t), reinterpret_cast<const uint8_t*>(&kArbitraryVal)));
@@ -48,8 +48,8 @@ TEST_F(DRAMTest, Store) {
 TEST_F(DRAMTest, Load) {
     m_dram->Store(kArbitraryAddr, sizeof(uint64_t), reinterpret_cast<const uint8_t*>(&kArbitraryVal));
 
-    uint64_t* kDwordRawData = reinterpret_cast<uint64_t*>(m_dram->m_memory.data());
-    *kDwordRawData          = kArbitraryVal;
+    uint64_t* dword_ptr = reinterpret_cast<uint64_t*>(m_dram->m_memory.data());
+    *dword_ptr          = kArbitraryVal;
 
     uint64_t res;
     ASSERT_TRUE(m_dram->Load(kArbitraryAddr, sizeof(uint64_t), reinterpret_cast<uint8_t*>(&res)));

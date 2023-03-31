@@ -1,5 +1,5 @@
 #include "cpu/csr.h"
-#include "libs/software_arithmetic.hpp"
+#include "libs/arithmetic.hpp"
 
 #include <cstdint>
 
