@@ -34,7 +34,7 @@ constexpr uint64_t kWordBits    = sizeof(uint32_t) * 8;
 
 class PLIC {
 private:
-    typedef struct PlicContext {
+    using PlicContext = struct PlicContext {
         bool     m_is_machine_mode;
         uint64_t context_id;
         uint32_t m_threshold;
@@ -45,7 +45,7 @@ private:
         uint32_t m_claim[kPlicMaxDevices / kWordBits]   = { 0 };
 
         uint32_t m_priority[kPlicMaxDevices] = { 0 };
-    } PlicContext;
+    };
 
     std::vector<CPU*>        m_processors;
     std::vector<PlicContext> m_contexts;
