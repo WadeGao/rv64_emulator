@@ -1,7 +1,7 @@
 #pragma once
 
-#include "bidirectional_interface.hpp"
 #include "dram.h"
+#include "mmio_device.hpp"
 
 #include <memory>
 
@@ -9,7 +9,7 @@ namespace rv64_emulator {
 
 namespace bus {
 
-class Bus : public BidirectionalInterface {
+class Bus : public MmioDevice {
 private:
     std::unique_ptr<rv64_emulator::dram::DRAM> m_dram;
 

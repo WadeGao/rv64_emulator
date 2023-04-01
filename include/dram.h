@@ -1,13 +1,13 @@
 #pragma once
 
-#include "bidirectional_interface.hpp"
+#include "mmio_device.hpp"
 
 #include <cstdint>
 #include <vector>
 
 namespace rv64_emulator::dram {
 
-class DRAM : public BidirectionalInterface {
+class DRAM : public MmioDevice {
 private:
     const uint64_t       m_size;
     std::vector<uint8_t> m_memory;
