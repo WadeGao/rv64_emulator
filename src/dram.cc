@@ -1,59 +1,59 @@
 #include "dram.h"
-#include "conf.h"
-
-#include "fmt/core.h"
 
 #include <cstdint>
 #include <cstdlib>
 
+#include "conf.h"
+#include "fmt/core.h"
+
 namespace rv64_emulator::dram {
 
-DRAM::DRAM(const uint64_t mem_size)
-    : m_size(mem_size)
-    , m_memory(mem_size, 0) {
+DRAM::DRAM(const uint64_t mem_size) : size_(mem_size), memory_(mem_size, 0) {
 #ifdef DEBUG
-    fmt::print("dram init to all zeros, size {} bytes\n", mem_size);
+  fmt::print("dram init to all zeros, size {} bytes\n", mem_size);
 #endif
 }
 
-uint64_t DRAM::GetSize() const {
-    return m_size;
-}
+uint64_t DRAM::GetSize() const { return size_; }
 
-bool DRAM::Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) const {
-    if (addr + bytes <= m_size) {
-        memcpy(buffer, &m_memory[addr], bytes);
-        return true;
-    }
-
-#ifdef DEBUG
-    fmt::print("dram load error, addr[{:#018x}], bytes[{:#018x}], m_size[{:#018x}]\n", addr, bytes, m_size);
-#endif
-
-    return false;
-}
-
-bool DRAM::Store(const uint64_t addr, const uint64_t bytes, const uint8_t* buffer) {
-    if (addr + bytes <= m_size) {
-        memcpy(&m_memory[addr], buffer, bytes);
-        return true;
-    }
+bool DRAM::Load(const uint64_t addr, const uint64_t bytes,
+                uint8_t* buffer) const {
+  if (addr + bytes <= size_) {
+    memcpy(buffer, &memory_[addr], bytes);
+    return true;
+  }
 
 #ifdef DEBUG
-    fmt::print("dram store error, addr[{:#018x}], bytes[{:#018x}], m_size[{:#018x}]\n", addr, bytes, m_size);
+  fmt::print(
+      "dram load error, addr[{:#018x}], bytes[{:#018x}], m_size[{:#018x}]\n",
+      addr, bytes, size_);
 #endif
 
-    return false;
+  return false;
 }
 
-void DRAM::Reset() {
-    std::fill(m_memory.begin(), m_memory.end(), 0);
+bool DRAM::Store(const uint64_t addr, const uint64_t bytes,
+                 const uint8_t* buffer) {
+  if (addr + bytes <= size_) {
+    memcpy(&memory_[addr], buffer, bytes);
+    return true;
+  }
+
+#ifdef DEBUG
+  fmt::print(
+      "dram store error, addr[{:#018x}], bytes[{:#018x}], m_size[{:#018x}]\n",
+      addr, bytes, size_);
+#endif
+
+  return false;
 }
+
+void DRAM::Reset() { std::fill(memory_.begin(), memory_.end(), 0); }
 
 DRAM::~DRAM() {
 #ifdef DEBUG
-    fmt::print("destroy a dram, size {} bytes\n", m_size);
+  fmt::print("destroy a dram, size {} bytes\n", size_);
 #endif
 }
 
-} // namespace rv64_emulator::dram
+}  // namespace rv64_emulator::dram

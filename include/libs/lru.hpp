@@ -3,81 +3,76 @@
 #include <cstdint>
 #include <list>
 #include <unordered_map>
+#include <utility>
 
 namespace rv64_emulator::libs {
 
-template <typename Tkey = uint64_t, typename Tval = int64_t>
+template <typename TKey = uint64_t, typename TVal = int64_t>
 class LRUCache {
-private:
-    uint64_t m_capacity;
+ private:
+  uint64_t capacity_;
 
-    uint64_t m_current_size;
-    uint64_t m_hit_count;
-    uint64_t m_miss_count;
+  uint64_t cur_size_{0};
+  uint64_t hit_count_{0};
+  uint64_t miss_count_{0};
 
-    std::list<std::pair<Tkey, Tval>> m_list;
+  std::list<std::pair<TKey, TVal>> kv_node_;
 
-    std::unordered_map<Tkey, typename std::list<std::pair<Tkey, Tval>>::iterator> m_cache;
+  std::unordered_map<TKey, typename std::list<std::pair<TKey, TVal>>::iterator>
+      cache_;
 
-public:
-    LRUCache(const uint64_t capacity)
-        : m_capacity(capacity)
-        , m_current_size(0)
-        , m_hit_count(0)
-        , m_miss_count(0) {
+ public:
+  explicit LRUCache(const uint64_t capacity) : capacity_(capacity) {}
+
+  bool Get(TKey key, TVal* ret_val) {
+    if (cache_.find(key) == cache_.end()) {
+      miss_count_++;
+      return false;
     }
 
-    bool Get(Tkey key, Tval& ret_val) {
-        if (m_cache.find(key) == m_cache.end()) {
-            m_miss_count++;
-            return false;
-        }
+    hit_count_++;
+    kv_node_.splice(kv_node_.begin(), kv_node_, cache_[key]);
+    cache_[key] = kv_node_.begin();
+    *ret_val = kv_node_.begin()->second;
+    return true;
+  }
 
-        m_hit_count++;
-        m_list.splice(m_list.begin(), m_list, m_cache[key]);
-        m_cache[key] = m_list.begin();
-        ret_val      = m_list.begin()->second;
-        return true;
+  void Set(TKey key, TVal value) {
+    if (cur_size_ < capacity_) {
+      if (cache_.find(key) == cache_.end()) {
+        kv_node_.push_front({key, value});
+        cur_size_++;
+        cache_.emplace(key, kv_node_.begin());
+      } else {
+        kv_node_.splice(kv_node_.begin(), kv_node_, cache_[key]);
+        cache_[key] = kv_node_.begin();
+        kv_node_.begin()->second = value;
+      }
+      return;
     }
 
-    void Set(Tkey key, Tval value) {
-        if (m_current_size < m_capacity) {
-            if (m_cache.find(key) == m_cache.end()) {
-                m_list.push_front({ key, value });
-                m_current_size++;
-                m_cache.emplace(key, m_list.begin());
-            } else {
-                m_list.splice(m_list.begin(), m_list, m_cache[key]);
-                m_cache[key]           = m_list.begin();
-                m_list.begin()->second = value;
-            }
-            return;
-        }
-
-        if (m_cache.find(key) != m_cache.end()) {
-            m_list.splice(m_list.begin(), m_list, m_cache[key]);
-            m_cache[key]           = m_list.begin();
-            m_list.begin()->second = value;
-        }
-
-        m_cache.erase(m_list.back().first);
-        m_list.splice(m_list.begin(), m_list, std::prev(m_list.end()));
-        m_list.begin()->first  = key;
-        m_list.begin()->second = value;
-        m_cache.emplace(key, m_list.begin());
+    if (cache_.find(key) != cache_.end()) {
+      kv_node_.splice(kv_node_.begin(), kv_node_, cache_[key]);
+      cache_[key] = kv_node_.begin();
+      kv_node_.begin()->second = value;
     }
 
-    const std::list<std::pair<Tkey, Tval>>& View() const {
-        return m_list;
-    }
+    cache_.erase(kv_node_.back().first);
+    kv_node_.splice(kv_node_.begin(), kv_node_, std::prev(kv_node_.end()));
+    kv_node_.begin()->first = key;
+    kv_node_.begin()->second = value;
+    cache_.emplace(key, kv_node_.begin());
+  }
 
-    void Reset() {
-        m_current_size = 0;
-        m_hit_count    = 0;
-        m_miss_count   = 0;
-        m_list.clear();
-        m_cache.clear();
-    }
+  const std::list<std::pair<TKey, TVal>>& View() const { return kv_node_; }
+
+  void Reset() {
+    cur_size_ = 0;
+    hit_count_ = 0;
+    miss_count_ = 0;
+    kv_node_.clear();
+    cache_.clear();
+  }
 };
 
-} // namespace rv64_emulator::libs
+}  // namespace rv64_emulator::libs
