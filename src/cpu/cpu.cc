@@ -226,7 +226,7 @@ trap::Trap CPU::Decode(const uint32_t word, int64_t* index) {
   // decode cache miss, find the index in instruction table
   res = 0;
   for (const auto& inst : instruction::kInstructionTable) {
-    if ((word & inst.m_mask) == inst.m_data) {
+    if ((word & inst.mask) == inst.signature) {
       dlb_.Set(word, res);
       *index = res;
       return trap::kNoneTrap;
@@ -320,7 +320,7 @@ CPU::~CPU() {
 void CPU::Disassemble(const uint64_t pc, const uint32_t word,
                       const int64_t index) const {
   fmt::print("{:#018x} {:#010x} {}\n", pc, word,
-             instruction::kInstructionTable[index].m_name);
+             instruction::kInstructionTable[index].name);
 }
 
 void CPU::DumpRegisters() const {

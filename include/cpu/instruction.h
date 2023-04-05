@@ -63,18 +63,18 @@ class CPU;
 namespace instruction {
 
 using Instruction = struct Instruction {
-  uint32_t m_mask;
-  uint32_t m_data;
-  const char* m_name;
+  uint32_t mask;
+  uint32_t signature;
+  const char* name;
   trap::Trap (*Exec)(CPU* cpu, const uint32_t inst_word);
 };
 
 const Instruction kInstructionTable[] = {
     /*********** rv_i instructions ***********/
     {
-        .m_mask = 0x0000007f,
-        .m_data = 0x00000037,
-        .m_name = "LUI",
+        .mask = 0x0000007f,
+        .signature = 0x00000037,
+        .name = "LUI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatU(inst_word);
 
@@ -86,9 +86,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000007f,
-        .m_data = 0x00000017,
-        .m_name = "AUIPC",
+        .mask = 0x0000007f,
+        .signature = 0x00000017,
+        .name = "AUIPC",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatU(inst_word);
           const int64_t val = (int64_t)(cpu->GetPC() - 4) + (int64_t)f.imm;
@@ -98,9 +98,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000007f,
-        .m_data = 0x0000006f,
-        .m_name = "JAL",
+        .mask = 0x0000007f,
+        .signature = 0x0000006f,
+        .name = "JAL",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatJ(inst_word);
 
@@ -117,9 +117,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00000067,
-        .m_name = "JALR",
+        .mask = 0x0000707f,
+        .signature = 0x00000067,
+        .name = "JALR",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint64_t kOriginPc = cpu->GetPC();
@@ -137,9 +137,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00000063,
-        .m_name = "BEQ",
+        .mask = 0x0000707f,
+        .signature = 0x00000063,
+        .name = "BEQ",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatB(inst_word);
           if ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) ==
@@ -153,9 +153,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00001063,
-        .m_name = "BNE",
+        .mask = 0x0000707f,
+        .signature = 0x00001063,
+        .name = "BNE",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatB(inst_word);
           if ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) !=
@@ -169,9 +169,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00004063,
-        .m_name = "BLT",
+        .mask = 0x0000707f,
+        .signature = 0x00004063,
+        .name = "BLT",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatB(inst_word);
           if ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) <
@@ -185,9 +185,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00005063,
-        .m_name = "BGE",
+        .mask = 0x0000707f,
+        .signature = 0x00005063,
+        .name = "BGE",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatB(inst_word);
           if ((int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) >=
@@ -201,9 +201,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00006063,
-        .m_name = "BLTU",
+        .mask = 0x0000707f,
+        .signature = 0x00006063,
+        .name = "BLTU",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatB(inst_word);
           if ((uint64_t)cpu->GetGeneralPurposeRegVal(f.rs1) <
@@ -217,9 +217,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00007063,
-        .m_name = "BGEU",
+        .mask = 0x0000707f,
+        .signature = 0x00007063,
+        .name = "BGEU",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatB(inst_word);
           if ((uint64_t)cpu->GetGeneralPurposeRegVal(f.rs1) >=
@@ -233,9 +233,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00000003,
-        .m_name = "LB",
+        .mask = 0x0000707f,
+        .signature = 0x00000003,
+        .name = "LB",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint64_t addr =
@@ -251,9 +251,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00001003,
-        .m_name = "LH",
+        .mask = 0x0000707f,
+        .signature = 0x00001003,
+        .name = "LH",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint64_t addr =
@@ -269,9 +269,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00002003,
-        .m_name = "LW",
+        .mask = 0x0000707f,
+        .signature = 0x00002003,
+        .name = "LW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint64_t addr =
@@ -287,9 +287,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00004003,
-        .m_name = "LBU",
+        .mask = 0x0000707f,
+        .signature = 0x00004003,
+        .name = "LBU",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint64_t addr =
@@ -305,9 +305,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00005003,
-        .m_name = "LHU",
+        .mask = 0x0000707f,
+        .signature = 0x00005003,
+        .name = "LHU",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint64_t addr =
@@ -323,9 +323,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00000023,
-        .m_name = "SB",
+        .mask = 0x0000707f,
+        .signature = 0x00000023,
+        .name = "SB",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatS(inst_word);
           const uint64_t addr =
@@ -341,9 +341,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00001023,
-        .m_name = "SH",
+        .mask = 0x0000707f,
+        .signature = 0x00001023,
+        .name = "SH",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatS(inst_word);
           const uint64_t addr =
@@ -359,9 +359,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00002023,
-        .m_name = "SW",
+        .mask = 0x0000707f,
+        .signature = 0x00002023,
+        .name = "SW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatS(inst_word);
           const uint64_t addr =
@@ -377,9 +377,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00000013,
-        .m_name = "ADDI",
+        .mask = 0x0000707f,
+        .signature = 0x00000013,
+        .name = "ADDI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const int64_t val =
@@ -390,9 +390,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00002013,
-        .m_name = "SLTI",
+        .mask = 0x0000707f,
+        .signature = 0x00002013,
+        .name = "SLTI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const int64_t val =
@@ -404,9 +404,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00003013,
-        .m_name = "SLTIU",
+        .mask = 0x0000707f,
+        .signature = 0x00003013,
+        .name = "SLTIU",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const int64_t val =
@@ -419,9 +419,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00004013,
-        .m_name = "XORI",
+        .mask = 0x0000707f,
+        .signature = 0x00004013,
+        .name = "XORI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const int64_t val = cpu->GetGeneralPurposeRegVal(f.rs1) ^ f.imm;
@@ -431,9 +431,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00006013,
-        .m_name = "ORI",
+        .mask = 0x0000707f,
+        .signature = 0x00006013,
+        .name = "ORI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const int64_t val =
@@ -444,9 +444,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00007013,
-        .m_name = "ANDI",
+        .mask = 0x0000707f,
+        .signature = 0x00007013,
+        .name = "ANDI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const int64_t val =
@@ -457,9 +457,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x00000033,
-        .m_name = "ADD",
+        .mask = 0xfe00707f,
+        .signature = 0x00000033,
+        .name = "ADD",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) +
@@ -470,9 +470,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x40000033,
-        .m_name = "SUB",
+        .mask = 0xfe00707f,
+        .signature = 0x40000033,
+        .name = "SUB",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) -
@@ -483,9 +483,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x00001033,
-        .m_name = "SLL",
+        .mask = 0xfe00707f,
+        .signature = 0x00001033,
+        .name = "SLL",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1)
@@ -496,9 +496,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x00002033,
-        .m_name = "SLT",
+        .mask = 0xfe00707f,
+        .signature = 0x00002033,
+        .name = "SLT",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t val =
@@ -512,9 +512,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x00003033,
-        .m_name = "SLTU",
+        .mask = 0xfe00707f,
+        .signature = 0x00003033,
+        .name = "SLTU",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t val =
@@ -528,9 +528,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x00004033,
-        .m_name = "XOR",
+        .mask = 0xfe00707f,
+        .signature = 0x00004033,
+        .name = "XOR",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) ^
@@ -541,9 +541,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x00005033,
-        .m_name = "SRL",
+        .mask = 0xfe00707f,
+        .signature = 0x00005033,
+        .name = "SRL",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const uint64_t rs1 = cpu->GetGeneralPurposeRegVal(f.rs1);
@@ -555,9 +555,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x40005033,
-        .m_name = "SRA",
+        .mask = 0xfe00707f,
+        .signature = 0x40005033,
+        .name = "SRA",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) >>
@@ -568,9 +568,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x00006033,
-        .m_name = "OR",
+        .mask = 0xfe00707f,
+        .signature = 0x00006033,
+        .name = "OR",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) |
@@ -581,9 +581,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x00007033,
-        .m_name = "AND",
+        .mask = 0xfe00707f,
+        .signature = 0x00007033,
+        .name = "AND",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t val = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1) &
@@ -594,9 +594,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x0000000f,
-        .m_name = "FENCE",
+        .mask = 0x0000707f,
+        .signature = 0x0000000f,
+        .name = "FENCE",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           // TODO: implement
           return trap::kNoneTrap;
@@ -604,9 +604,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfff0707f,
-        .m_data = 0x8330000f,
-        .m_name = "FENCE.TSO",
+        .mask = 0xfff0707f,
+        .signature = 0x8330000f,
+        .name = "FENCE.TSO",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           // TODO: implement
           return trap::kNoneTrap;
@@ -614,9 +614,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xffffffff,
-        .m_data = 0x100000f,
-        .m_name = "PAUSE",
+        .mask = 0xffffffff,
+        .signature = 0x100000f,
+        .name = "PAUSE",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           // TODO: implement
           return trap::kNoneTrap;
@@ -624,9 +624,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xffffffff,
-        .m_data = 0x00000073,
-        .m_name = "ECALL",
+        .mask = 0xffffffff,
+        .signature = 0x00000073,
+        .name = "ECALL",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const PrivilegeMode kPrivMode = cpu->GetPrivilegeMode();
           trap::TrapType exception_type = trap::TrapType::kNone;
@@ -658,9 +658,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xffffffff,
-        .m_data = 0x00100073,
-        .m_name = "EBREAK",
+        .mask = 0xffffffff,
+        .signature = 0x00100073,
+        .name = "EBREAK",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           return {
               .trap_type = trap::TrapType::kBreakpoint,
@@ -671,9 +671,9 @@ const Instruction kInstructionTable[] = {
 
     /*********** rv64_i instructions ***********/
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00006003,
-        .m_name = "LWU",
+        .mask = 0x0000707f,
+        .signature = 0x00006003,
+        .name = "LWU",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint64_t addr =
@@ -689,9 +689,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00003003,
-        .m_name = "LD",
+        .mask = 0x0000707f,
+        .signature = 0x00003003,
+        .name = "LD",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint64_t addr =
@@ -707,9 +707,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00003023,
-        .m_name = "SD",
+        .mask = 0x0000707f,
+        .signature = 0x00003023,
+        .name = "SD",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatS(inst_word);
           const uint64_t addr =
@@ -725,9 +725,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfc00707f,
-        .m_data = 0x00001013,
-        .m_name = "SLLI",
+        .mask = 0xfc00707f,
+        .signature = 0x00001013,
+        .name = "SLLI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint8_t shamt = decode::GetShamt(inst_word, false);
@@ -739,9 +739,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfc00707f,
-        .m_data = 0x00005013,
-        .m_name = "SRLI",
+        .mask = 0xfc00707f,
+        .signature = 0x00005013,
+        .name = "SRLI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint8_t shamt = decode::GetShamt(inst_word, false);
@@ -752,9 +752,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfc00707f,
-        .m_data = 0x40005013,
-        .m_name = "SRAI",
+        .mask = 0xfc00707f,
+        .signature = 0x40005013,
+        .name = "SRAI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint8_t shamt = decode::GetShamt(inst_word, false);
@@ -766,9 +766,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x0000001b,
-        .m_name = "ADDIW",
+        .mask = 0x0000707f,
+        .signature = 0x0000001b,
+        .name = "ADDIW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const int64_t val =
@@ -779,9 +779,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x0000101b,
-        .m_name = "SLLIW",
+        .mask = 0xfe00707f,
+        .signature = 0x0000101b,
+        .name = "SLLIW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint8_t shamt = decode::GetShamt(inst_word, true);
@@ -793,9 +793,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfc00707f,
-        .m_data = 0x0000501b,
-        .m_name = "SRLIW",
+        .mask = 0xfc00707f,
+        .signature = 0x0000501b,
+        .name = "SRLIW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint32_t rs1 = (uint32_t)cpu->GetGeneralPurposeRegVal(f.rs1);
@@ -807,9 +807,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfc00707f,
-        .m_data = 0x4000501b,
-        .m_name = "SRAIW",
+        .mask = 0xfc00707f,
+        .signature = 0x4000501b,
+        .name = "SRAIW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint8_t shamt = decode::GetShamt(inst_word, true);
@@ -821,9 +821,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x0000003b,
-        .m_name = "ADDW",
+        .mask = 0xfe00707f,
+        .signature = 0x0000003b,
+        .name = "ADDW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t val =
@@ -835,9 +835,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x4000003b,
-        .m_name = "SUBW",
+        .mask = 0xfe00707f,
+        .signature = 0x4000003b,
+        .name = "SUBW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t val =
@@ -849,9 +849,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x0000103b,
-        .m_name = "SLLW",
+        .mask = 0xfe00707f,
+        .signature = 0x0000103b,
+        .name = "SLLW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t val =
@@ -863,9 +863,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x0000503b,
-        .m_name = "SRLW",
+        .mask = 0xfe00707f,
+        .signature = 0x0000503b,
+        .name = "SRLW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const uint32_t rs1 = (uint32_t)cpu->GetGeneralPurposeRegVal(f.rs1);
@@ -877,9 +877,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x4000503b,
-        .m_name = "SRAW",
+        .mask = 0xfe00707f,
+        .signature = 0x4000503b,
+        .name = "SRAW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t val =
@@ -893,9 +893,9 @@ const Instruction kInstructionTable[] = {
     /*********** rv_system instructions ***********/
 
     {
-        .m_mask = 0xffffffff,
-        .m_data = 0x30200073,
-        .m_name = "MRET",
+        .mask = 0xffffffff,
+        .signature = 0x30200073,
+        .name = "MRET",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const uint64_t kOriginMstatusVal = cpu->state_.Read(csr::kCsrMstatus);
           const csr::MstatusDesc kOriginMstatusDesc =
@@ -932,9 +932,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xffffffff,
-        .m_data = 0x10500073,
-        .m_name = "WFI",
+        .mask = 0xffffffff,
+        .signature = 0x10500073,
+        .name = "WFI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           cpu->SetWfi(true);
           return trap::kNoneTrap;
@@ -944,9 +944,9 @@ const Instruction kInstructionTable[] = {
     /*********** rv_zicsr instructions ***********/
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00001073,
-        .m_name = "CSRRW",
+        .mask = 0x0000707f,
+        .signature = 0x00001073,
+        .name = "CSRRW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatCsr(inst_word);
           CHECK_CSR_ACCESS_PRIVILEGE(f.csr, true, cpu);
@@ -962,9 +962,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00002073,
-        .m_name = "CSRRS",
+        .mask = 0x0000707f,
+        .signature = 0x00002073,
+        .name = "CSRRS",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatCsr(inst_word);
           CHECK_CSR_ACCESS_PRIVILEGE(f.csr, f.rs != 0, cpu);
@@ -981,9 +981,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00003073,
-        .m_name = "CSRRC",
+        .mask = 0x0000707f,
+        .signature = 0x00003073,
+        .name = "CSRRC",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatCsr(inst_word);
           CHECK_CSR_ACCESS_PRIVILEGE(f.csr, f.rs != 0, cpu);
@@ -999,9 +999,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00005073,
-        .m_name = "CSRRWI",
+        .mask = 0x0000707f,
+        .signature = 0x00005073,
+        .name = "CSRRWI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatCsr(inst_word);
           CHECK_CSR_ACCESS_PRIVILEGE(f.csr, true, cpu);
@@ -1016,9 +1016,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00006073,
-        .m_name = "CSRRSI",
+        .mask = 0x0000707f,
+        .signature = 0x00006073,
+        .name = "CSRRSI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatCsr(inst_word);
           CHECK_CSR_ACCESS_PRIVILEGE(f.csr, f.rs != 0, cpu);
@@ -1034,9 +1034,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x00007073,
-        .m_name = "CSRRCI",
+        .mask = 0x0000707f,
+        .signature = 0x00007073,
+        .name = "CSRRCI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatCsr(inst_word);
           CHECK_CSR_ACCESS_PRIVILEGE(f.csr, f.rs != 0, cpu);
@@ -1053,9 +1053,9 @@ const Instruction kInstructionTable[] = {
     /*********** rv_zifencei ***********/
 
     {
-        .m_mask = 0x0000707f,
-        .m_data = 0x0000100f,
-        .m_name = "FENCE.I",
+        .mask = 0x0000707f,
+        .signature = 0x0000100f,
+        .name = "FENCE.I",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           // TODO: implement
           return trap::kNoneTrap;
@@ -1065,9 +1065,9 @@ const Instruction kInstructionTable[] = {
     /*********** rv_m ***********/
     // https://tclin914.github.io/f37f836/
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x2000033,
-        .m_name = "MUL",
+        .mask = 0xfe00707f,
+        .signature = 0x2000033,
+        .name = "MUL",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t a = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1);
@@ -1080,9 +1080,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x2001033,
-        .m_name = "MULH",
+        .mask = 0xfe00707f,
+        .signature = 0x2001033,
+        .name = "MULH",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t a = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1);
@@ -1104,9 +1104,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x2002033,
-        .m_name = "MULHSU",
+        .mask = 0xfe00707f,
+        .signature = 0x2002033,
+        .name = "MULHSU",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t a = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1);
@@ -1125,9 +1125,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x2003033,
-        .m_name = "MULHU",
+        .mask = 0xfe00707f,
+        .signature = 0x2003033,
+        .name = "MULHU",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           // reference:
           // https://stackoverflow.com/questions/28868367/getting-the-high-part-of-64-bit-integer-multiplication
@@ -1143,9 +1143,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x2004033,
-        .m_name = "DIV",
+        .mask = 0xfe00707f,
+        .signature = 0x2004033,
+        .name = "DIV",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           // reference:
           // https://stackoverflow.com/questions/28868367/getting-the-high-part-of-64-bit-integer-multiplication
@@ -1167,9 +1167,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x2005033,
-        .m_name = "DIVU",
+        .mask = 0xfe00707f,
+        .signature = 0x2005033,
+        .name = "DIVU",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           // reference:
           // https://stackoverflow.com/questions/28868367/getting-the-high-part-of-64-bit-integer-multiplication
@@ -1185,9 +1185,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x2006033,
-        .m_name = "REM",
+        .mask = 0xfe00707f,
+        .signature = 0x2006033,
+        .name = "REM",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t a = (int64_t)cpu->GetGeneralPurposeRegVal(f.rs1);
@@ -1207,9 +1207,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x2007033,
-        .m_name = "REMU",
+        .mask = 0xfe00707f,
+        .signature = 0x2007033,
+        .name = "REMU",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const uint64_t a = cpu->GetGeneralPurposeRegVal(f.rs1);
@@ -1224,9 +1224,9 @@ const Instruction kInstructionTable[] = {
 
     /*********** rv64_m ***********/
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x200003b,
-        .m_name = "MULW",
+        .mask = 0xfe00707f,
+        .signature = 0x200003b,
+        .name = "MULW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           // reference:
           // https://stackoverflow.com/questions/28868367/getting-the-high-part-of-64-bit-integer-multiplication
@@ -1241,9 +1241,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x200403b,
-        .m_name = "DIVW",
+        .mask = 0xfe00707f,
+        .signature = 0x200403b,
+        .name = "DIVW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           // reference:
           // https://stackoverflow.com/questions/28868367/getting-the-high-part-of-64-bit-integer-multiplication
@@ -1265,9 +1265,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x200503b,
-        .m_name = "DIVUW",
+        .mask = 0xfe00707f,
+        .signature = 0x200503b,
+        .name = "DIVUW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           // reference:
           // https://stackoverflow.com/questions/28868367/getting-the-high-part-of-64-bit-integer-multiplication
@@ -1287,9 +1287,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x200603b,
-        .m_name = "REMW",
+        .mask = 0xfe00707f,
+        .signature = 0x200603b,
+        .name = "REMW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           // reference:
           // https://stackoverflow.com/questions/28868367/getting-the-high-part-of-64-bit-integer-multiplication
@@ -1312,9 +1312,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe00707f,
-        .m_data = 0x200703b,
-        .m_name = "REMUW",
+        .mask = 0xfe00707f,
+        .signature = 0x200703b,
+        .name = "REMUW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           // reference:
           // https://stackoverflow.com/questions/28868367/getting-the-high-part-of-64-bit-integer-multiplication
@@ -1331,9 +1331,9 @@ const Instruction kInstructionTable[] = {
 
     /*********** rv_s instructions ***********/
     {
-        .m_mask = 0xffffffff,
-        .m_data = 0x10200073,
-        .m_name = "SRET",
+        .mask = 0xffffffff,
+        .signature = 0x10200073,
+        .name = "SRET",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const uint64_t kOriginSstatusVal = cpu->state_.Read(csr::kCsrSstatus);
           const csr::MstatusDesc* kOriginSsDesc =
@@ -1372,9 +1372,9 @@ const Instruction kInstructionTable[] = {
     },
 
     {
-        .m_mask = 0xfe007fff,
-        .m_data = 0x12000073,
-        .m_name = "SFENCE.VMA",
+        .mask = 0xfe007fff,
+        .signature = 0x12000073,
+        .name = "SFENCE.VMA",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatR(inst_word);
           const int64_t kVirtAddr =
