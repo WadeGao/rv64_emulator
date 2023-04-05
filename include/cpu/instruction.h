@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <cstdlib>
 
 #include "cpu/cpu.h"
@@ -1252,6 +1253,8 @@ const Instruction kInstructionTable[] = {
 
           if (b == 0) {
             cpu->SetGeneralPurposeRegVal(f.rd, UINT64_MAX);
+          } else if (a == INT32_MIN && b == -1) {
+            cpu->SetGeneralPurposeRegVal(f.rd, INT32_MIN);
           } else {
             const int64_t val = (int64_t)(a / b);
             cpu->SetGeneralPurposeRegVal(f.rd, val);
@@ -1295,9 +1298,10 @@ const Instruction kInstructionTable[] = {
           const int32_t b = (int32_t)cpu->GetGeneralPurposeRegVal(f.rs2);
 
           if (b == 0) {
-            // const uint64_t val = cpu->GetGeneralPurposeRegVal(f.rs1);
             const int64_t val = a;
             cpu->SetGeneralPurposeRegVal(f.rd, val);
+          } else if (a == INT32_MIN && b == -1) {
+            cpu->SetGeneralPurposeRegVal(f.rd, 0);
           } else {
             const int64_t val = (int64_t)((int32_t)(a % b));
             cpu->SetGeneralPurposeRegVal(f.rd, val);
