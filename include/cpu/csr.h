@@ -245,12 +245,17 @@ enum class RiscvMXL : uint64_t {
 
 class State {
  private:
-  std::vector<uint64_t> m_csr;
+  bool wfi_;
+  std::vector<uint64_t> csr_;
 
  public:
   State();
   uint64_t Read(const uint64_t addr) const;
   void Write(const uint64_t addr, const uint64_t val);
+
+  bool GetWfi() const;
+  void SetWfi(const bool wfi);
+
   void Reset();
 };
 

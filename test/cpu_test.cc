@@ -175,7 +175,7 @@ TEST_F(CpuTest, OfficalTests) {
     while (true) {
       cpu_->Tick();
 #ifdef DEBUG
-      cpu_->DumpRegisters();
+      cpu_->DumpRegs();
 #endif
       uint8_t val = UINT8_MAX;
 

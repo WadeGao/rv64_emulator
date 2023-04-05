@@ -6,9 +6,9 @@
 
 namespace rv64_emulator::cpu::csr {
 
-State::State() : m_csr(kCsrCapacity, 0) {
+State::State() : wfi_(false), csr_(kCsrCapacity, 0) {
   // set up MISA description
-  auto* misa_desc = reinterpret_cast<MisaDesc*>(&m_csr[kCsrMisa]);
+  auto* misa_desc = reinterpret_cast<MisaDesc*>(&csr_[kCsrMisa]);
   misa_desc->mxl = static_cast<uint64_t>(RiscvMXL::kRv64);
   misa_desc->U = 1;  // User mode implemented
   misa_desc->S = 1;  // Supervisor mode implemented
@@ -20,7 +20,7 @@ State::State() : m_csr(kCsrCapacity, 0) {
   misa_desc->A = 0;  // Atomic extension implemented
 
   // set up Mstatus val
-  auto* mstatus_desc = reinterpret_cast<MstatusDesc*>(&m_csr[kCsrMstatus]);
+  auto* mstatus_desc = reinterpret_cast<MstatusDesc*>(&csr_[kCsrMstatus]);
   mstatus_desc->sxl = static_cast<uint64_t>(RiscvMXL::kRv64);
   mstatus_desc->uxl = static_cast<uint64_t>(RiscvMXL::kRv64);
 }
@@ -32,7 +32,7 @@ uint64_t State::Read(const uint64_t addr) const {
     case kCsrSstatus: {
       auto* ss_desc = reinterpret_cast<SstatusDesc*>(&res);
       const auto* ms_desc =
-          reinterpret_cast<const MstatusDesc*>(&m_csr[kCsrMstatus]);
+          reinterpret_cast<const MstatusDesc*>(&csr_[kCsrMstatus]);
 
       ss_desc->sie = ms_desc->sie;
       ss_desc->spie = ms_desc->spie;
@@ -47,17 +47,17 @@ uint64_t State::Read(const uint64_t addr) const {
       ss_desc->sd = ms_desc->sd;
     } break;
     case kCsrSie:
-      res = m_csr[kCsrMie] & kCsrSInterruptMask;
+      res = csr_[kCsrMie] & kCsrSInterruptMask;
       break;
     case kCsrSip:
-      res = m_csr[kCsrMip] & kCsrSInterruptMask;
+      res = csr_[kCsrMip] & kCsrSInterruptMask;
       break;
     case kCsrTselect:
     case kCsrTdata1:
       res = 0;
       break;
     default:
-      res = m_csr[addr];
+      res = csr_[addr];
       break;
   }
 
@@ -68,7 +68,7 @@ void State::Write(const uint64_t addr, const uint64_t val) {
   switch (addr) {
     case kCsrSstatus: {
       const auto* val_desc = reinterpret_cast<const SstatusDesc*>(&val);
-      auto* ms_desc = reinterpret_cast<SstatusDesc*>(&m_csr[kCsrMstatus]);
+      auto* ms_desc = reinterpret_cast<SstatusDesc*>(&csr_[kCsrMstatus]);
 
       ms_desc->sie = val_desc->sie;
       ms_desc->spie = val_desc->spie;
@@ -78,19 +78,19 @@ void State::Write(const uint64_t addr, const uint64_t val) {
     } break;
     case kCsrMie:
     case kCsrMip:
-      m_csr[addr] = val & kCsrMInterruptMask;
+      csr_[addr] = val & kCsrMInterruptMask;
       break;
     case kCsrSie:
-      m_csr[kCsrMie] &= (~kCsrSInterruptMask);
-      m_csr[kCsrMie] |= (val & kCsrSInterruptMask);
+      csr_[kCsrMie] &= (~kCsrSInterruptMask);
+      csr_[kCsrMie] |= (val & kCsrSInterruptMask);
       break;
     case kCsrSip:
-      m_csr[kCsrMip] &= (~kCsrSInterruptMask);
-      m_csr[kCsrMip] |= (val & kCsrSInterruptMask);
+      csr_[kCsrMip] &= (~kCsrSInterruptMask);
+      csr_[kCsrMip] |= (val & kCsrSInterruptMask);
       break;
     case kCsrMstatus: {
       const auto* val_desc = reinterpret_cast<const MstatusDesc*>(&val);
-      auto* ms_desc = reinterpret_cast<MstatusDesc*>(&m_csr[kCsrMstatus]);
+      auto* ms_desc = reinterpret_cast<MstatusDesc*>(&csr_[kCsrMstatus]);
 
       ms_desc->sie = val_desc->sie;
       ms_desc->mie = val_desc->mie;
@@ -106,10 +106,10 @@ void State::Write(const uint64_t addr, const uint64_t val) {
       ms_desc->tsr = val_desc->tsr;
     } break;
     case kCsrMideleg:
-      m_csr[addr] = val & kCsrSInterruptMask;
+      csr_[addr] = val & kCsrSInterruptMask;
       break;
     case kCsrMedeleg:
-      m_csr[addr] = val & kCsrSExceptionMask;
+      csr_[addr] = val & kCsrSExceptionMask;
       break;
     case kCsrMisa:
     case kCsrTselect:
@@ -119,19 +119,25 @@ void State::Write(const uint64_t addr, const uint64_t val) {
     case kCsrMImpId:
       break;
     default:
-      m_csr[addr] = val;
+      csr_[addr] = val;
       break;
   }
 }
 
-void State::Reset() {
-  const uint64_t kOriginMisa = m_csr[kCsrMisa];
-  std::fill(m_csr.begin(), m_csr.end(), 0);
+bool State::GetWfi() const { return wfi_; }
 
-  m_csr[kCsrMisa] = kOriginMisa;
+void State::SetWfi(const bool wfi) { wfi_ = wfi; }
+
+void State::Reset() {
+  wfi_ = false;
+
+  const uint64_t kOriginMisa = csr_[kCsrMisa];
+  std::fill(csr_.begin(), csr_.end(), 0);
+
+  csr_[kCsrMisa] = kOriginMisa;
 
   // set up Mstatus val
-  auto* mstatus_desc = reinterpret_cast<MstatusDesc*>(&m_csr[kCsrMstatus]);
+  auto* mstatus_desc = reinterpret_cast<MstatusDesc*>(&csr_[kCsrMstatus]);
   mstatus_desc->sxl = static_cast<uint64_t>(RiscvMXL::kRv64);
   mstatus_desc->uxl = static_cast<uint64_t>(RiscvMXL::kRv64);
 }
