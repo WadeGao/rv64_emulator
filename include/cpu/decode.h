@@ -31,11 +31,6 @@ using FormatB = struct FormatB {
   int32_t imm;
 };
 
-typedef struct FormatU {
-  uint8_t rd;
-  int32_t imm;
-} FormatU;
-
 using FormatJ = struct FormatJ {
   uint8_t rd;
   int32_t imm;
@@ -47,6 +42,12 @@ using FormatCsr = struct FormatCsr {
   uint8_t rs;
 };
 
+using UTypeDesc = struct {
+  uint32_t opcode : 7;
+  uint32_t rd : 5;
+  int32_t imm_31_12 : 20;
+};
+
 uint16_t GetCsr(const uint32_t inst_word);
 uint8_t GetShamt(const uint32_t inst_word, const bool kRv32Arch /* = false */);
 
@@ -55,7 +56,6 @@ FormatR ParseFormatR(const uint32_t inst_word);
 FormatI ParseFormatI(const uint32_t inst_word);
 FormatS ParseFormatS(const uint32_t inst_word);
 FormatB ParseFormatB(const uint32_t inst_word);
-FormatU ParseFormatU(const uint32_t inst_word);
 FormatJ ParseFormatJ(const uint32_t inst_word);
 FormatCsr ParseFormatCsr(const uint32_t inst_word);
 

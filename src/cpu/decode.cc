@@ -14,7 +14,6 @@ enum class RV64InstructionFormatType : uint8_t {
   kTypeI,
   kTypeS,
   kTypeB,
-  kTypeU,
   kTypeJ
 };
 
@@ -63,11 +62,6 @@ static int32_t GetImm(const uint32_t inst_word,
       // imm[12|10:5|4:1|11] = inst[31|30:25|11:8|7]
       imm = (((inst_word & 0x80000000) >> 19) | ((inst_word & 0x80) << 4) |
              ((inst_word >> 20) & 0x7e0) | ((inst_word >> 7) & 0x1e));
-      break;
-    case RV64InstructionFormatType::kTypeU:
-      // imm[31:12] = inst[31:12]
-      imm = (inst_word & 0xfffff000);
-      imm_width = 20;
       break;
     case RV64InstructionFormatType::kTypeJ:
       // imm[20|10:1|11|19:12] = inst[31|30:21|20|19:12]
@@ -139,13 +133,6 @@ FormatB ParseFormatB(const uint32_t inst_word) {
       .rs1 = GetRs1(inst_word),
       .rs2 = GetRs2(inst_word),
       .imm = GetImm(inst_word, RV64InstructionFormatType::kTypeB),
-  };
-}
-
-FormatU ParseFormatU(const uint32_t inst_word) {
-  return {
-      .rd = GetRd(inst_word),
-      .imm = GetImm(inst_word, RV64InstructionFormatType::kTypeU),
   };
 }
 

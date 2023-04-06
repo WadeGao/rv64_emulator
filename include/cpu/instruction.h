@@ -76,10 +76,11 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00000037,
         .name = "LUI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatU(inst_word);
+          const auto desc =
+              *reinterpret_cast<const decode::UTypeDesc*>(&inst_word);
 
-          const uint64_t val = (int64_t)f.imm;
-          cpu->SetReg(f.rd, val);
+          const uint64_t val = (int64_t)(desc.imm_31_12 << 12);
+          cpu->SetReg(desc.rd, val);
 
           return trap::kNoneTrap;
         },
@@ -90,9 +91,11 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00000017,
         .name = "AUIPC",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatU(inst_word);
-          const int64_t val = (int64_t)(cpu->GetPC() - 4) + (int64_t)f.imm;
-          cpu->SetReg(f.rd, val);
+          const auto desc =
+              *reinterpret_cast<const decode::UTypeDesc*>(&inst_word);
+          const int64_t val =
+              (int64_t)(cpu->GetPC() - 4) + (int64_t)(desc.imm_31_12 << 12);
+          cpu->SetReg(desc.rd, val);
           return trap::kNoneTrap;
         },
     },
