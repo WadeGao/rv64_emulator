@@ -88,7 +88,6 @@ class Sv39 {
   std::unique_ptr<Bus> bus_;
 
   Sv39TlbEntry* LookUpTlb(const SatpDesc satp, const uint64_t vaddr);
-  Sv39TlbEntry* LookUpTlb(const SatpDesc satp, const Sv39VirtualAddress vaddr);
 
   bool PageTableWalk(const SatpDesc satp, const uint64_t vaddr,
                      Sv39PageTableEntry* pte, uint64_t* page_size);
@@ -97,8 +96,6 @@ class Sv39 {
   explicit Sv39(std::unique_ptr<Bus> bus);
 
   Sv39TlbEntry* GetTlbEntry(const SatpDesc satp, const uint64_t vaddr);
-  Sv39TlbEntry* GetTlbEntry(const SatpDesc satp,
-                            const Sv39VirtualAddress vaddr);
 
   bool PhysicalAddressLoad(const uint64_t addr, const uint64_t bytes,
                            uint8_t* buffer) const;

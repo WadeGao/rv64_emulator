@@ -36,7 +36,6 @@ class CPU {
   uint64_t instret_;
   PrivilegeMode priv_mode_;
   uint64_t pc_;
-  bool wfi_;
 
   uint64_t reg_[kGeneralPurposeRegNum] = {0};
 
@@ -88,26 +87,20 @@ class CPU {
   trap::Trap Decode(const uint32_t word, int64_t* index);
   void Tick();
 
-  void SetGeneralPurposeRegVal(const uint64_t reg_num, const uint64_t val);
-  uint64_t GetGeneralPurposeRegVal(const uint64_t reg_num) const;
+  uint64_t GetReg(const uint64_t reg_num) const;
+  void SetReg(const uint64_t reg_num, const uint64_t val);
 
-  inline void SetPC(const uint64_t new_pc) { pc_ = new_pc; }
+  uint64_t GetPC() const { return pc_; }
+  void SetPC(const uint64_t new_pc) { pc_ = new_pc; }
 
-  inline uint64_t GetPC() const { return pc_; }
-
-  inline PrivilegeMode GetPrivilegeMode() const { return priv_mode_; }
-
-  inline void SetPrivilegeMode(const PrivilegeMode mode) { priv_mode_ = mode; }
-
-  inline bool GetWfi() const { return wfi_; }
-
-  inline void SetWfi(const bool wfi) { wfi_ = wfi; }
+  PrivilegeMode GetPrivilegeMode() const { return priv_mode_; }
+  void SetPrivilegeMode(const PrivilegeMode mode) { priv_mode_ = mode; }
 
   void FlushTlb(const uint64_t vaddr, const uint64_t asid);
 
   void Disassemble(const uint64_t pc, const uint32_t word,
                    const int64_t index) const;
-  void DumpRegisters() const;
+  void DumpRegs() const;
 
   ~CPU();
 };

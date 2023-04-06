@@ -6,6 +6,13 @@ PLATFORM=$(xmake show | grep plat | awk '{print $3}' | sed -r "s/\x1B\[([0-9]{1,
 ARCH=$(xmake show | grep arch | awk '{print $3}' | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g")
 MODE=$(xmake show | grep mode | awk '{print $3}' | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g")
 
+find ./include -name "*.gcno" -exec rm {} \;
+find ./src -name "*.gcno" -exec rm {} \;
+find ./test -name "*.gcno" -exec rm {} \;
+find ./include -name "*.gcda" -exec rm {} \;
+find ./src -name "*.gcda" -exec rm {} \;
+find ./test -name "*.gcda" -exec rm {} \;
+
 "$BUILD_DIR"/unit_test
 
 OBJS_DIR="$PROJECT_DIR/$BUILD_DIR/.objs/unit_test/$PLATFORM/$ARCH/$MODE"

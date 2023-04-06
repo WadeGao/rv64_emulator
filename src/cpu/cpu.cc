@@ -1,6 +1,5 @@
 #include "cpu/cpu.h"
 
-#include <cassert>
 #include <cstdint>
 #include <map>
 #include <tuple>
@@ -64,7 +63,6 @@ CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
       instret_(0),
       priv_mode_(PrivilegeMode::kMachine),
       pc_(0),
-      wfi_(false),
       mmu_(std::move(mmu)),
       dlb_(kDecodeCacheEntryNum) {
   static_assert(
@@ -81,7 +79,6 @@ void CPU::Reset() {
   instret_ = 0;
   priv_mode_ = PrivilegeMode::kMachine;
   pc_ = 0;
-  wfi_ = false;
 
   memset(reg_, 0, sizeof(reg_));
   memset(freg_, 0, sizeof(freg_));
@@ -101,15 +98,11 @@ trap::Trap CPU::Store(const uint64_t addr, const uint64_t bytes,
   return mmu_->VirtualAddressStore(addr, bytes, buffer);
 }
 
-void CPU::SetGeneralPurposeRegVal(const uint64_t reg_num, const uint64_t val) {
-  assert(reg_num <= kGeneralPurposeRegNum - 1);
+void CPU::SetReg(const uint64_t reg_num, const uint64_t val) {
   reg_[reg_num] = val;
 }
 
-uint64_t CPU::GetGeneralPurposeRegVal(const uint64_t reg_num) const {
-  assert(reg_num <= kGeneralPurposeRegNum - 1);
-  return reg_[reg_num];
-}
+uint64_t CPU::GetReg(const uint64_t reg_num) const { return reg_[reg_num]; }
 
 void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
   if (trap.trap_type == trap::TrapType::kNone) {
@@ -117,7 +110,6 @@ void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
   }
 
   const PrivilegeMode kOriginPM = GetPrivilegeMode();
-  assert(kOriginPM != PrivilegeMode::kReserved);
 
   const csr::CauseDesc kCauseBits = {
       .cause = trap::kTrapToCauseTable.at(trap.trap_type),
@@ -204,7 +196,10 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
   const uint64_t kCsrMipMask = TrapToMask(final_interrupt.trap_type);
   HandleTrap(final_interrupt, inst_addr);
   state_.Write(csr::kCsrMip, kMip & (~kCsrMipMask));
-  wfi_ = (kCsrMipMask != 0) ? false : wfi_;
+
+  if (kCsrMipMask != 0) {
+    state_.SetWfi(false);
+  }
 }
 
 trap::Trap CPU::Fetch(const uint64_t addr, const uint64_t bytes,
@@ -241,11 +236,11 @@ trap::Trap CPU::Decode(const uint32_t word, int64_t* index) {
 }
 
 trap::Trap CPU::TickOperate() {
-  if (wfi_) {
+  if (state_.GetWfi()) {
     const uint64_t mie = state_.Read(csr::kCsrMie);
     const uint64_t mip = state_.Read(csr::kCsrMip);
     if (mie & mip) {
-      wfi_ = false;
+      state_.SetWfi(false);
     }
     return trap::kNoneTrap;
   }
@@ -323,7 +318,7 @@ void CPU::Disassemble(const uint64_t pc, const uint32_t word,
              instruction::kInstructionTable[index].name);
 }
 
-void CPU::DumpRegisters() const {
+void CPU::DumpRegs() const {
   // Application Binary Interface registers
   const char* abi[] = {
       "zero", "ra", "sp", "gp", "tp",  "t0",  "t1", "t2", "s0", "s1", "a0",
