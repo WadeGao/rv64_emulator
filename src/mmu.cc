@@ -69,20 +69,14 @@ static uint64_t GetTagVirtualAddress(const uint64_t vaddr,
 }
 
 static uint64_t GetTagMask(const uint64_t page_size) {
-  const uint64_t kTagMask =
-      UINT64_MAX & (~((uint64_t(1) << (12 + (page_size - 1) * 9)) - 1));
+  // const uint64_t kTagMask =
+  //     UINT64_MAX & (~((uint64_t(1) << (12 + (page_size - 1) * 9)) - 1));
+  const uint64_t kTagMask = 0xfffffffffffffff8 << (page_size * 9);
   return kTagMask;
 }
 
 Sv39::Sv39(std::unique_ptr<Bus> bus) : index_(0), bus_(std::move(bus)) {
   memset(tlb_, 0, sizeof(tlb_));
-}
-
-Sv39TlbEntry* Sv39::LookUpTlb(const SatpDesc satp,
-                              const Sv39VirtualAddress vaddr) {
-  const uint64_t kSv39VirtualAddress =
-      *reinterpret_cast<const uint64_t*>(&vaddr);
-  return LookUpTlb(satp, kSv39VirtualAddress);
 }
 
 Sv39TlbEntry* Sv39::LookUpTlb(const SatpDesc satp, const uint64_t vaddr) {
@@ -224,13 +218,6 @@ Sv39TlbEntry* Sv39::GetTlbEntry(const SatpDesc satp, const uint64_t vaddr) {
 #endif
 
   return res;
-}
-
-Sv39TlbEntry* Sv39::GetTlbEntry(const SatpDesc satp,
-                                const Sv39VirtualAddress vaddr) {
-  const uint64_t kSv39VirtualAddress =
-      *reinterpret_cast<const uint64_t*>(&vaddr);
-  return GetTlbEntry(satp, kSv39VirtualAddress);
 }
 
 bool Sv39::PhysicalAddressLoad(const uint64_t addr, const uint64_t bytes,

@@ -3,7 +3,6 @@ add_rules("mode.debug", "mode.release", "mode.minsizerel", "mode.releasedbg", "m
 
 add_cxxflags("-fno-rtti", "-fno-exceptions")
 add_cxxflags("-fdata-sections", "-ffunction-sections")
-add_ldflags("-Wl,--print-gc-sections,--gc-sections")
 
 add_includedirs("include")
 add_includedirs("third_party")
@@ -69,10 +68,10 @@ target("unit_test")
         add_defines("DEBUG")
     end
     if is_mode("coverage") then
-        add_cflags("-fprofile-arcs -ftest-coverage")
-        add_cxxflags("-fprofile-arcs -ftest-coverage")
+        add_cflags("-O3 -fprofile-arcs -ftest-coverage")
+        add_cxxflags("-O3 -fprofile-arcs -ftest-coverage")
         add_ldflags("-fprofile-arcs -ftest-coverage")
-        after_build(function (target) 
+        after_build(function (target)
             os.run("./scripts/gen_coverage_report.sh")
         end)
     end
