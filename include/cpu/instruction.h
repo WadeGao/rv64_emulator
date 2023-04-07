@@ -37,18 +37,18 @@
     };                                                   \
   }
 
-#define LOAD_VIRTUAL_MEMORY(T, data)                            \
-  uint8_t* ptr = reinterpret_cast<uint8_t*>(&(data));           \
-  const trap::Trap kLoadTrap = cpu->Load(addr, sizeof(T), ptr); \
-  if (kLoadTrap.type != trap::TrapType::kNone) {                \
-    return kLoadTrap;                                           \
+#define LOAD_VIRTUAL_MEMORY(T, data, proc)                         \
+  uint8_t* ptr = reinterpret_cast<uint8_t*>(&(data));              \
+  const trap::Trap kLoadTrap = (proc)->Load(addr, sizeof(T), ptr); \
+  if (kLoadTrap.type != trap::TrapType::kNone) {                   \
+    return kLoadTrap;                                              \
   }
 
-#define STORE_VIRTUAL_MEMORY(T, data)                              \
-  const uint8_t* kPtr = reinterpret_cast<const uint8_t*>(&(data)); \
-  const trap::Trap kStoreTrap = cpu->Store(addr, sizeof(T), kPtr); \
-  if (kStoreTrap.type != trap::TrapType::kNone) {                  \
-    return kStoreTrap;                                             \
+#define STORE_VIRTUAL_MEMORY(T, data, proc)                           \
+  const uint8_t* kPtr = reinterpret_cast<const uint8_t*>(&(data));    \
+  const trap::Trap kStoreTrap = (proc)->Store(addr, sizeof(T), kPtr); \
+  if (kStoreTrap.type != trap::TrapType::kNone) {                     \
+    return kStoreTrap;                                                \
   }
 
 namespace rv64_emulator::cpu {
@@ -231,10 +231,9 @@ const Instruction kInstructionTable[] = {
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
-          // const int8_t   data = (int8_t)(cpu->Load(addr, sizeof(int8_t)));
 
           int8_t data = 0;
-          LOAD_VIRTUAL_MEMORY(int8_t, data);
+          LOAD_VIRTUAL_MEMORY(int8_t, data, cpu);
           cpu->SetReg(f.rd, (int64_t)data);
 
           return trap::kNoneTrap;
@@ -248,10 +247,9 @@ const Instruction kInstructionTable[] = {
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
-          // const int16_t  data = (int16_t)cpu->Load(addr, sizeof(int16_t));
 
           int16_t data = 0;
-          LOAD_VIRTUAL_MEMORY(int16_t, data);
+          LOAD_VIRTUAL_MEMORY(int16_t, data, cpu);
           cpu->SetReg(f.rd, (int64_t)data);
 
           return trap::kNoneTrap;
@@ -265,10 +263,9 @@ const Instruction kInstructionTable[] = {
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
-          // const int32_t  data = (int32_t)cpu->Load(addr, sizeof(int32_t));
 
           int32_t data = 0;
-          LOAD_VIRTUAL_MEMORY(int32_t, data);
+          LOAD_VIRTUAL_MEMORY(int32_t, data, cpu);
           cpu->SetReg(f.rd, (int64_t)data);
 
           return trap::kNoneTrap;
@@ -282,10 +279,9 @@ const Instruction kInstructionTable[] = {
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
-          // const uint64_t data = cpu->Load(addr, sizeof(uint8_t));
 
           uint8_t data = 0;
-          LOAD_VIRTUAL_MEMORY(uint8_t, data);
+          LOAD_VIRTUAL_MEMORY(uint8_t, data, cpu);
           cpu->SetReg(f.rd, data);
 
           return trap::kNoneTrap;
@@ -299,10 +295,9 @@ const Instruction kInstructionTable[] = {
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
-          // const uint64_t data = cpu->Load(addr, sizeof(uint16_t));
 
           uint16_t data = 0;
-          LOAD_VIRTUAL_MEMORY(uint16_t, data);
+          LOAD_VIRTUAL_MEMORY(uint16_t, data, cpu);
           cpu->SetReg(f.rd, data);
 
           return trap::kNoneTrap;
@@ -317,7 +312,7 @@ const Instruction kInstructionTable[] = {
           const auto& f = decode::ParseFormatS(inst_word);
           const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
           const uint64_t kRegVal = cpu->GetReg(f.rs2);
-          STORE_VIRTUAL_MEMORY(int8_t, kRegVal);
+          STORE_VIRTUAL_MEMORY(int8_t, kRegVal, cpu);
           return trap::kNoneTrap;
         },
     },
@@ -330,7 +325,7 @@ const Instruction kInstructionTable[] = {
           const auto& f = decode::ParseFormatS(inst_word);
           const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
           const uint64_t kRegVal = cpu->GetReg(f.rs2);
-          STORE_VIRTUAL_MEMORY(int16_t, kRegVal);
+          STORE_VIRTUAL_MEMORY(int16_t, kRegVal, cpu);
           return trap::kNoneTrap;
         },
     },
@@ -343,7 +338,7 @@ const Instruction kInstructionTable[] = {
           const auto& f = decode::ParseFormatS(inst_word);
           const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
           const uint64_t kRegVal = cpu->GetReg(f.rs2);
-          STORE_VIRTUAL_MEMORY(int32_t, kRegVal);
+          STORE_VIRTUAL_MEMORY(int32_t, kRegVal, cpu);
           return trap::kNoneTrap;
         },
     },
@@ -653,7 +648,7 @@ const Instruction kInstructionTable[] = {
           const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
 
           uint32_t data = 0;
-          LOAD_VIRTUAL_MEMORY(uint32_t, data);
+          LOAD_VIRTUAL_MEMORY(uint32_t, data, cpu);
           cpu->SetReg(f.rd, data);
 
           return trap::kNoneTrap;
@@ -669,7 +664,7 @@ const Instruction kInstructionTable[] = {
           const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
 
           int64_t data = 0;
-          LOAD_VIRTUAL_MEMORY(int64_t, data);
+          LOAD_VIRTUAL_MEMORY(int64_t, data, cpu);
           cpu->SetReg(f.rd, (int64_t)data);
 
           return trap::kNoneTrap;
@@ -684,7 +679,7 @@ const Instruction kInstructionTable[] = {
           const auto& f = decode::ParseFormatS(inst_word);
           const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
           const uint64_t kRegVal = cpu->GetReg(f.rs2);
-          STORE_VIRTUAL_MEMORY(int64_t, kRegVal);
+          STORE_VIRTUAL_MEMORY(int64_t, kRegVal, cpu);
           return trap::kNoneTrap;
         },
     },
