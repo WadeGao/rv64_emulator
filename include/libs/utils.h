@@ -19,5 +19,7 @@ uint64_t TrapToMask(const TrapType t);
 
 TrapType InterruptBitsToTrap(const uint64_t bits);
 
+bool CheckPcAlign(const uint64_t pc, const uint64_t isa);
+
 }  // namespace libs::util
 }  // namespace rv64_emulator

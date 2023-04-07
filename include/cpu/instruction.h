@@ -10,15 +10,10 @@
 #include "error_code.h"
 #include "fmt/core.h"
 #include "libs/arithmetic.hpp"
-
-static bool CheckPcAlign(const uint64_t pc, const uint64_t isa) {
-  using rv64_emulator::cpu::csr::MisaDesc;
-  const auto* kMisaDesc = reinterpret_cast<const MisaDesc*>(&isa);
-  const uint64_t kAlignBytes = kMisaDesc->C ? 2 : 4;
-  return (pc & (kAlignBytes - 1)) == 0;
-}
+#include "libs/utils.h"
 
 #define CHECK_MISALIGN_INSTRUCTION(pc, proc)                    \
+  using rv64_emulator::libs::util::CheckPcAlign;                \
   const uint64_t kMisaVal = (proc)->state_.Read(csr::kCsrMisa); \
   const bool kNewPcAlign = CheckPcAlign((pc), kMisaVal);        \
   if (!kNewPcAlign) {                                           \
@@ -643,7 +638,6 @@ const Instruction kInstructionTable[] = {
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
-          // const uint64_t data = cpu->Load(addr, sizeof(uint32_t));
 
           uint32_t data = 0;
           LOAD_VIRTUAL_MEMORY(uint32_t, data);
@@ -660,7 +654,6 @@ const Instruction kInstructionTable[] = {
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto& f = decode::ParseFormatI(inst_word);
           const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
-          // const int64_t  data = (int64_t)cpu->Load(addr, sizeof(int64_t));
 
           int64_t data = 0;
           LOAD_VIRTUAL_MEMORY(int64_t, data);

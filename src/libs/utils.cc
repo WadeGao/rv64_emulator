@@ -7,6 +7,7 @@
 #include <tuple>
 
 #include "cpu/cpu.h"
+#include "cpu/csr.h"
 #include "cpu/trap.h"
 #include "elfio/elfio.hpp"
 #include "error_code.h"
@@ -97,6 +98,13 @@ TrapType InterruptBitsToTrap(const uint64_t bits) {
   }
 
   return TrapType::kNone;
+}
+
+bool CheckPcAlign(const uint64_t pc, const uint64_t isa) {
+  using rv64_emulator::cpu::csr::MisaDesc;
+  const auto* kMisaDesc = reinterpret_cast<const MisaDesc*>(&isa);
+  const uint64_t kAlignBytes = kMisaDesc->C ? 2 : 4;
+  return (pc & (kAlignBytes - 1)) == 0;
 }
 
 }  // namespace libs::util

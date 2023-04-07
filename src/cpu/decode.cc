@@ -99,11 +99,6 @@ uint8_t GetShamt(const uint32_t inst_word, const bool is_rv32) {
   return shamt;
 }
 
-uint16_t GetCsr(const uint32_t inst_word) {
-  const uint16_t csr = static_cast<uint16_t>((inst_word & 0xfff00000) >> 20);
-  return csr;
-}
-
 FormatR ParseFormatR(const uint32_t inst_word) {
   return {
       .rd = GetRd(inst_word),
