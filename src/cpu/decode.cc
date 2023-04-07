@@ -143,12 +143,4 @@ FormatJ ParseFormatJ(const uint32_t inst_word) {
   };
 }
 
-FormatCsr ParseFormatCsr(const uint32_t inst_word) {
-  return {
-      .csr = GetCsr(inst_word),
-      .rd = GetRd(inst_word),
-      .rs = GetRs1(inst_word),
-  };
-}
-
 }  // namespace rv64_emulator::cpu::decode

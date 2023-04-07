@@ -76,11 +76,11 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00000037,
         .name = "LUI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto desc =
+          const auto kDesc =
               *reinterpret_cast<const decode::UTypeDesc*>(&inst_word);
 
-          const uint64_t val = (int64_t)(desc.imm_31_12 << 12);
-          cpu->SetReg(desc.rd, val);
+          const uint64_t val = (int64_t)(kDesc.imm_31_12 << 12);
+          cpu->SetReg(kDesc.rd, val);
 
           return trap::kNoneTrap;
         },
@@ -91,11 +91,11 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00000017,
         .name = "AUIPC",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto desc =
+          const auto kDesc =
               *reinterpret_cast<const decode::UTypeDesc*>(&inst_word);
           const int64_t val =
-              (int64_t)(cpu->GetPC() - 4) + (int64_t)(desc.imm_31_12 << 12);
-          cpu->SetReg(desc.rd, val);
+              (int64_t)(cpu->GetPC() - 4) + (int64_t)(kDesc.imm_31_12 << 12);
+          cpu->SetReg(kDesc.rd, val);
           return trap::kNoneTrap;
         },
     },
@@ -898,14 +898,15 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00001073,
         .name = "CSRRW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatCsr(inst_word);
-          CHECK_CSR_ACCESS_PRIVILEGE(f.csr, true, cpu);
+          const auto kDesc =
+              *reinterpret_cast<const decode::CsrTypeDesc*>(&inst_word);
 
-          const uint64_t csr_val = cpu->state_.Read(f.csr);
+          CHECK_CSR_ACCESS_PRIVILEGE(kDesc.imm, true, cpu);
 
-          const uint64_t new_csr_val = (int64_t)cpu->GetReg(f.rs);
-          cpu->SetReg(f.rd, csr_val);
-          cpu->state_.Write(f.csr, new_csr_val);
+          const uint64_t kCsrVal = cpu->state_.Read(kDesc.imm);
+          const uint64_t kNewCsrVal = (int64_t)cpu->GetReg(kDesc.rs1);
+          cpu->SetReg(kDesc.rd, kCsrVal);
+          cpu->state_.Write(kDesc.imm, kNewCsrVal);
           return trap::kNoneTrap;
         },
     },
@@ -915,16 +916,18 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00002073,
         .name = "CSRRS",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatCsr(inst_word);
-          CHECK_CSR_ACCESS_PRIVILEGE(f.csr, f.rs != 0, cpu);
+          const auto kDesc =
+              *reinterpret_cast<const decode::CsrTypeDesc*>(&inst_word);
 
-          const uint64_t csr_val = cpu->state_.Read(f.csr);
+          CHECK_CSR_ACCESS_PRIVILEGE(kDesc.imm, kDesc.rs1 != 0, cpu);
 
-          const uint64_t new_csr_val =
-              (int64_t)cpu->GetReg(f.rs) | (int64_t)csr_val;
-          cpu->SetReg(f.rd, csr_val);
+          const uint64_t kCsrVal = cpu->state_.Read(kDesc.imm);
 
-          cpu->state_.Write(f.csr, new_csr_val);
+          const uint64_t kNewCsrVal =
+              (int64_t)cpu->GetReg(kDesc.rs1) | (int64_t)kCsrVal;
+          cpu->SetReg(kDesc.rd, kCsrVal);
+
+          cpu->state_.Write(kDesc.imm, kNewCsrVal);
           return trap::kNoneTrap;
         },
     },
@@ -934,14 +937,16 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00003073,
         .name = "CSRRC",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatCsr(inst_word);
-          CHECK_CSR_ACCESS_PRIVILEGE(f.csr, f.rs != 0, cpu);
+          const auto kDesc =
+              *reinterpret_cast<const decode::CsrTypeDesc*>(&inst_word);
 
-          const uint64_t csr_val = cpu->state_.Read(f.csr);
-          const uint64_t new_csr_val =
-              (int64_t)csr_val & (~((int64_t)cpu->GetReg(f.rs)));
-          cpu->SetReg(f.rd, csr_val);
-          cpu->state_.Write(f.csr, new_csr_val);
+          CHECK_CSR_ACCESS_PRIVILEGE(kDesc.imm, kDesc.rs1 != 0, cpu);
+
+          const uint64_t kCsrVal = cpu->state_.Read(kDesc.imm);
+          const uint64_t kNewCsrVal =
+              (int64_t)kCsrVal & (~((int64_t)cpu->GetReg(kDesc.rs1)));
+          cpu->SetReg(kDesc.rd, kCsrVal);
+          cpu->state_.Write(kDesc.imm, kNewCsrVal);
           return trap::kNoneTrap;
         },
     },
@@ -951,14 +956,16 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00005073,
         .name = "CSRRWI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatCsr(inst_word);
-          CHECK_CSR_ACCESS_PRIVILEGE(f.csr, true, cpu);
+          const auto kDesc =
+              *reinterpret_cast<const decode::CsrTypeDesc*>(&inst_word);
 
-          const uint64_t csr_val = cpu->state_.Read(f.csr);
+          CHECK_CSR_ACCESS_PRIVILEGE(kDesc.imm, true, cpu);
 
-          cpu->SetReg(f.rd, csr_val);
+          const uint64_t kCsrVal = cpu->state_.Read(kDesc.imm);
 
-          cpu->state_.Write(f.csr, f.rs);
+          cpu->SetReg(kDesc.rd, kCsrVal);
+
+          cpu->state_.Write(kDesc.imm, kDesc.rs1);
           return trap::kNoneTrap;
         },
     },
@@ -968,15 +975,17 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00006073,
         .name = "CSRRSI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatCsr(inst_word);
-          CHECK_CSR_ACCESS_PRIVILEGE(f.csr, f.rs != 0, cpu);
+          const auto kDesc =
+              *reinterpret_cast<const decode::CsrTypeDesc*>(&inst_word);
 
-          const uint64_t csr_val = cpu->state_.Read(f.csr);
+          CHECK_CSR_ACCESS_PRIVILEGE(kDesc.imm, kDesc.rs1 != 0, cpu);
 
-          const uint64_t new_csr_val = (int64_t)csr_val | (int64_t)f.rs;
-          cpu->SetReg(f.rd, csr_val);
+          const uint64_t kCsrVal = cpu->state_.Read(kDesc.imm);
 
-          cpu->state_.Write(f.csr, new_csr_val);
+          const uint64_t kNewCsrVal = (int64_t)kCsrVal | (int64_t)kDesc.rs1;
+          cpu->SetReg(kDesc.rd, kCsrVal);
+
+          cpu->state_.Write(kDesc.imm, kNewCsrVal);
           return trap::kNoneTrap;
         },
     },
@@ -986,14 +995,16 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00007073,
         .name = "CSRRCI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatCsr(inst_word);
-          CHECK_CSR_ACCESS_PRIVILEGE(f.csr, f.rs != 0, cpu);
+          const auto kDesc =
+              *reinterpret_cast<const decode::CsrTypeDesc*>(&inst_word);
+          CHECK_CSR_ACCESS_PRIVILEGE(kDesc.imm, kDesc.rs1 != 0, cpu);
 
-          const uint64_t csr_val = cpu->state_.Read(f.csr);
+          const uint64_t kCsrVal = cpu->state_.Read(kDesc.imm);
 
-          const uint64_t new_csr_val = (int64_t)csr_val & (~((int64_t)f.rs));
-          cpu->SetReg(f.rd, csr_val);
-          cpu->state_.Write(f.csr, new_csr_val);
+          const uint64_t kNewCsrVal =
+              (int64_t)kCsrVal & (~((int64_t)kDesc.rs1));
+          cpu->SetReg(kDesc.rd, kCsrVal);
+          cpu->state_.Write(kDesc.imm, kNewCsrVal);
           return trap::kNoneTrap;
         },
     },
