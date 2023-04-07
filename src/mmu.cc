@@ -20,8 +20,8 @@ using cpu::PrivilegeMode;
   const bool kPageMisalign = (((addr) >> 12) != (((addr) + (bytes)-1) >> 12)); \
   if (kPageMisalign) {                                                         \
     return {                                                                   \
-        .trap_type = (raised_trap_type),                                       \
-        .trap_val = (addr),                                                    \
+        .type = (raised_trap_type),                                            \
+        .val = (addr),                                                         \
     };                                                                         \
   }
 
@@ -33,8 +33,8 @@ using cpu::PrivilegeMode;
   }                                                                     \
   if (real_mode == PrivilegeMode::kUser && !(tlb_entry)->U) {           \
     return {                                                            \
-        .trap_type = cpu::trap::TrapType::k##step##PageFault,           \
-        .trap_val = (vaddr),                                            \
+        .type = cpu::trap::TrapType::k##step##PageFault,                \
+        .val = (vaddr),                                                 \
     };                                                                  \
   }                                                                     \
   if (!(mstatus_desc).sum && real_mode == PrivilegeMode::kSupervisor && \
@@ -270,15 +270,15 @@ Trap Mmu::VirtualFetch(const uint64_t addr, const uint64_t bytes,
                        uint8_t* buffer) {
   if (bytes == 4 && addr % 4 == 2) {
     const Trap kTrap1 = VirtualFetch(addr, 2, buffer);
-    if (kTrap1.trap_type != cpu::trap::TrapType::kNone) {
+    if (kTrap1.type != cpu::trap::TrapType::kNone) {
       return kTrap1;
     }
 
     const Trap kTrap2 = VirtualFetch(addr + 2, 2, buffer + 2);
-    if (kTrap2.trap_type != cpu::trap::TrapType::kNone) {
+    if (kTrap2.type != cpu::trap::TrapType::kNone) {
       return {
-          .trap_type = kTrap2.trap_type,
-          .trap_val = addr,
+          .type = kTrap2.type,
+          .val = addr,
       };
     }
 
@@ -289,8 +289,8 @@ Trap Mmu::VirtualFetch(const uint64_t addr, const uint64_t bytes,
   const SatpDesc kSatpDesc = *reinterpret_cast<const SatpDesc*>(&kSatpVal);
 
   const Trap kInstructionAccessTrap = {
-      .trap_type = cpu::trap::TrapType::kInstructionAccessFault,
-      .trap_val = addr,
+      .type = cpu::trap::TrapType::kInstructionAccessFault,
+      .val = addr,
   };
 
   const PrivilegeMode kCurMode = cpu_->GetPrivilegeMode();
@@ -305,16 +305,16 @@ Trap Mmu::VirtualFetch(const uint64_t addr, const uint64_t bytes,
     const Sv39TlbEntry* kTlbEntry = sv39_->GetTlbEntry(kSatpDesc, addr);
     if (!kTlbEntry || !kTlbEntry->A || !kTlbEntry->X) {
       return {
-          .trap_type = cpu::trap::TrapType::kInstructionPageFault,
-          .trap_val = addr,
+          .type = cpu::trap::TrapType::kInstructionPageFault,
+          .val = addr,
       };
     }
 
     if ((kCurMode == PrivilegeMode::kUser && !kTlbEntry->U) ||
         (kCurMode == PrivilegeMode::kSupervisor && kTlbEntry->U)) {
       return {
-          .trap_type = cpu::trap::TrapType::kInstructionPageFault,
-          .trap_val = addr,
+          .type = cpu::trap::TrapType::kInstructionPageFault,
+          .val = addr,
       };
     }
 
@@ -337,8 +337,8 @@ Trap Mmu::VirtualAddressLoad(const uint64_t addr, const uint64_t bytes,
       *reinterpret_cast<const cpu::csr::MstatusDesc*>(&kMstatus);
 
   const Trap kLoadAccessTrap = {
-      .trap_type = cpu::trap::TrapType::kLoadAccessFault,
-      .trap_val = addr,
+      .type = cpu::trap::TrapType::kLoadAccessFault,
+      .val = addr,
   };
 
   const PrivilegeMode kCurMode = cpu_->GetPrivilegeMode();
@@ -357,8 +357,8 @@ Trap Mmu::VirtualAddressLoad(const uint64_t addr, const uint64_t bytes,
     if (!kTlbEntry || !kTlbEntry->A ||
         (!kTlbEntry->R && !(kMstatusDesc.mxr && kTlbEntry->X))) {
       return {
-          .trap_type = cpu::trap::TrapType::kLoadPageFault,
-          .trap_val = addr,
+          .type = cpu::trap::TrapType::kLoadPageFault,
+          .val = addr,
       };
     }
 
@@ -384,8 +384,8 @@ Trap Mmu::VirtualAddressStore(const uint64_t addr, const uint64_t bytes,
       *reinterpret_cast<const cpu::csr::MstatusDesc*>(&kMstatus);
 
   const Trap kStoreAccessTrap = {
-      .trap_type = cpu::trap::TrapType::kStoreAccessFault,
-      .trap_val = addr,
+      .type = cpu::trap::TrapType::kStoreAccessFault,
+      .val = addr,
   };
 
   const PrivilegeMode kCurMode = cpu_->GetPrivilegeMode();
@@ -405,8 +405,8 @@ Trap Mmu::VirtualAddressStore(const uint64_t addr, const uint64_t bytes,
     // Fault
     if (!kTlbEntry || !kTlbEntry->A || !kTlbEntry->W || !kTlbEntry->D) {
       return {
-          .trap_type = cpu::trap::TrapType::kStorePageFault,
-          .trap_val = addr,
+          .type = cpu::trap::TrapType::kStorePageFault,
+          .val = addr,
       };
     }
 
