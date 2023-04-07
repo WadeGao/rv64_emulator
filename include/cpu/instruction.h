@@ -37,18 +37,18 @@
     };                                                   \
   }
 
-#define LOAD_VIRTUAL_MEMORY(T, data, proc)                         \
-  uint8_t* ptr = reinterpret_cast<uint8_t*>(&(data));              \
-  const trap::Trap kLoadTrap = (proc)->Load(addr, sizeof(T), ptr); \
-  if (kLoadTrap.type != trap::TrapType::kNone) {                   \
-    return kLoadTrap;                                              \
+#define LOAD_VIRTUAL_MEMORY(T, vaddr, data, proc)                     \
+  uint8_t* ptr = reinterpret_cast<uint8_t*>(&(data));                 \
+  const trap::Trap kLoadTrap = (proc)->Load((vaddr), sizeof(T), ptr); \
+  if (kLoadTrap.type != trap::TrapType::kNone) {                      \
+    return kLoadTrap;                                                 \
   }
 
-#define STORE_VIRTUAL_MEMORY(T, data, proc)                           \
-  const uint8_t* kPtr = reinterpret_cast<const uint8_t*>(&(data));    \
-  const trap::Trap kStoreTrap = (proc)->Store(addr, sizeof(T), kPtr); \
-  if (kStoreTrap.type != trap::TrapType::kNone) {                     \
-    return kStoreTrap;                                                \
+#define STORE_VIRTUAL_MEMORY(T, vaddr, data, proc)                       \
+  const uint8_t* kPtr = reinterpret_cast<const uint8_t*>(&(data));       \
+  const trap::Trap kStoreTrap = (proc)->Store((vaddr), sizeof(T), kPtr); \
+  if (kStoreTrap.type != trap::TrapType::kNone) {                        \
+    return kStoreTrap;                                                   \
   }
 
 namespace rv64_emulator::cpu {
@@ -119,16 +119,17 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00000067,
         .name = "JALR",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
           const uint64_t kOriginPc = cpu->GetPC();
           const uint64_t kNewPc =
-              ((int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm) &
+              ((int64_t)cpu->GetReg(kDesc.rs1) + kDesc.imm) &
               0xfffffffffffffffe;
 
           CHECK_MISALIGN_INSTRUCTION(kNewPc, cpu);
 
           cpu->SetPC(kNewPc);
-          cpu->SetReg(f.rd, kOriginPc);
+          cpu->SetReg(kDesc.rd, kOriginPc);
 
           return trap::kNoneTrap;
         },
@@ -229,12 +230,13 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00000003,
         .name = "LB",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const uint64_t kAddr = (int64_t)cpu->GetReg(kDesc.rs1) + kDesc.imm;
 
           int8_t data = 0;
-          LOAD_VIRTUAL_MEMORY(int8_t, data, cpu);
-          cpu->SetReg(f.rd, (int64_t)data);
+          LOAD_VIRTUAL_MEMORY(int8_t, kAddr, data, cpu);
+          cpu->SetReg(kDesc.rd, (int64_t)data);
 
           return trap::kNoneTrap;
         },
@@ -245,12 +247,13 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00001003,
         .name = "LH",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const uint64_t kAddr = (int64_t)cpu->GetReg(kDesc.rs1) + kDesc.imm;
 
           int16_t data = 0;
-          LOAD_VIRTUAL_MEMORY(int16_t, data, cpu);
-          cpu->SetReg(f.rd, (int64_t)data);
+          LOAD_VIRTUAL_MEMORY(int16_t, kAddr, data, cpu);
+          cpu->SetReg(kDesc.rd, (int64_t)data);
 
           return trap::kNoneTrap;
         },
@@ -261,12 +264,13 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00002003,
         .name = "LW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const uint64_t kAddr = (int64_t)cpu->GetReg(kDesc.rs1) + kDesc.imm;
 
           int32_t data = 0;
-          LOAD_VIRTUAL_MEMORY(int32_t, data, cpu);
-          cpu->SetReg(f.rd, (int64_t)data);
+          LOAD_VIRTUAL_MEMORY(int32_t, kAddr, data, cpu);
+          cpu->SetReg(kDesc.rd, (int64_t)data);
 
           return trap::kNoneTrap;
         },
@@ -277,12 +281,13 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00004003,
         .name = "LBU",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const uint64_t kAddr = (int64_t)cpu->GetReg(kDesc.rs1) + kDesc.imm;
 
           uint8_t data = 0;
-          LOAD_VIRTUAL_MEMORY(uint8_t, data, cpu);
-          cpu->SetReg(f.rd, data);
+          LOAD_VIRTUAL_MEMORY(uint8_t, kAddr, data, cpu);
+          cpu->SetReg(kDesc.rd, data);
 
           return trap::kNoneTrap;
         },
@@ -293,12 +298,13 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00005003,
         .name = "LHU",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const uint64_t kAddr = (int64_t)cpu->GetReg(kDesc.rs1) + kDesc.imm;
 
           uint16_t data = 0;
-          LOAD_VIRTUAL_MEMORY(uint16_t, data, cpu);
-          cpu->SetReg(f.rd, data);
+          LOAD_VIRTUAL_MEMORY(uint16_t, kAddr, data, cpu);
+          cpu->SetReg(kDesc.rd, data);
 
           return trap::kNoneTrap;
         },
@@ -312,7 +318,7 @@ const Instruction kInstructionTable[] = {
           const auto& f = decode::ParseFormatS(inst_word);
           const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
           const uint64_t kRegVal = cpu->GetReg(f.rs2);
-          STORE_VIRTUAL_MEMORY(int8_t, kRegVal, cpu);
+          STORE_VIRTUAL_MEMORY(int8_t, addr, kRegVal, cpu);
           return trap::kNoneTrap;
         },
     },
@@ -325,7 +331,7 @@ const Instruction kInstructionTable[] = {
           const auto& f = decode::ParseFormatS(inst_word);
           const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
           const uint64_t kRegVal = cpu->GetReg(f.rs2);
-          STORE_VIRTUAL_MEMORY(int16_t, kRegVal, cpu);
+          STORE_VIRTUAL_MEMORY(int16_t, addr, kRegVal, cpu);
           return trap::kNoneTrap;
         },
     },
@@ -338,7 +344,7 @@ const Instruction kInstructionTable[] = {
           const auto& f = decode::ParseFormatS(inst_word);
           const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
           const uint64_t kRegVal = cpu->GetReg(f.rs2);
-          STORE_VIRTUAL_MEMORY(int32_t, kRegVal, cpu);
+          STORE_VIRTUAL_MEMORY(int32_t, addr, kRegVal, cpu);
           return trap::kNoneTrap;
         },
     },
@@ -348,9 +354,10 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00000013,
         .name = "ADDI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const int64_t val = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
-          cpu->SetReg(f.rd, val);
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const int64_t kVal = (int64_t)cpu->GetReg(kDesc.rs1) + kDesc.imm;
+          cpu->SetReg(kDesc.rd, kVal);
           return trap::kNoneTrap;
         },
     },
@@ -360,10 +367,11 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00002013,
         .name = "SLTI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const int64_t val =
-              (int64_t)cpu->GetReg(f.rs1) < (int64_t)f.imm ? 1 : 0;
-          cpu->SetReg(f.rd, val);
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const int64_t kVal =
+              (int64_t)cpu->GetReg(kDesc.rs1) < kDesc.imm ? 1 : 0;
+          cpu->SetReg(kDesc.rd, kVal);
           return trap::kNoneTrap;
         },
     },
@@ -373,10 +381,11 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00003013,
         .name = "SLTIU",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const int64_t val =
-              (uint64_t)cpu->GetReg(f.rs1) < (uint64_t)f.imm ? 1 : 0;
-          cpu->SetReg(f.rd, val);
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const int64_t kVal =
+              (uint64_t)cpu->GetReg(kDesc.rs1) < (uint64_t)kDesc.imm ? 1 : 0;
+          cpu->SetReg(kDesc.rd, kVal);
           return trap::kNoneTrap;
         },
     },
@@ -386,9 +395,10 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00004013,
         .name = "XORI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const int64_t val = cpu->GetReg(f.rs1) ^ f.imm;
-          cpu->SetReg(f.rd, val);
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const int64_t kVal = cpu->GetReg(kDesc.rs1) ^ kDesc.imm;
+          cpu->SetReg(kDesc.rd, kVal);
           return trap::kNoneTrap;
         },
     },
@@ -398,9 +408,10 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00006013,
         .name = "ORI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const int64_t val = (int64_t)cpu->GetReg(f.rs1) | (int64_t)f.imm;
-          cpu->SetReg(f.rd, val);
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const int64_t kVal = (int64_t)cpu->GetReg(kDesc.rs1) | kDesc.imm;
+          cpu->SetReg(kDesc.rd, kVal);
           return trap::kNoneTrap;
         },
     },
@@ -410,9 +421,10 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00007013,
         .name = "ANDI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const int64_t val = (int64_t)cpu->GetReg(f.rs1) & (int64_t)f.imm;
-          cpu->SetReg(f.rd, val);
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const int64_t kVal = (int64_t)cpu->GetReg(kDesc.rs1) & kDesc.imm;
+          cpu->SetReg(kDesc.rd, kVal);
           return trap::kNoneTrap;
         },
     },
@@ -644,12 +656,13 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00006003,
         .name = "LWU",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const uint64_t kAddr = (int64_t)cpu->GetReg(kDesc.rs1) + kDesc.imm;
 
           uint32_t data = 0;
-          LOAD_VIRTUAL_MEMORY(uint32_t, data, cpu);
-          cpu->SetReg(f.rd, data);
+          LOAD_VIRTUAL_MEMORY(uint32_t, kAddr, data, cpu);
+          cpu->SetReg(kDesc.rd, data);
 
           return trap::kNoneTrap;
         },
@@ -660,12 +673,13 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00003003,
         .name = "LD",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const uint64_t kAddr = (int64_t)cpu->GetReg(kDesc.rs1) + kDesc.imm;
 
           int64_t data = 0;
-          LOAD_VIRTUAL_MEMORY(int64_t, data, cpu);
-          cpu->SetReg(f.rd, (int64_t)data);
+          LOAD_VIRTUAL_MEMORY(int64_t, kAddr, data, cpu);
+          cpu->SetReg(kDesc.rd, (int64_t)data);
 
           return trap::kNoneTrap;
         },
@@ -679,7 +693,7 @@ const Instruction kInstructionTable[] = {
           const auto& f = decode::ParseFormatS(inst_word);
           const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
           const uint64_t kRegVal = cpu->GetReg(f.rs2);
-          STORE_VIRTUAL_MEMORY(int64_t, kRegVal, cpu);
+          STORE_VIRTUAL_MEMORY(int64_t, addr, kRegVal, cpu);
           return trap::kNoneTrap;
         },
     },
@@ -689,10 +703,12 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00001013,
         .name = "SLLI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const uint8_t shamt = decode::GetShamt(inst_word, false);
-          const int64_t val = (int64_t)cpu->GetReg(f.rs1) << (int64_t)shamt;
-          cpu->SetReg(f.rd, val);
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const uint8_t kShamt = decode::GetShamt(kDesc, false);
+          const int64_t kVal = (int64_t)cpu->GetReg(kDesc.rs1)
+                               << (int64_t)kShamt;
+          cpu->SetReg(kDesc.rd, kVal);
           return trap::kNoneTrap;
         },
     },
@@ -702,10 +718,11 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00005013,
         .name = "SRLI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const uint8_t shamt = decode::GetShamt(inst_word, false);
-          const int64_t val = cpu->GetReg(f.rs1) >> shamt;
-          cpu->SetReg(f.rd, val);
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const uint8_t kShamt = decode::GetShamt(kDesc, false);
+          const int64_t kVal = cpu->GetReg(kDesc.rs1) >> kShamt;
+          cpu->SetReg(kDesc.rd, kVal);
           return trap::kNoneTrap;
         },
     },
@@ -715,10 +732,11 @@ const Instruction kInstructionTable[] = {
         .signature = 0x40005013,
         .name = "SRAI",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const uint8_t shamt = decode::GetShamt(inst_word, false);
-          const int64_t val = (int64_t)cpu->GetReg(f.rs1) >> shamt;
-          cpu->SetReg(f.rd, val);
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const uint8_t kShamt = decode::GetShamt(kDesc, false);
+          const int64_t kVal = (int64_t)cpu->GetReg(kDesc.rs1) >> kShamt;
+          cpu->SetReg(kDesc.rd, kVal);
           return trap::kNoneTrap;
         },
     },
@@ -728,9 +746,11 @@ const Instruction kInstructionTable[] = {
         .signature = 0x0000001b,
         .name = "ADDIW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const int64_t val = (int64_t)((int32_t)cpu->GetReg(f.rs1) + f.imm);
-          cpu->SetReg(f.rd, val);
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const int64_t kVal =
+              (int64_t)((int32_t)cpu->GetReg(kDesc.rs1) + kDesc.imm);
+          cpu->SetReg(kDesc.rd, kVal);
           return trap::kNoneTrap;
         },
     },
@@ -740,10 +760,12 @@ const Instruction kInstructionTable[] = {
         .signature = 0x0000101b,
         .name = "SLLIW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const uint8_t shamt = decode::GetShamt(inst_word, true);
-          const int64_t val = (int64_t)((int32_t)cpu->GetReg(f.rs1) << shamt);
-          cpu->SetReg(f.rd, val);
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const uint8_t kShamt = decode::GetShamt(kDesc, true);
+          const int64_t kVal =
+              (int64_t)((int32_t)cpu->GetReg(kDesc.rs1) << kShamt);
+          cpu->SetReg(kDesc.rd, kVal);
           return trap::kNoneTrap;
         },
     },
@@ -753,11 +775,12 @@ const Instruction kInstructionTable[] = {
         .signature = 0x0000501b,
         .name = "SRLIW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const uint32_t rs1 = (uint32_t)cpu->GetReg(f.rs1);
-          const uint8_t shamt = decode::GetShamt(inst_word, true);
-          const int64_t val = (int64_t)(int32_t)(rs1 >> shamt);
-          cpu->SetReg(f.rd, val);
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const uint32_t kRs1Val = (uint32_t)cpu->GetReg(kDesc.rs1);
+          const uint8_t kShamt = decode::GetShamt(kDesc, true);
+          const int64_t kVal = (int64_t)(int32_t)(kRs1Val >> kShamt);
+          cpu->SetReg(kDesc.rd, kVal);
           return trap::kNoneTrap;
         },
     },
@@ -767,10 +790,12 @@ const Instruction kInstructionTable[] = {
         .signature = 0x4000501b,
         .name = "SRAIW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatI(inst_word);
-          const uint8_t shamt = decode::GetShamt(inst_word, true);
-          const int64_t val = (int64_t)((int32_t)cpu->GetReg(f.rs1) >> shamt);
-          cpu->SetReg(f.rd, val);
+          const auto kDesc =
+              *reinterpret_cast<const decode::ITypeDesc*>(&inst_word);
+          const uint8_t kShamt = decode::GetShamt(kDesc, true);
+          const int64_t kVal =
+              (int64_t)((int32_t)cpu->GetReg(kDesc.rs1) >> kShamt);
+          cpu->SetReg(kDesc.rd, kVal);
           return trap::kNoneTrap;
         },
     },

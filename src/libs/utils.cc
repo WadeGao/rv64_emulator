@@ -102,8 +102,8 @@ TrapType InterruptBitsToTrap(const uint64_t bits) {
 
 bool CheckPcAlign(const uint64_t pc, const uint64_t isa) {
   using rv64_emulator::cpu::csr::MisaDesc;
-  const auto* kMisaDesc = reinterpret_cast<const MisaDesc*>(&isa);
-  const uint64_t kAlignBytes = kMisaDesc->C ? 2 : 4;
+  const auto kMisaDesc = *reinterpret_cast<const MisaDesc*>(&isa);
+  const uint64_t kAlignBytes = kMisaDesc.C ? 2 : 4;
   return (pc & (kAlignBytes - 1)) == 0;
 }
 
