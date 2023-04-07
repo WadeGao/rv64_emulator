@@ -10,7 +10,6 @@
 namespace rv64_emulator::cpu::decode {
 
 enum class RV64InstructionFormatType : uint8_t {
-  kTypeR = 0,
   kTypeI,
   kTypeS,
   kTypeB,
@@ -43,13 +42,6 @@ static int32_t GetImm(const uint32_t inst_word,
   uint8_t imm_width = 12;
 
   switch (type) {
-    case RV64InstructionFormatType::kTypeR:
-#ifdef DEBUG
-      fmt::print("instruction word[{}] not R type, now abort\n", inst_word);
-#endif
-      exit(static_cast<int>(
-          rv64_emulator::errorcode::DecodeErrorCode::kFieldUndefined));
-      break;
     case RV64InstructionFormatType::kTypeI:
       // imm[11:0] = inst[31:20]
       imm = ((inst_word & 0xfff00000) >> 20);
@@ -97,14 +89,6 @@ uint8_t GetShamt(const uint32_t inst_word, const bool is_rv32) {
   const uint8_t max_shamt = is_rv32 ? 0b11111 : 0b111111;
   assert(shamt <= max_shamt);
   return shamt;
-}
-
-FormatR ParseFormatR(const uint32_t inst_word) {
-  return {
-      .rd = GetRd(inst_word),
-      .rs1 = GetRs1(inst_word),
-      .rs2 = GetRs2(inst_word),
-  };
 }
 
 FormatI ParseFormatI(const uint32_t inst_word) {
