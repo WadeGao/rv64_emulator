@@ -105,15 +105,15 @@ void CPU::SetReg(const uint64_t reg_num, const uint64_t val) {
 uint64_t CPU::GetReg(const uint64_t reg_num) const { return reg_[reg_num]; }
 
 void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
-  if (trap.trap_type == trap::TrapType::kNone) {
+  if (trap.type == trap::TrapType::kNone) {
     return;
   }
 
   const PrivilegeMode kOriginPM = GetPrivilegeMode();
 
   const csr::CauseDesc kCauseBits = {
-      .cause = trap::kTrapToCauseTable.at(trap.trap_type),
-      .interrupt = trap.trap_type >= trap::TrapType::kUserSoftwareInterrupt,
+      .cause = trap::kTrapToCauseTable.at(trap.type),
+      .interrupt = trap.type >= trap::TrapType::kUserSoftwareInterrupt,
   };
 
   const uint64_t kMxdeleg =
@@ -137,7 +137,7 @@ void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
   SetPC(kTrapPc);
   state_.Write(kCsrEpcAddr, epc);
   state_.Write(kCsrCauseAddr, *reinterpret_cast<const uint64_t*>(&kCauseBits));
-  state_.Write(kCstTvalAddr, trap.trap_val);
+  state_.Write(kCstTvalAddr, trap.val);
 
   if (kTrapToSMode) {
     auto kSsDesc = *reinterpret_cast<const csr::SstatusDesc*>(&kStatus);
@@ -168,8 +168,8 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
   const uint64_t kInterruptBits = kMip & kMie;
 
   trap::Trap final_interrupt = {
-      .trap_type = trap::TrapType::kNone,
-      .trap_val = GetPC(),
+      .type = trap::TrapType::kNone,
+      .val = GetPC(),
   };
 
   using libs::util::InterruptBitsToTrap;
@@ -178,22 +178,22 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
   if (kCurPM == PrivilegeMode::kMachine) {
     const uint64_t kMmodeIntBits = kInterruptBits & (~kMidelegVal);
     if (kMmodeIntBits && kMsDesc->mie) {
-      final_interrupt.trap_type = InterruptBitsToTrap(kMmodeIntBits);
+      final_interrupt.type = InterruptBitsToTrap(kMmodeIntBits);
     }
   } else {
     const trap::TrapType kInterruptType = InterruptBitsToTrap(kInterruptBits);
     if (TrapToMask(kInterruptType) & kMidelegVal) {
       if (kMsDesc->sie || kCurPM < PrivilegeMode::kSupervisor) {
-        final_interrupt.trap_type = kInterruptType;
+        final_interrupt.type = kInterruptType;
       }
     } else {
       if (kMsDesc->mie || kCurPM < PrivilegeMode::kMachine) {
-        final_interrupt.trap_type = kInterruptType;
+        final_interrupt.type = kInterruptType;
       }
     }
   }
 
-  const uint64_t kCsrMipMask = TrapToMask(final_interrupt.trap_type);
+  const uint64_t kCsrMipMask = TrapToMask(final_interrupt.type);
   HandleTrap(final_interrupt, inst_addr);
   state_.Write(csr::kCsrMip, kMip & (~kCsrMipMask));
 
@@ -230,8 +230,8 @@ trap::Trap CPU::Decode(const uint32_t word, int64_t* index) {
   }
 
   return {
-      .trap_type = trap::TrapType::kIllegalInstruction,
-      .trap_val = word,
+      .type = trap::TrapType::kIllegalInstruction,
+      .val = word,
   };
 }
 
@@ -253,7 +253,7 @@ trap::Trap CPU::TickOperate() {
   // TODO
   const trap::Trap kFetchTrap = Fetch(kInstructionAddr, sizeof(uint32_t),
                                       reinterpret_cast<uint8_t*>(&word));
-  if (kFetchTrap.trap_type != trap::TrapType::kNone) {
+  if (kFetchTrap.type != trap::TrapType::kNone) {
     return kFetchTrap;
   }
 
@@ -261,7 +261,7 @@ trap::Trap CPU::TickOperate() {
   SetPC(kInstructionAddr + 4);
 
   const trap::Trap kDecodeTrap = Decode(word, &index);
-  if (kDecodeTrap.trap_type != trap::TrapType::kNone) {
+  if (kDecodeTrap.type != trap::TrapType::kNone) {
     return kDecodeTrap;
   }
 

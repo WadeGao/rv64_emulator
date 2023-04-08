@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
   while (true) {
     cpu->Tick();
 #ifdef DEBUG
-    cpu->DumpRegisters();
+    cpu->DumpRegs();
 #endif
   }
 

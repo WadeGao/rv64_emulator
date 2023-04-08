@@ -68,13 +68,13 @@ const std::map<TrapType, uint64_t> kTrapToCauseTable = {
 };
 
 using Trap = struct Trap {
-  TrapType trap_type;
-  uint64_t trap_val;
+  TrapType type;
+  uint64_t val;
 };
 
 constexpr Trap kNoneTrap = {
-    .trap_type = trap::TrapType::kNone,
-    .trap_val = 0,
+    .type = trap::TrapType::kNone,
+    .val = 0,
 };
 
 uint64_t GetTrapPC(const uint64_t tvec_val, const uint64_t cause);
