@@ -22,7 +22,6 @@ class Bus : public MmioDevice {
   bool Store(const uint64_t addr, const uint64_t bytes,
              const uint8_t* buffer) override;
   void Reset() override;
-  ~Bus() override;
 };
 
 }  // namespace bus

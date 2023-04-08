@@ -20,7 +20,6 @@ class DRAM : public MmioDevice {
              const uint8_t* buffer) override;
   uint64_t GetSize() const;
   void Reset() override;
-  ~DRAM() override;
 };
 
 }  // namespace rv64_emulator::dram

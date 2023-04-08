@@ -101,8 +101,6 @@ class CPU {
   void Disassemble(const uint64_t pc, const uint32_t word,
                    const int64_t index) const;
   void DumpRegs() const;
-
-  ~CPU();
 };
 
 }  // namespace cpu

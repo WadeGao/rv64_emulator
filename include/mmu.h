@@ -121,7 +121,6 @@ class Mmu {
   Trap VirtualAddressStore(const uint64_t addr, const uint64_t bytes,
                            const uint8_t* buffer);
   void Reset();
-  ~Mmu();
 };
 
 }  // namespace mmu

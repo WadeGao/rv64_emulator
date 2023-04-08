@@ -254,11 +254,7 @@ void Sv39::Reset() {
   bus_->Reset();
 }
 
-Mmu::Mmu(std::unique_ptr<Sv39> sv39) : cpu_(nullptr), sv39_(std::move(sv39)) {
-#ifdef DEBUG
-  fmt::print("mmu init, sv39 unit addr is {}\n", fmt::ptr(sv39_.get()));
-#endif
-}
+Mmu::Mmu(std::unique_ptr<Sv39> sv39) : cpu_(nullptr), sv39_(std::move(sv39)) {}
 
 void Mmu::SetProcessor(CPU* cpu) { cpu_ = cpu; }
 
@@ -421,13 +417,6 @@ Trap Mmu::VirtualAddressStore(const uint64_t addr, const uint64_t bytes,
   }
 
   return kStoreAccessTrap;
-}
-
-Mmu::~Mmu() {
-  cpu_ = nullptr;
-#ifdef DEBUG
-  fmt::print("destroy a mmu\n");
-#endif
 }
 
 void Mmu::Reset() { sv39_->Reset(); }

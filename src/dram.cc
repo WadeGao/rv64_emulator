@@ -8,11 +8,7 @@
 
 namespace rv64_emulator::dram {
 
-DRAM::DRAM(const uint64_t mem_size) : size_(mem_size), memory_(mem_size, 0) {
-#ifdef DEBUG
-  fmt::print("dram init to all zeros, size {} bytes\n", mem_size);
-#endif
-}
+DRAM::DRAM(const uint64_t mem_size) : size_(mem_size), memory_(mem_size, 0) {}
 
 uint64_t DRAM::GetSize() const { return size_; }
 
@@ -49,11 +45,5 @@ bool DRAM::Store(const uint64_t addr, const uint64_t bytes,
 }
 
 void DRAM::Reset() { std::fill(memory_.begin(), memory_.end(), 0); }
-
-DRAM::~DRAM() {
-#ifdef DEBUG
-  fmt::print("destroy a dram, size {} bytes\n", size_);
-#endif
-}
 
 }  // namespace rv64_emulator::dram

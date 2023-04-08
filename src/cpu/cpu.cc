@@ -306,12 +306,6 @@ void CPU::FlushTlb(const uint64_t vaddr, const uint64_t asid) {
   mmu_->FlushTlb(vaddr, asid);
 }
 
-CPU::~CPU() {
-#ifdef DEBUG
-  fmt::print("destroy a cpu\n");
-#endif
-}
-
 void CPU::Disassemble(const uint64_t pc, const uint32_t word,
                       const int64_t index) const {
   fmt::print("{:#018x} {:#010x} {}\n", pc, word,
