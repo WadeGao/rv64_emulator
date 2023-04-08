@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <type_traits>
 
 #include "cpu/cpu.h"
 #include "cpu/csr.h"
@@ -56,6 +57,24 @@ namespace rv64_emulator::cpu {
 class CPU;
 
 namespace instruction {
+
+template <typename T>
+int64_t GetImm(const T desc) {
+  if constexpr (std::is_same_v<T, decode::BTypeDesc>) {
+    return (desc.imm12 << 12) | (desc.imm11 << 11) | (desc.imm10_5 << 5) |
+           (desc.imm4_1 << 1);
+  } else if constexpr (std::is_same_v<T, decode::JTypeDesc>) {
+    return (desc.imm20 << 20) | (desc.imm19_12 << 12) | (desc.imm11 << 11) |
+           (desc.imm10_1 << 1);
+  } else if constexpr (std::is_same_v<T, decode::ITypeDesc>) {
+    return desc.imm;
+  } else if constexpr (std::is_same_v<T, decode::STypeDesc>) {
+    return desc.imm11_5 << 5 | desc.imm4_0;
+  } else if constexpr (std::is_same_v<T, decode::UTypeDesc>) {
+    return desc.imm_31_12 << 12;
+  }
+  return INT64_MIN;
+}
 
 using Instruction = struct Instruction {
   uint32_t mask;
@@ -142,9 +161,11 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00000063,
         .name = "BEQ",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatB(inst_word);
-          if ((int64_t)cpu->GetReg(f.rs1) == (int64_t)cpu->GetReg(f.rs2)) {
-            const uint64_t kNewPc = cpu->GetPC() + ((int64_t)f.imm - 4);
+          const auto kDesc =
+              *reinterpret_cast<const decode::BTypeDesc*>(&inst_word);
+          if ((int64_t)cpu->GetReg(kDesc.rs1) ==
+              (int64_t)cpu->GetReg(kDesc.rs2)) {
+            const uint64_t kNewPc = cpu->GetPC() + (GetImm(kDesc) - 4);
             CHECK_MISALIGN_INSTRUCTION(kNewPc, cpu);
             cpu->SetPC(kNewPc);
           }
@@ -157,9 +178,11 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00001063,
         .name = "BNE",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatB(inst_word);
-          if ((int64_t)cpu->GetReg(f.rs1) != (int64_t)cpu->GetReg(f.rs2)) {
-            const uint64_t kNewPc = cpu->GetPC() + ((int64_t)f.imm - 4);
+          const auto kDesc =
+              *reinterpret_cast<const decode::BTypeDesc*>(&inst_word);
+          if ((int64_t)cpu->GetReg(kDesc.rs1) !=
+              (int64_t)cpu->GetReg(kDesc.rs2)) {
+            const uint64_t kNewPc = cpu->GetPC() + (GetImm(kDesc) - 4);
             CHECK_MISALIGN_INSTRUCTION(kNewPc, cpu);
             cpu->SetPC(kNewPc);
           }
@@ -172,9 +195,11 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00004063,
         .name = "BLT",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatB(inst_word);
-          if ((int64_t)cpu->GetReg(f.rs1) < (int64_t)cpu->GetReg(f.rs2)) {
-            const uint64_t kNewPc = cpu->GetPC() + ((int64_t)f.imm - 4);
+          const auto kDesc =
+              *reinterpret_cast<const decode::BTypeDesc*>(&inst_word);
+          if ((int64_t)cpu->GetReg(kDesc.rs1) <
+              (int64_t)cpu->GetReg(kDesc.rs2)) {
+            const uint64_t kNewPc = cpu->GetPC() + (GetImm(kDesc) - 4);
             CHECK_MISALIGN_INSTRUCTION(kNewPc, cpu);
             cpu->SetPC(kNewPc);
           }
@@ -187,9 +212,11 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00005063,
         .name = "BGE",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatB(inst_word);
-          if ((int64_t)cpu->GetReg(f.rs1) >= (int64_t)cpu->GetReg(f.rs2)) {
-            const uint64_t kNewPc = cpu->GetPC() + ((int64_t)f.imm - 4);
+          const auto kDesc =
+              *reinterpret_cast<const decode::BTypeDesc*>(&inst_word);
+          if ((int64_t)cpu->GetReg(kDesc.rs1) >=
+              (int64_t)cpu->GetReg(kDesc.rs2)) {
+            const uint64_t kNewPc = cpu->GetPC() + (GetImm(kDesc) - 4);
             CHECK_MISALIGN_INSTRUCTION(kNewPc, cpu);
             cpu->SetPC(kNewPc);
           }
@@ -202,9 +229,11 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00006063,
         .name = "BLTU",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatB(inst_word);
-          if ((uint64_t)cpu->GetReg(f.rs1) < (uint64_t)cpu->GetReg(f.rs2)) {
-            const uint64_t kNewPc = cpu->GetPC() + ((int64_t)f.imm - 4);
+          const auto kDesc =
+              *reinterpret_cast<const decode::BTypeDesc*>(&inst_word);
+          if ((uint64_t)cpu->GetReg(kDesc.rs1) <
+              (uint64_t)cpu->GetReg(kDesc.rs2)) {
+            const uint64_t kNewPc = cpu->GetPC() + (GetImm(kDesc) - 4);
             CHECK_MISALIGN_INSTRUCTION(kNewPc, cpu);
             cpu->SetPC(kNewPc);
           }
@@ -217,9 +246,11 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00007063,
         .name = "BGEU",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatB(inst_word);
-          if ((uint64_t)cpu->GetReg(f.rs1) >= (uint64_t)cpu->GetReg(f.rs2)) {
-            const uint64_t kNewPc = cpu->GetPC() + ((int64_t)f.imm - 4);
+          const auto kDesc =
+              *reinterpret_cast<const decode::BTypeDesc*>(&inst_word);
+          if ((uint64_t)cpu->GetReg(kDesc.rs1) >=
+              (uint64_t)cpu->GetReg(kDesc.rs2)) {
+            const uint64_t kNewPc = cpu->GetPC() + (GetImm(kDesc) - 4);
             CHECK_MISALIGN_INSTRUCTION(kNewPc, cpu);
             cpu->SetPC(kNewPc);
           }

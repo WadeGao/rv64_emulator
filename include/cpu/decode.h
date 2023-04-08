@@ -3,14 +3,17 @@
 #include <cstdint>
 #include <string>
 
-#include "conf.h"
-
 namespace rv64_emulator::cpu::decode {
 
-using FormatB = struct FormatB {
-  uint8_t rs1;
-  uint8_t rs2;
-  int32_t imm;
+using BTypeDesc = struct BTypeDesc {
+  uint32_t opcode : 7;
+  uint32_t imm11 : 1;
+  uint32_t imm4_1 : 4;
+  uint32_t funct3 : 3;
+  uint32_t rs1 : 5;
+  uint32_t rs2 : 5;
+  uint32_t imm10_5 : 6;
+  int32_t imm12 : 1;
 };
 
 using JTypeDesc = struct JTypeDesc {
@@ -63,8 +66,5 @@ using ITypeDesc = struct ITypeDesc {
 };
 
 uint8_t GetShamt(const ITypeDesc desc, const bool kRv32Arch /* = false */);
-
-// instruction format parser
-FormatB ParseFormatB(const uint32_t inst_word);
 
 }  // namespace rv64_emulator::cpu::decode
