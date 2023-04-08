@@ -88,9 +88,9 @@ const Instruction kInstructionTable[] = {
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto kDesc =
               *reinterpret_cast<const decode::UTypeDesc*>(&inst_word);
-          const int64_t val =
+          const int64_t kVal =
               (int64_t)(cpu->GetPC() - 4) + (int64_t)(kDesc.imm_31_12 << 12);
-          cpu->SetReg(kDesc.rd, val);
+          cpu->SetReg(kDesc.rd, kVal);
           return trap::kNoneTrap;
         },
     },
@@ -100,14 +100,16 @@ const Instruction kInstructionTable[] = {
         .signature = 0x0000006f,
         .name = "JAL",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatJ(inst_word);
-
+          const auto kDesc =
+              *reinterpret_cast<const decode::JTypeDesc*>(&inst_word);
+          const int64_t kImm = (kDesc.imm20 << 20) | (kDesc.imm19_12 << 12) |
+                               (kDesc.imm11 << 11) | (kDesc.imm10_1 << 1);
           const uint64_t kOriginPc = cpu->GetPC();
-          const uint64_t kNewPc = (int64_t)cpu->GetPC() + (int64_t)f.imm - 4;
+          const uint64_t kNewPc = (int64_t)cpu->GetPC() + kImm - 4;
 
           CHECK_MISALIGN_INSTRUCTION(kNewPc, cpu);
 
-          cpu->SetReg(f.rd, kOriginPc);
+          cpu->SetReg(kDesc.rd, kOriginPc);
           cpu->SetPC(kNewPc);
 
           return trap::kNoneTrap;

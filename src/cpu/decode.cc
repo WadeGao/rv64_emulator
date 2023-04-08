@@ -11,7 +11,6 @@ namespace rv64_emulator::cpu::decode {
 
 enum class RV64InstructionFormatType : uint8_t {
   kTypeB,
-  kTypeJ,
 };
 
 // masks
@@ -45,12 +44,6 @@ static int32_t GetImm(const uint32_t inst_word,
       imm = (((inst_word & 0x80000000) >> 19) | ((inst_word & 0x80) << 4) |
              ((inst_word >> 20) & 0x7e0) | ((inst_word >> 7) & 0x1e));
       break;
-    case RV64InstructionFormatType::kTypeJ:
-      // imm[20|10:1|11|19:12] = inst[31|30:21|20|19:12]
-      imm = (((inst_word & 0x80000000) >> 11) | ((inst_word & 0xff000)) |
-             ((inst_word >> 9) & 0x800) | ((inst_word >> 20) & 0x7fe));
-      imm_width = 20;
-      break;
     default:
       break;
   }
@@ -59,11 +52,6 @@ static int32_t GetImm(const uint32_t inst_word,
 
   if (is_negative && imm_width == 12) {
     imm |= 0xfffff000;
-    return imm;
-  }
-
-  if (is_negative && type == RV64InstructionFormatType::kTypeJ) {
-    imm |= 0xfff00000;
     return imm;
   }
 
@@ -85,13 +73,6 @@ FormatB ParseFormatB(const uint32_t inst_word) {
       .rs1 = GetRs1(inst_word),
       .rs2 = GetRs2(inst_word),
       .imm = GetImm(inst_word, RV64InstructionFormatType::kTypeB),
-  };
-}
-
-FormatJ ParseFormatJ(const uint32_t inst_word) {
-  return {
-      .rd = GetRd(inst_word),
-      .imm = GetImm(inst_word, RV64InstructionFormatType::kTypeJ),
   };
 }
 

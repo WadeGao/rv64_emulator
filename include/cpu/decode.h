@@ -13,9 +13,13 @@ using FormatB = struct FormatB {
   int32_t imm;
 };
 
-using FormatJ = struct FormatJ {
-  uint8_t rd;
-  int32_t imm;
+using JTypeDesc = struct JTypeDesc {
+  uint32_t opcode : 7;
+  uint32_t rd : 5;
+  uint32_t imm19_12 : 8;
+  uint32_t imm11 : 1;
+  uint32_t imm10_1 : 10;
+  int32_t imm20 : 1;
 };
 
 using STypeDesc = struct STypeDesc {
@@ -62,6 +66,5 @@ uint8_t GetShamt(const ITypeDesc desc, const bool kRv32Arch /* = false */);
 
 // instruction format parser
 FormatB ParseFormatB(const uint32_t inst_word);
-FormatJ ParseFormatJ(const uint32_t inst_word);
 
 }  // namespace rv64_emulator::cpu::decode
