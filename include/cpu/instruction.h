@@ -315,10 +315,12 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00000023,
         .name = "SB",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatS(inst_word);
-          const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
-          const uint64_t kRegVal = cpu->GetReg(f.rs2);
-          STORE_VIRTUAL_MEMORY(int8_t, addr, kRegVal, cpu);
+          const auto kDesc =
+              *reinterpret_cast<const decode::STypeDesc*>(&inst_word);
+          const int64_t kImm = kDesc.imm11_5 << 5 | kDesc.imm4_0;
+          const uint64_t kAddr = (int64_t)cpu->GetReg(kDesc.rs1) + kImm;
+          const uint64_t kRegVal = cpu->GetReg(kDesc.rs2);
+          STORE_VIRTUAL_MEMORY(int8_t, kAddr, kRegVal, cpu);
           return trap::kNoneTrap;
         },
     },
@@ -328,10 +330,12 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00001023,
         .name = "SH",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatS(inst_word);
-          const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
-          const uint64_t kRegVal = cpu->GetReg(f.rs2);
-          STORE_VIRTUAL_MEMORY(int16_t, addr, kRegVal, cpu);
+          const auto kDesc =
+              *reinterpret_cast<const decode::STypeDesc*>(&inst_word);
+          const int64_t kImm = kDesc.imm11_5 << 5 | kDesc.imm4_0;
+          const uint64_t kAddr = (int64_t)cpu->GetReg(kDesc.rs1) + kImm;
+          const uint64_t kRegVal = cpu->GetReg(kDesc.rs2);
+          STORE_VIRTUAL_MEMORY(int16_t, kAddr, kRegVal, cpu);
           return trap::kNoneTrap;
         },
     },
@@ -341,10 +345,12 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00002023,
         .name = "SW",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatS(inst_word);
-          const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
-          const uint64_t kRegVal = cpu->GetReg(f.rs2);
-          STORE_VIRTUAL_MEMORY(int32_t, addr, kRegVal, cpu);
+          const auto kDesc =
+              *reinterpret_cast<const decode::STypeDesc*>(&inst_word);
+          const int64_t kImm = kDesc.imm11_5 << 5 | kDesc.imm4_0;
+          const uint64_t kAddr = (int64_t)cpu->GetReg(kDesc.rs1) + kImm;
+          const uint64_t kRegVal = cpu->GetReg(kDesc.rs2);
+          STORE_VIRTUAL_MEMORY(int32_t, kAddr, kRegVal, cpu);
           return trap::kNoneTrap;
         },
     },
@@ -690,10 +696,12 @@ const Instruction kInstructionTable[] = {
         .signature = 0x00003023,
         .name = "SD",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
-          const auto& f = decode::ParseFormatS(inst_word);
-          const uint64_t addr = (int64_t)cpu->GetReg(f.rs1) + (int64_t)f.imm;
-          const uint64_t kRegVal = cpu->GetReg(f.rs2);
-          STORE_VIRTUAL_MEMORY(int64_t, addr, kRegVal, cpu);
+          const auto kDesc =
+              *reinterpret_cast<const decode::STypeDesc*>(&inst_word);
+          const int64_t kImm = kDesc.imm11_5 << 5 | kDesc.imm4_0;
+          const uint64_t kAddr = (int64_t)cpu->GetReg(kDesc.rs1) + kImm;
+          const uint64_t kRegVal = cpu->GetReg(kDesc.rs2);
+          STORE_VIRTUAL_MEMORY(int64_t, kAddr, kRegVal, cpu);
           return trap::kNoneTrap;
         },
     },

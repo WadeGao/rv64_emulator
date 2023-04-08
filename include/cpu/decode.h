@@ -7,12 +7,6 @@
 
 namespace rv64_emulator::cpu::decode {
 
-using FormatS = struct FormatS {
-  uint8_t rs1;
-  uint8_t rs2;
-  int32_t imm;
-};
-
 using FormatB = struct FormatB {
   uint8_t rs1;
   uint8_t rs2;
@@ -22,6 +16,15 @@ using FormatB = struct FormatB {
 using FormatJ = struct FormatJ {
   uint8_t rd;
   int32_t imm;
+};
+
+using STypeDesc = struct STypeDesc {
+  uint32_t opcode : 7;
+  uint32_t imm4_0 : 5;
+  uint32_t funct3 : 3;
+  uint32_t rs1 : 5;
+  uint32_t rs2 : 5;
+  int32_t imm11_5 : 7;
 };
 
 using CsrTypeDesc = struct CsrTypeDesc {
@@ -41,7 +44,7 @@ using UTypeDesc = struct UTypeDesc {
 using RTypeDesc = struct RTypeDesc {
   uint32_t opcode : 7;
   uint32_t rd : 5;
-  int32_t funct3 : 3;
+  uint32_t funct3 : 3;
   uint32_t rs1 : 5;
   uint32_t rs2 : 5;
   int32_t funct7 : 7;
@@ -50,7 +53,7 @@ using RTypeDesc = struct RTypeDesc {
 using ITypeDesc = struct ITypeDesc {
   uint32_t opcode : 7;
   uint32_t rd : 5;
-  int32_t funct3 : 3;
+  uint32_t funct3 : 3;
   uint32_t rs1 : 5;
   int32_t imm : 12;
 };
@@ -58,7 +61,6 @@ using ITypeDesc = struct ITypeDesc {
 uint8_t GetShamt(const ITypeDesc desc, const bool kRv32Arch /* = false */);
 
 // instruction format parser
-FormatS ParseFormatS(const uint32_t inst_word);
 FormatB ParseFormatB(const uint32_t inst_word);
 FormatJ ParseFormatJ(const uint32_t inst_word);
 
