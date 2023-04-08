@@ -92,10 +92,7 @@ const Instruction kInstructionTable[] = {
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto kDesc =
               *reinterpret_cast<const decode::UTypeDesc*>(&inst_word);
-
-          const uint64_t val = (int64_t)(kDesc.imm_31_12 << 12);
-          cpu->SetReg(kDesc.rd, val);
-
+          cpu->SetReg(kDesc.rd, GetImm(kDesc));
           return trap::kNoneTrap;
         },
     },
@@ -107,8 +104,7 @@ const Instruction kInstructionTable[] = {
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto kDesc =
               *reinterpret_cast<const decode::UTypeDesc*>(&inst_word);
-          const int64_t kVal =
-              (int64_t)(cpu->GetPC() - 4) + (int64_t)(kDesc.imm_31_12 << 12);
+          const int64_t kVal = (int64_t)(cpu->GetPC() - 4) + GetImm(kDesc);
           cpu->SetReg(kDesc.rd, kVal);
           return trap::kNoneTrap;
         },
@@ -121,10 +117,8 @@ const Instruction kInstructionTable[] = {
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto kDesc =
               *reinterpret_cast<const decode::JTypeDesc*>(&inst_word);
-          const int64_t kImm = (kDesc.imm20 << 20) | (kDesc.imm19_12 << 12) |
-                               (kDesc.imm11 << 11) | (kDesc.imm10_1 << 1);
           const uint64_t kOriginPc = cpu->GetPC();
-          const uint64_t kNewPc = (int64_t)cpu->GetPC() + kImm - 4;
+          const uint64_t kNewPc = (int64_t)cpu->GetPC() + GetImm(kDesc) - 4;
 
           CHECK_MISALIGN_INSTRUCTION(kNewPc, cpu);
 
@@ -350,8 +344,8 @@ const Instruction kInstructionTable[] = {
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto kDesc =
               *reinterpret_cast<const decode::STypeDesc*>(&inst_word);
-          const int64_t kImm = kDesc.imm11_5 << 5 | kDesc.imm4_0;
-          const uint64_t kAddr = (int64_t)cpu->GetReg(kDesc.rs1) + kImm;
+          const uint64_t kAddr =
+              (int64_t)cpu->GetReg(kDesc.rs1) + GetImm(kDesc);
           const uint64_t kRegVal = cpu->GetReg(kDesc.rs2);
           STORE_VIRTUAL_MEMORY(int8_t, kAddr, kRegVal, cpu);
           return trap::kNoneTrap;
@@ -365,8 +359,8 @@ const Instruction kInstructionTable[] = {
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto kDesc =
               *reinterpret_cast<const decode::STypeDesc*>(&inst_word);
-          const int64_t kImm = kDesc.imm11_5 << 5 | kDesc.imm4_0;
-          const uint64_t kAddr = (int64_t)cpu->GetReg(kDesc.rs1) + kImm;
+          const uint64_t kAddr =
+              (int64_t)cpu->GetReg(kDesc.rs1) + GetImm(kDesc);
           const uint64_t kRegVal = cpu->GetReg(kDesc.rs2);
           STORE_VIRTUAL_MEMORY(int16_t, kAddr, kRegVal, cpu);
           return trap::kNoneTrap;
@@ -380,8 +374,8 @@ const Instruction kInstructionTable[] = {
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto kDesc =
               *reinterpret_cast<const decode::STypeDesc*>(&inst_word);
-          const int64_t kImm = kDesc.imm11_5 << 5 | kDesc.imm4_0;
-          const uint64_t kAddr = (int64_t)cpu->GetReg(kDesc.rs1) + kImm;
+          const uint64_t kAddr =
+              (int64_t)cpu->GetReg(kDesc.rs1) + GetImm(kDesc);
           const uint64_t kRegVal = cpu->GetReg(kDesc.rs2);
           STORE_VIRTUAL_MEMORY(int32_t, kAddr, kRegVal, cpu);
           return trap::kNoneTrap;
@@ -731,8 +725,8 @@ const Instruction kInstructionTable[] = {
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const auto kDesc =
               *reinterpret_cast<const decode::STypeDesc*>(&inst_word);
-          const int64_t kImm = kDesc.imm11_5 << 5 | kDesc.imm4_0;
-          const uint64_t kAddr = (int64_t)cpu->GetReg(kDesc.rs1) + kImm;
+          const uint64_t kAddr =
+              (int64_t)cpu->GetReg(kDesc.rs1) + GetImm(kDesc);
           const uint64_t kRegVal = cpu->GetReg(kDesc.rs2);
           STORE_VIRTUAL_MEMORY(int64_t, kAddr, kRegVal, cpu);
           return trap::kNoneTrap;
