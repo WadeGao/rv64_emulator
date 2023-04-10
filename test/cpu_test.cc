@@ -1,6 +1,7 @@
 #include "cpu/cpu.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
@@ -47,6 +48,17 @@ class CpuTest : public testing::Test {
 constexpr uint64_t kProgramEntry = 0;
 constexpr uint64_t kMaxInstructions = 100000;
 constexpr uint64_t kArbitrarilyHandlerVector = 0x100000;
+
+static float GetMips(const std::chrono::steady_clock::time_point start,
+                     const uint64_t insret_cnt) {
+  const auto end = std::chrono::high_resolution_clock::now();
+  const uint64_t kDurationUs = static_cast<uint64_t>(
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+          .count());
+  const float kMips =
+      static_cast<float>(insret_cnt) / static_cast<float>(kDurationUs);
+  return kMips;
+}
 
 TEST_F(CpuTest, HandleTrap) {
   // write ecall instruction
@@ -170,7 +182,8 @@ TEST_F(CpuTest, OfficalTests) {
     const uint64_t kEntryAddr = reader.get_entry();
     cpu_->SetPC(kEntryAddr);
 
-    fmt::print("now start run {}\n", kFileName);
+    const uint64_t kOriginInsrCnt = cpu_->instret_;
+    auto start = std::chrono::high_resolution_clock::now();
 
     while (true) {
       cpu_->Tick();
@@ -184,9 +197,14 @@ TEST_F(CpuTest, OfficalTests) {
       ASSERT_TRUE(kSucc);
 
       if (val != 0) {
+        const float kMips = GetMips(start, cpu_->instret_ - kOriginInsrCnt);
         EXPECT_EQ(val, 1) << fmt::format(
-            fmt::fg(fmt::color::red), "{} Failed with .tohost section val = {}",
-            kFileName, val);
+            fmt::fg(fmt::color::red),
+            "Failed {} with .tohost section val = {}, MIPS = {:.2f}\n",
+            kFileName, val, kMips);
+        if (val == 1) {
+          fmt::print("Pass {}, MIPS = {:.2f}\n", kFileName, kMips);
+        }
         break;
       }
 
