@@ -49,14 +49,13 @@ constexpr uint64_t kProgramEntry = 0;
 constexpr uint64_t kMaxInstructions = 100000;
 constexpr uint64_t kArbitrarilyHandlerVector = 0x100000;
 
-static float GetMips(const std::chrono::steady_clock::time_point start,
+static float GetMips(decltype(std::chrono::high_resolution_clock::now()) start,
                      const uint64_t insret_cnt) {
   const auto end = std::chrono::high_resolution_clock::now();
-  const uint64_t kDurationUs = static_cast<uint64_t>(
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-          .count());
+  const auto kDurationUs =
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   const float kMips =
-      static_cast<float>(insret_cnt) / static_cast<float>(kDurationUs);
+      static_cast<float>(insret_cnt) / static_cast<float>(kDurationUs.count());
   return kMips;
 }
 
