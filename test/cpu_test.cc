@@ -226,7 +226,7 @@ TEST_F(CpuTest, OfficalTests) {
             "Failed {} with .tohost section val = {}, MIPS = {:.2f}\n",
             kFileName, val, kMips);
         if (val == 1) {
-          fmt::print("Pass {}, MIPS = {:.2f}\n", kFileName, kMips);
+          fmt::print("[ MIPS = {:#05.2f} ] Pass {}\n", kMips, kFileName);
         }
         break;
       }

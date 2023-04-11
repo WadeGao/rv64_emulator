@@ -9,8 +9,6 @@
 #include "cpu/decode.h"
 #include "cpu/instruction.h"
 #include "cpu/trap.h"
-#include "device/bus.h"
-#include "fmt/color.h"
 #include "fmt/core.h"
 #include "fmt/format.h"
 #include "libs/arithmetic.hpp"
@@ -44,8 +42,6 @@ const std::map<PrivilegeMode, uint64_t> kTvecReg = {
     {PrivilegeMode::kUser, csr::kCsrUtvec},
 };
 
-uint32_t gpr_change_record = 0;
-
 CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
     : clock_(0),
       instret_(0),
@@ -57,9 +53,6 @@ CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
       sizeof(float) == 4,
       "float is not 4 bytes, can't assure the bit width of floating point reg");
   mmu_->SetProcessor(this);
-#ifdef DEBUG
-  fmt::print("cpu init, mmu addr is {}\n", fmt::ptr(mmu_.get()));
-#endif
 }
 
 void CPU::Reset() {
@@ -238,7 +231,6 @@ trap::Trap CPU::TickOperate() {
   int64_t index = 0;
   uint32_t word = 0;
 
-  // TODO
   const trap::Trap kFetchTrap = Fetch(kInstructionAddr, sizeof(uint32_t),
                                       reinterpret_cast<uint8_t*>(&word));
   if (kFetchTrap.type != trap::TrapType::kNone) {
@@ -253,25 +245,10 @@ trap::Trap CPU::TickOperate() {
     return kDecodeTrap;
   }
 
-#ifdef DEBUG
-  Disassemble(kInstructionAddr, word, index);
-  uint64_t backup_reg[kGeneralPurposeRegNum] = {0};
-  memcpy(backup_reg, reg_, kGeneralPurposeRegNum * sizeof(uint64_t));
-#endif
-
   const trap::Trap kExecTrap =
       instruction::kInstructionTable[index].Exec(this, word);
 
   reg_[0] = 0;
-
-#ifdef DEBUG
-  gpr_change_record = 0;
-  for (uint64_t i = 0; i < kGeneralPurposeRegNum; i++) {
-    if (backup_reg[i] != reg_[i]) {
-      gpr_change_record |= (1 << i);
-    }
-  }
-#endif
 
   return kExecTrap;
 }
@@ -323,18 +300,10 @@ void CPU::DumpRegs() const {
   constexpr int kBiasTable[4] = {0, 8, 16, 24};
 
   for (int i = 0; i < 8; i++) {
-    for (const auto bias : kBiasTable) {
-      const int index = i + bias;
-      if (gpr_change_record & (1 << index)) {
-        fmt::print(
-            "      {:>28}",
-            fmt::format(fmt::bg(fmt::color::green) | fmt::fg(fmt::color::red),
-                        "{}: {:#018x}", abi[index], reg_[index]));
-        //  fmt::bg(fmt::color::green) | fmt::fg(fmt::color::red)
-      } else {
-        fmt::print("{:>28}",
-                   fmt::format("{}: {:#018x}", abi[index], reg_[index]));
-      }
+    for (const auto kBias : kBiasTable) {
+      const int kIndex = i + kBias;
+      fmt::print("{:>28}",
+                 fmt::format("{}: {:#018x}", abi[kIndex], reg_[kIndex]));
     }
     fmt::print("\n");
   }
