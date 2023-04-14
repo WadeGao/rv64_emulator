@@ -4,12 +4,12 @@
 #include <map>
 #include <tuple>
 
-#include "bus.h"
 #include "conf.h"
 #include "cpu/csr.h"
 #include "cpu/decode.h"
 #include "cpu/instruction.h"
 #include "cpu/trap.h"
+#include "device/bus.h"
 #include "fmt/color.h"
 #include "fmt/core.h"
 #include "fmt/format.h"

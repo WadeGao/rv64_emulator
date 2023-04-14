@@ -3,9 +3,11 @@
 #include <cstdint>
 #include <vector>
 
-#include "mmio_device.hpp"
+#include "device/mmio.hpp"
 
-namespace rv64_emulator::dram {
+namespace rv64_emulator::device {
+
+namespace dram {
 
 class DRAM : public MmioDevice {
  private:
@@ -22,4 +24,5 @@ class DRAM : public MmioDevice {
   void Reset() override;
 };
 
-}  // namespace rv64_emulator::dram
+}  // namespace dram
+}  // namespace rv64_emulator::device

@@ -3,20 +3,21 @@
 #include <cstdint>
 #include <memory>
 
-#include "bus.h"
 #include "cpu/cpu.h"
 #include "cpu/csr.h"
 #include "cpu/trap.h"
+#include "device/bus.h"
+#include "device/mmio.hpp"
 
 namespace rv64_emulator {
 
-using bus::Bus;
 using cpu::CPU;
 using cpu::csr::SatpDesc;
 using cpu::trap::Trap;
+using device::MmioDevice;
+using device::bus::Bus;
 
 namespace mmu {
-
 enum class AddressMode {
   kBare = 0,
   kSv39 = 8,
@@ -80,7 +81,7 @@ using Sv39PhysicalAddress = struct Sv39PhysicalAddress {
 
 constexpr uint64_t kTlbSize = 32;
 
-class Sv39 {
+class Sv39 : public MmioDevice {
  private:
   uint64_t index_;
   Sv39TlbEntry tlb_[kTlbSize];
@@ -97,13 +98,13 @@ class Sv39 {
 
   Sv39TlbEntry* GetTlbEntry(const SatpDesc satp, const uint64_t vaddr);
 
-  bool PhysicalAddressLoad(const uint64_t addr, const uint64_t bytes,
-                           uint8_t* buffer) const;
-  bool PhysicalAddressStore(const uint64_t addr, const uint64_t bytes,
-                            const uint8_t* buffer);
+  bool Load(const uint64_t addr, const uint64_t bytes,
+            uint8_t* buffer) const override;
+  bool Store(const uint64_t addr, const uint64_t bytes,
+             const uint8_t* buffer) override;
 
   void FlushTlb(const uint64_t vaddr, const uint64_t asid);
-  void Reset();
+  void Reset() override;
 };
 
 class Mmu {

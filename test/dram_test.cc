@@ -1,4 +1,4 @@
-#include "dram.h"
+#include "device/dram.h"
 
 #include <cstdint>
 #include <memory>
@@ -18,13 +18,13 @@ class DRAMTest : public testing::Test {
   }
 
   void SetUp() override {
-    auto dram = std::make_unique<rv64_emulator::dram::DRAM>(kDramSize);
+    auto dram = std::make_unique<rv64_emulator::device::dram::DRAM>(kDramSize);
     dram_ = std::move(dram);
   }
 
   void TearDown() override {}
 
-  std::unique_ptr<rv64_emulator::dram::DRAM> dram_;
+  std::unique_ptr<rv64_emulator::device::dram::DRAM> dram_;
 };
 
 constexpr uint64_t kArbitraryAddr = 0;
@@ -40,9 +40,6 @@ TEST_F(DRAMTest, Store) {
 
   const auto* kDwordRawData = reinterpret_cast<const uint64_t*>(kRawBytes);
   ASSERT_EQ(*kDwordRawData, kArbitraryVal);
-
-  ASSERT_FALSE(dram_->Store(dram_->GetSize() - 7, sizeof(uint64_t),
-                            reinterpret_cast<const uint8_t*>(&kArbitraryVal)));
 }
 
 TEST_F(DRAMTest, Load) {

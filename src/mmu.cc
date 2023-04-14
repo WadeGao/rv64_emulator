@@ -3,11 +3,11 @@
 #include <cstdint>
 #include <cstring>
 
-#include "bus.h"
 #include "cpu/cpu.h"
 #include "cpu/csr.h"
 #include "cpu/instruction.h"
 #include "cpu/trap.h"
+#include "device/bus.h"
 #include "error_code.h"
 #include "fmt/core.h"
 #include "fmt/format.h"
@@ -220,13 +220,13 @@ Sv39TlbEntry* Sv39::GetTlbEntry(const SatpDesc satp, const uint64_t vaddr) {
   return res;
 }
 
-bool Sv39::PhysicalAddressLoad(const uint64_t addr, const uint64_t bytes,
-                               uint8_t* buffer) const {
+bool Sv39::Load(const uint64_t addr, const uint64_t bytes,
+                uint8_t* buffer) const {
   return bus_->Load(addr, bytes, buffer);
 }
 
-bool Sv39::PhysicalAddressStore(const uint64_t addr, const uint64_t bytes,
-                                const uint8_t* buffer) {
+bool Sv39::Store(const uint64_t addr, const uint64_t bytes,
+                 const uint8_t* buffer) {
   return bus_->Store(addr, bytes, buffer);
 }
 
@@ -292,7 +292,7 @@ Trap Mmu::VirtualFetch(const uint64_t addr, const uint64_t bytes,
   const PrivilegeMode kCurMode = cpu_->GetPrivilegeMode();
   // physical addr load
   if (kCurMode == PrivilegeMode::kMachine || kSatpDesc.mode == 0) {
-    const bool kSucc = sv39_->PhysicalAddressLoad(addr, bytes, buffer);
+    const bool kSucc = sv39_->Load(addr, bytes, buffer);
     return kSucc ? cpu::trap::kNoneTrap : kInstructionAccessTrap;
   } else {
     CHECK_RANGE_PAGE_ALIGN(addr, bytes,
@@ -316,7 +316,7 @@ Trap Mmu::VirtualFetch(const uint64_t addr, const uint64_t bytes,
 
     const uint64_t kPhysicalAddr = MapVirtualAddress(kTlbEntry, addr);
 
-    const bool kSucc = sv39_->PhysicalAddressLoad(kPhysicalAddr, bytes, buffer);
+    const bool kSucc = sv39_->Load(kPhysicalAddr, bytes, buffer);
     return kSucc ? cpu::trap::kNoneTrap : kInstructionAccessTrap;
   }
 
@@ -343,7 +343,7 @@ Trap Mmu::VirtualAddressLoad(const uint64_t addr, const uint64_t bytes,
       ((kCurMode == PrivilegeMode::kMachine) &&
        (!kMstatusDesc.mprv ||
         kMstatusDesc.mpp == static_cast<uint64_t>(PrivilegeMode::kMachine)))) {
-    const bool kSucc = sv39_->PhysicalAddressLoad(addr, bytes, buffer);
+    const bool kSucc = sv39_->Load(addr, bytes, buffer);
     return kSucc ? cpu::trap::kNoneTrap : kLoadAccessTrap;
   } else {
     CHECK_RANGE_PAGE_ALIGN(addr, bytes,
@@ -363,7 +363,7 @@ Trap Mmu::VirtualAddressLoad(const uint64_t addr, const uint64_t bytes,
 
     const uint64_t kPhysicalAddr = MapVirtualAddress(kTlbEntry, addr);
 
-    const bool kSucc = sv39_->PhysicalAddressLoad(kPhysicalAddr, bytes, buffer);
+    const bool kSucc = sv39_->Load(kPhysicalAddr, bytes, buffer);
     return kSucc ? cpu::trap::kNoneTrap : kLoadAccessTrap;
   }
 
@@ -390,7 +390,7 @@ Trap Mmu::VirtualAddressStore(const uint64_t addr, const uint64_t bytes,
       (kCurMode == PrivilegeMode::kMachine &&
        (!kMstatusDesc.mprv ||
         kMstatusDesc.mpp == static_cast<uint64_t>(PrivilegeMode::kMachine)))) {
-    const bool kSucc = sv39_->PhysicalAddressStore(addr, bytes, buffer);
+    const bool kSucc = sv39_->Store(addr, bytes, buffer);
     return kSucc ? cpu::trap::kNoneTrap : kStoreAccessTrap;
   } else {
     CHECK_RANGE_PAGE_ALIGN(addr, bytes,
@@ -411,8 +411,7 @@ Trap Mmu::VirtualAddressStore(const uint64_t addr, const uint64_t bytes,
 
     const uint64_t kPhysicalAddr = MapVirtualAddress(kTlbEntry, addr);
 
-    const bool kSucc =
-        sv39_->PhysicalAddressStore(kPhysicalAddr, bytes, buffer);
+    const bool kSucc = sv39_->Store(kPhysicalAddr, bytes, buffer);
     return kSucc ? cpu::trap::kNoneTrap : kStoreAccessTrap;
   }
 
