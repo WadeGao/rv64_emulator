@@ -1,4 +1,4 @@
-#include "plic.h"
+#include "device/plic.h"
 
 #include <cassert>
 #include <cstddef>

@@ -1,10 +1,12 @@
 #include <cstdlib>
 #include <memory>
+#include <utility>
 
-#include "bus.h"
 #include "conf.h"
 #include "cpu/cpu.h"
-#include "dram.h"
+#include "device/bus.h"
+#include "device/dram.h"
+#include "device/mmio.hpp"
 #include "elfio/elfio.hpp"
 #include "fmt/core.h"
 #include "libs/utils.h"
@@ -16,8 +18,14 @@ int main(int argc, char* argv[]) {
     exit(-1);
   }
 
-  auto dram = std::make_unique<rv64_emulator::dram::DRAM>(kDramSize);
-  auto bus = std::make_unique<rv64_emulator::bus::Bus>(std::move(dram));
+  auto dram = std::make_unique<rv64_emulator::device::dram::DRAM>(kDramSize);
+  auto bus = std::make_unique<rv64_emulator::device::bus::Bus>();
+  bus->MountDevice({
+      .base = kDramBaseAddr,
+      .size = kDramSize,
+      .dev = std::move(dram),
+  });
+
   auto sv39 = std::make_unique<rv64_emulator::mmu::Sv39>(std::move(bus));
   auto mmu = std::make_unique<rv64_emulator::mmu::Mmu>(std::move(sv39));
   auto cpu = std::make_unique<rv64_emulator::cpu::CPU>(std::move(mmu));

@@ -1,10 +1,11 @@
-#include "bus.h"
+#include "device/bus.h"
 
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 #include "conf.h"
-#include "dram.h"
+#include "device/dram.h"
 #include "fmt/core.h"
 #include "gtest/gtest.h"
 
@@ -19,36 +20,52 @@ class BusTest : public testing::Test {
   }
 
   void SetUp() override {
-    auto dram = std::make_unique<rv64_emulator::dram::DRAM>(kDramSize);
-    auto bus = std::make_unique<rv64_emulator::bus::Bus>(std::move(dram));
-
-    bus_ = std::move(bus);
+    bus_ = std::make_unique<rv64_emulator::device::bus::Bus>();
   }
 
   void TearDown() override {}
 
-  std::unique_ptr<rv64_emulator::bus::Bus> bus_;
+  std::unique_ptr<rv64_emulator::device::bus::Bus> bus_;
 };
 
 TEST_F(BusTest, Load) {
-  uint64_t* raw_data_ptr =
-      reinterpret_cast<uint64_t*>(bus_->dram_->memory_.data());
+  // bypass the bus and store dram directly
+  auto dram = std::make_unique<rv64_emulator::device::dram::DRAM>(kDramSize);
+  uint64_t* raw_data_ptr = reinterpret_cast<uint64_t*>(dram->memory_.data());
   *raw_data_ptr = 0x1122334455667788;
 
+  // now load via bus
+
+  bus_->MountDevice({
+      .base = kDramBaseAddr,
+      .size = kDramSize,
+      .dev = std::move(dram),
+  });
   uint64_t res = 0;
-  ASSERT_TRUE(
-      bus_->Load(0, sizeof(uint64_t), reinterpret_cast<uint8_t*>(&res)));
+  ASSERT_TRUE(bus_->Load(kDramBaseAddr, sizeof(uint64_t),
+                         reinterpret_cast<uint8_t*>(&res)));
   ASSERT_EQ(0x1122334455667788, res);
 }
 
 TEST_F(BusTest, Store) {
-  constexpr uint64_t kVal = 0x1122334455667788;
-  bus_->Store(0, sizeof(uint64_t), reinterpret_cast<const uint8_t*>(&kVal));
+  auto dram = std::make_unique<rv64_emulator::device::dram::DRAM>(kDramSize);
+  auto raw_dram_ptr = dram.get();
 
+  bus_->MountDevice({
+      .base = kDramBaseAddr,
+      .size = kDramSize,
+      .dev = std::move(dram),
+  });
+
+  constexpr uint64_t kVal = 0x1122334455667788;
+  bus_->Store(kDramBaseAddr, sizeof(uint64_t),
+              reinterpret_cast<const uint8_t*>(&kVal));
+
+  // read from dram directly
   const uint64_t* kRawData =
-      reinterpret_cast<uint64_t*>(bus_->dram_->memory_.data());
+      reinterpret_cast<uint64_t*>(raw_dram_ptr->memory_.data());
   uint64_t res = 0;
-  ASSERT_TRUE(
-      bus_->Load(0, sizeof(uint64_t), reinterpret_cast<uint8_t*>(&res)));
+  ASSERT_TRUE(bus_->Load(kDramBaseAddr, sizeof(uint64_t),
+                         reinterpret_cast<uint8_t*>(&res)));
   ASSERT_EQ(*kRawData, res);
 }

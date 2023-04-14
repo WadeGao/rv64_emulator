@@ -1,8 +1,15 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 
-namespace rv64_emulator {
+namespace rv64_emulator::device {
+
+using MmioRange = struct MmioRange {
+  uint64_t base;
+  uint64_t size;
+  bool operator<(const MmioRange& other) const { return base < other.base; }
+};
 
 class MmioDevice {
  public:
@@ -16,4 +23,10 @@ class MmioDevice {
   virtual ~MmioDevice() = default;
 };
 
-}  // namespace rv64_emulator
+struct MmioDeviceNode {
+  uint64_t base;
+  uint64_t size;
+  std::unique_ptr<MmioDevice> dev;
+};
+
+}  // namespace rv64_emulator::device

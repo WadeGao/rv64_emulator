@@ -7,11 +7,11 @@
 #include <memory>
 #include <tuple>
 
-#include "bus.h"
 #include "conf.h"
 #include "cpu/csr.h"
 #include "cpu/trap.h"
-#include "dram.h"
+#include "device/bus.h"
+#include "device/dram.h"
 #include "elfio/elf_types.hpp"
 #include "elfio/elfio.hpp"
 #include "elfio/elfio_segment.hpp"
@@ -32,8 +32,14 @@ class CpuTest : public testing::Test {
   }
 
   void SetUp() override {
-    auto dram = std::make_unique<rv64_emulator::dram::DRAM>(kDramSize);
-    auto bus = std::make_unique<rv64_emulator::bus::Bus>(std::move(dram));
+    auto dram = std::make_unique<rv64_emulator::device::dram::DRAM>(kDramSize);
+    auto bus = std::make_unique<rv64_emulator::device::bus::Bus>();
+    bus->MountDevice({
+        .base = kDramBaseAddr,
+        .size = kDramSize,
+        .dev = std::move(dram),
+    });
+
     auto sv39 = std::make_unique<rv64_emulator::mmu::Sv39>(std::move(bus));
     auto mmu = std::make_unique<rv64_emulator::mmu::Mmu>(std::move(sv39));
     auto cpu = std::make_unique<rv64_emulator::cpu::CPU>(std::move(mmu));
@@ -45,7 +51,6 @@ class CpuTest : public testing::Test {
   std::unique_ptr<rv64_emulator::cpu::CPU> cpu_;
 };
 
-constexpr uint64_t kProgramEntry = 0;
 constexpr uint64_t kMaxInstructions = 100000;
 constexpr uint64_t kArbitrarilyHandlerVector = 0x100000;
 
@@ -62,11 +67,11 @@ static float GetMips(decltype(std::chrono::high_resolution_clock::now()) start,
 TEST_F(CpuTest, HandleTrap) {
   // write ecall instruction
   const uint32_t kEcallWord = 0x00000073;
-  cpu_->Store(kProgramEntry, sizeof(uint32_t),
+  cpu_->Store(kDramBaseAddr, sizeof(uint32_t),
               reinterpret_cast<const uint8_t*>(&kEcallWord));
   cpu_->state_.Write(rv64_emulator::cpu::csr::kCsrMtvec,
                      kArbitrarilyHandlerVector);
-  cpu_->SetPC(kProgramEntry);
+  cpu_->SetPC(kDramBaseAddr);
   cpu_->Tick();
 
   ASSERT_EQ(kArbitrarilyHandlerVector, cpu_->GetPC());
@@ -88,9 +93,9 @@ TEST_F(CpuTest, HandleInterrupt) {
        }) {
     // write "addi x0, x0, 1" instruction
     constexpr uint32_t kAddiWord = 0x00100013;
-    cpu_->Store(kProgramEntry, sizeof(uint32_t),
+    cpu_->Store(kDramBaseAddr, sizeof(uint32_t),
                 reinterpret_cast<const uint8_t*>(&kAddiWord));
-    cpu_->SetPC(kProgramEntry);
+    cpu_->SetPC(kDramBaseAddr);
 
     const uint64_t kMask = rv64_emulator::libs::util::TrapToMask(t);
 
@@ -102,11 +107,11 @@ TEST_F(CpuTest, HandleInterrupt) {
     cpu_->Tick();
 
     // mie is disabled
-    ASSERT_EQ(kProgramEntry + 4, cpu_->GetPC())
+    ASSERT_EQ(kDramBaseAddr + 4, cpu_->GetPC())
         << fmt::format("trap type: {}", static_cast<uint64_t>(t));
 
     // enable mie
-    cpu_->SetPC(kProgramEntry);
+    cpu_->SetPC(kDramBaseAddr);
     cpu_->state_.Write(rv64_emulator::cpu::csr::kCsrMstatus, 0b1000);
     cpu_->Tick();
 
@@ -130,15 +135,15 @@ TEST_F(CpuTest, HandleInterrupt) {
 TEST_F(CpuTest, Wfi) {
   // store wfi instruction
   const uint32_t kWfiWord = 0x10500073;
-  cpu_->Store(kProgramEntry, sizeof(uint32_t),
+  cpu_->Store(kDramBaseAddr, sizeof(uint32_t),
               reinterpret_cast<const uint8_t*>(&kWfiWord));
-  cpu_->SetPC(kProgramEntry);
+  cpu_->SetPC(kDramBaseAddr);
   cpu_->Tick();
-  ASSERT_EQ(kProgramEntry + 4, cpu_->GetPC());
+  ASSERT_EQ(kDramBaseAddr + 4, cpu_->GetPC());
 
   for (int i = 0; i < 10; i++) {
     cpu_->Tick();
-    ASSERT_EQ(kProgramEntry + 4, cpu_->GetPC());
+    ASSERT_EQ(kDramBaseAddr + 4, cpu_->GetPC());
   }
 
   constexpr auto kTrap =

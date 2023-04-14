@@ -1,4 +1,4 @@
-#include "dram.h"
+#include "device/dram.h"
 
 #include <cstdint>
 #include <cstdlib>
@@ -6,7 +6,7 @@
 #include "conf.h"
 #include "fmt/core.h"
 
-namespace rv64_emulator::dram {
+namespace rv64_emulator::device::dram {
 
 DRAM::DRAM(const uint64_t mem_size) : size_(mem_size), memory_(mem_size, 0) {}
 
@@ -46,4 +46,4 @@ bool DRAM::Store(const uint64_t addr, const uint64_t bytes,
 
 void DRAM::Reset() { std::fill(memory_.begin(), memory_.end(), 0); }
 
-}  // namespace rv64_emulator::dram
+}  // namespace rv64_emulator::device::dram
