@@ -1,6 +1,7 @@
 #include "mmu.h"
 
 #include <cstdint>
+#include <cstring>
 
 #include "cpu/cpu.h"
 #include "cpu/csr.h"
