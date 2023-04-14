@@ -4,26 +4,8 @@ namespace rv64_emulator::errorcode {
 
 enum class ErrorCode : int {
   kSuccess = 0,
-  kDramErrorCodeBase = -100,
-  kDecodeErrorCodeBase = -200,
-  kCpuErrorCodeBase = -300,
   kElfErrorCodeBase = -400,
   kPlicErrorCodeBase = -500,
-  kMmuErrorCodeBase = -600,
-};
-
-enum class DramErrorCode : int {
-  kSuccess = 0,
-};
-
-enum class DecodeErrorCode : int {
-  kSuccess = 0,
-  kFieldUndefined = static_cast<int>(ErrorCode::kDecodeErrorCodeBase) - 1,
-};
-
-enum class CpuErrorCode : int {
-  kSuccess = 0,
-  kExecuteFailure = static_cast<int>(ErrorCode::kCpuErrorCodeBase) - 1,
 };
 
 enum class ElfErrorCode : int {
@@ -46,10 +28,4 @@ enum class PlicErrorCode : int {
       static_cast<int>(ErrorCode::kPlicErrorCodeBase) - 9,
 };
 
-enum class MmuErrorCode : int {
-  kSuccess = 0,
-  kIllegalSv39Address = static_cast<int>(ErrorCode::kMmuErrorCodeBase) - 1,
-  kTlbMissMatchAfterPageTableWalk =
-      static_cast<int>(ErrorCode::kMmuErrorCodeBase) - 1,
-};
 }  // namespace rv64_emulator::errorcode

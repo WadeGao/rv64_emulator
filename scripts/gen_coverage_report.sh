@@ -12,6 +12,7 @@ find ./test -name "*.gcno" -exec rm {} \;
 find ./include -name "*.gcda" -exec rm {} \;
 find ./src -name "*.gcda" -exec rm {} \;
 find ./test -name "*.gcda" -exec rm {} \;
+find . -name "*.info*" -exec rm {} \;
 
 "$BUILD_DIR"/unit_test
 
@@ -60,6 +61,5 @@ sed -i $MACOSX_SED_TMP_FILENAME "s/$TMP_DIR_ESC//g" "$BUILD_DIR"/all.info
 
 genhtml -o "$BUILD_DIR/coverage" $BUILD_DIR/all.info --rc lcov_branch_coverage=1
 
-# lcov --remove $BUILD_DIR/all.info '*v1*' '*test*' '*third_party*' -o $BUILD_DIR/res.info --rc lcov_branch_coverage=1
-lcov --extract "$BUILD_DIR"/all.info '*/src/*' '*/libs/*' '*/rv64_emulator/include/*' -o "$BUILD_DIR"/res.info --rc lcov_branch_coverage=1
+lcov --extract "$BUILD_DIR"/all.info "$PROJECT_DIR/src/*" "$PROJECT_DIR/include/*" -o "$BUILD_DIR"/res.info --rc lcov_branch_coverage=1
 genhtml -o "$BUILD_DIR/coverage" "$BUILD_DIR"/res.info --rc lcov_branch_coverage=1

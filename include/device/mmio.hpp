@@ -8,7 +8,6 @@ namespace rv64_emulator::device {
 using MmioRange = struct MmioRange {
   uint64_t base;
   uint64_t size;
-  bool operator<(const MmioRange& other) const { return base < other.base; }
 };
 
 class MmioDevice {

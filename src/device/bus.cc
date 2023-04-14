@@ -11,25 +11,24 @@ void Bus::MountDevice(MmioDeviceNode node) {
   device_.emplace_back(std::move(node));
 }
 
-std::vector<MmioDeviceNode>::const_iterator Bus::GetDeviceByRangeImpl(
+std::list<MmioDeviceNode>::const_iterator Bus::GetDeviceByRangeImpl(
     const uint64_t addr) const {
   for (auto iter = device_.cbegin(); iter != device_.cend(); iter++) {
-    if (iter->base <= addr && addr <= iter->base + iter->size) {
+    if (iter->base <= addr && addr < iter->base + iter->size) {
       return iter;
     }
   }
   return device_.cend();
 }
 
-std::vector<MmioDeviceNode>::iterator Bus::GetDeviceByRange(
-    const uint64_t addr) {
+std::list<MmioDeviceNode>::iterator Bus::GetDeviceByRange(const uint64_t addr) {
   auto citer = GetDeviceByRangeImpl(addr);
   auto res = device_.begin();
   std::advance(res, std::distance<decltype(citer)>(res, citer));
   return res;
 }
 
-std::vector<MmioDeviceNode>::const_iterator Bus::GetDeviceByRange(
+std::list<MmioDeviceNode>::const_iterator Bus::GetDeviceByRange(
     const uint64_t addr) const {
   return GetDeviceByRangeImpl(addr);
 }
@@ -53,10 +52,6 @@ bool Bus::Store(const uint64_t addr, const uint64_t bytes,
 }
 
 void Bus::Reset() {
-  // for (auto iter = device_.begin(); iter != device_.end(); iter++) {
-  //   iter->dev->Reset();
-  // }
-
   for (auto& iter : device_) {
     iter.dev->Reset();
   }
