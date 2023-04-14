@@ -1,83 +1,60 @@
 #pragma once
 
+#include <_types/_uint64_t.h>
+
 #include <cstdint>
-#include <tuple>
 #include <vector>
 
 #include "conf.h"
-#include "cpu/cpu.h"
+#include "device/mmio.hpp"
 
 namespace rv64_emulator {
 
-namespace cpu {
-class CPU;
-}
-using cpu::CPU;
+namespace device::plic {
 
-namespace plic {
+constexpr uint64_t kSourcePriorityBase = 0;
 
-constexpr uint64_t kSourcePriorityBase = kPlicBase;
-constexpr uint64_t kSourcePriorityEnd = kSourcePriorityBase + 0xfff;
+constexpr uint64_t kPendingBase = 0x1000;
 
-constexpr uint64_t kPendingBase = kPlicBase + 0x1000;
+constexpr uint64_t kEnableBase = 0x2000;
 
-constexpr uint64_t kEnableBase = kPlicBase + 0x2000;
-
-constexpr uint64_t kContextBase = kPlicBase + 0x200000;
-constexpr uint64_t kContextEnd = kPlicBase + 0x3ffffff;
+constexpr uint64_t kContextBase = 0x200000;
+constexpr uint64_t kContextEnd = 0x3ffffff;
 
 constexpr uint64_t kEnableBytesPerHart = 0x80;
 constexpr uint64_t kContextBytesPerHart = 0x1000;
 
-constexpr uint32_t kMaxPriority = UINT32_MAX;
 constexpr uint64_t kWordBits = sizeof(uint32_t) * 8;
 
-class PLIC {
- private:
-  using PlicContext = struct PlicContext {
-    bool m_is_machine_mode;
-    uint64_t context_id;
-    uint32_t m_threshold;
-    CPU* cpu;
+constexpr uint64_t kLenGroupByWord =
+    (kPlicMaxDevices + kWordBits - 1) / kWordBits;
 
-    uint32_t m_enabled[kPlicMaxDevices / kWordBits] = {0};
-    uint32_t m_pending[kPlicMaxDevices / kWordBits] = {0};
-    uint32_t m_claim[kPlicMaxDevices / kWordBits] = {0};
-
-    uint32_t m_priority[kPlicMaxDevices] = {0};
-  };
-
-  std::vector<CPU*> m_processors;
-  std::vector<PlicContext> m_contexts;
-  uint64_t m_device_num;
-  uint64_t m_device_num_word;
-  uint32_t m_priority[kPlicMaxDevices] = {0};
-
-  bool IsInterruptEnabled(const uint64_t context, const uint32_t irq) const;
-  void UpdateClaim(const uint32_t irq);
-
-  uint32_t PriorityRead(const uint64_t addr) const;
-  void PriorityWrite(const uint64_t addr, const uint32_t data);
-
-  uint64_t ContextRead(const uint64_t context_id, const uint64_t offset);
-  void ContextWrite(const uint64_t context_id, const uint64_t offset,
-                    const uint32_t val);
-
-  uint32_t ContextEnableRead(const uint64_t context_id,
-                             const uint64_t offset) const;
-  void ContextEnableWrite(const uint64_t context_id, const uint64_t offset,
-                          const uint32_t val);
-
-  uint64_t ContextClaim(const uint64_t context_id);
-  void ContextUpdate(const uint64_t context_id);
-
-  uint64_t SelectBestPending(const uint64_t context_id) const;
-
- public:
-  PLIC(std::vector<CPU*> processors, bool is_s_mode, uint64_t device_num);
-  uint64_t Load(const uint64_t addr);
-  void Store(const uint64_t addr, const uint32_t data);
+using PlicContext = struct PlicContext {
+  bool mmode = false;
+  uint32_t id = 0;
+  uint32_t claim = 0;
+  uint32_t threshold = 0;
+  uint32_t enable[kLenGroupByWord] = {0};
 };
 
-}  // namespace plic
+class Plic : public MmioDevice {
+ private:
+  std::vector<PlicContext> contexts_;
+  uint64_t dev_num_;
+  uint32_t priority_[kPlicMaxDevices] = {0};
+  uint32_t pending_[kLenGroupByWord] = {0};
+  uint32_t claimed_[kLenGroupByWord] = {0};
+
+ public:
+  Plic(const uint64_t cores, bool is_s_mode, uint64_t device_num);
+  void UpdateExt(const uint32_t src_id, bool fired);
+  bool GetInterrupt(const uint64_t ctx_id);
+  bool Load(const uint64_t addr, const uint64_t bytes,
+            uint8_t* buffer) const override;
+  bool Store(const uint64_t addr, const uint64_t bytes,
+             const uint8_t* buffer) override;
+  void Reset() override;
+};
+
+}  // namespace device::plic
 }  // namespace rv64_emulator

@@ -1,5 +1,8 @@
 #pragma once
 
+#include <type_traits>
+#include <utility>
+
 #include "cpu/cpu.h"
 #include "cpu/trap.h"
 #include "elfio/elfio.hpp"
