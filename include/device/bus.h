@@ -1,7 +1,7 @@
 #pragma once
 
+#include <list>
 #include <memory>
-#include <vector>
 
 #include "device/mmio.hpp"
 
@@ -11,12 +11,12 @@ namespace bus {
 
 class Bus : public MmioDevice {
  private:
-  std::vector<MmioDeviceNode> device_;
+  std::list<MmioDeviceNode> device_;
 
-  std::vector<MmioDeviceNode>::const_iterator GetDeviceByRangeImpl(
+  std::list<MmioDeviceNode>::const_iterator GetDeviceByRangeImpl(
       const uint64_t addr) const;
-  std::vector<MmioDeviceNode>::iterator GetDeviceByRange(const uint64_t addr);
-  std::vector<MmioDeviceNode>::const_iterator GetDeviceByRange(
+  std::list<MmioDeviceNode>::iterator GetDeviceByRange(const uint64_t addr);
+  std::list<MmioDeviceNode>::const_iterator GetDeviceByRange(
       const uint64_t addr) const;
 
  public:

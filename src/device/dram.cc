@@ -4,7 +4,6 @@
 #include <cstdlib>
 
 #include "conf.h"
-#include "fmt/core.h"
 
 namespace rv64_emulator::device::dram {
 
@@ -19,12 +18,6 @@ bool DRAM::Load(const uint64_t addr, const uint64_t bytes,
     return true;
   }
 
-#ifdef DEBUG
-  fmt::print(
-      "dram load error, addr[{:#018x}], bytes[{:#018x}], m_size[{:#018x}]\n",
-      addr, bytes, size_);
-#endif
-
   return false;
 }
 
@@ -34,12 +27,6 @@ bool DRAM::Store(const uint64_t addr, const uint64_t bytes,
     memcpy(&memory_[addr], buffer, bytes);
     return true;
   }
-
-#ifdef DEBUG
-  fmt::print(
-      "dram store error, addr[{:#018x}], bytes[{:#018x}], m_size[{:#018x}]\n",
-      addr, bytes, size_);
-#endif
 
   return false;
 }

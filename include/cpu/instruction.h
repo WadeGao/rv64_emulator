@@ -8,8 +8,6 @@
 #include "cpu/csr.h"
 #include "cpu/decode.h"
 #include "cpu/trap.h"
-#include "error_code.h"
-#include "fmt/core.h"
 #include "libs/arithmetic.hpp"
 #include "libs/utils.h"
 
@@ -656,12 +654,6 @@ const Instruction kInstructionTable[] = {
               break;
             case PrivilegeMode::kReserved:
             default:
-#ifdef DEBUG
-              fmt::print("ECALL unknown privilege mode[{}], now abort\n",
-                         static_cast<int>(kPrivMode));
-#endif
-              exit(static_cast<int>(
-                  rv64_emulator::errorcode::CpuErrorCode::kExecuteFailure));
               break;
           }
           return {

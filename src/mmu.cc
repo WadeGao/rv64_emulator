@@ -1,16 +1,11 @@
 #include "mmu.h"
 
 #include <cstdint>
-#include <cstring>
 
 #include "cpu/cpu.h"
 #include "cpu/csr.h"
-#include "cpu/instruction.h"
 #include "cpu/trap.h"
 #include "device/bus.h"
-#include "error_code.h"
-#include "fmt/core.h"
-#include "fmt/format.h"
 
 namespace rv64_emulator::mmu {
 
@@ -161,11 +156,7 @@ Sv39TlbEntry* Sv39::GetTlbEntry(const SatpDesc satp, const uint64_t vaddr) {
       (0 <= vaddr && vaddr <= 0x0000003fffffffff) ||
       (0xffffffc000000000 <= vaddr && vaddr <= 0xffffffffffffffff);
   if (!kSv39VirtualAddressLegal) {
-#ifdef DEBUG
-    fmt::print("illegal sv39 virtual address[{}]\n", vaddr);
-#endif
-    exit(static_cast<int>(
-        rv64_emulator::errorcode::MmuErrorCode::kIllegalSv39Address));
+    return nullptr;
   }
 
   Sv39TlbEntry* tlb_entry = LookUpTlb(satp, vaddr);
@@ -204,18 +195,6 @@ Sv39TlbEntry* Sv39::GetTlbEntry(const SatpDesc satp, const uint64_t vaddr) {
 
   Sv39TlbEntry* res = tlb_ + index_;
   index_ = (index_ + 1) % kTlbSize;
-
-#ifdef DEBUG
-  Sv39TlbEntry* double_check = LookUpTlb(satp, vaddr);
-  if (double_check != res) {
-    fmt::print(
-        "result mismatch after walk the page table and update the tlb, "
-        "expect[{}], real[{}]\n",
-        fmt::ptr(res), fmt::ptr(double_check));
-    exit(static_cast<int>(rv64_emulator::errorcode::MmuErrorCode::
-                              kTlbMissMatchAfterPageTableWalk));
-  }
-#endif
 
   return res;
 }
