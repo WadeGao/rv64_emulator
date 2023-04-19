@@ -50,7 +50,7 @@ class Plic : public MmioDevice {
   void UpdateExt(const uint32_t src_id, bool fired);
   bool GetInterrupt(const uint64_t ctx_id);
   bool Load(const uint64_t addr, const uint64_t bytes,
-            uint8_t* buffer) const override;
+            uint8_t* buffer) override;
   bool Store(const uint64_t addr, const uint64_t bytes,
              const uint8_t* buffer) override;
   void Reset() override;

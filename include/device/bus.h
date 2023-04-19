@@ -24,7 +24,7 @@ class Bus : public MmioDevice {
   void MountDevice(MmioDeviceNode node);
 
   bool Load(const uint64_t addr, const uint64_t bytes,
-            uint8_t* buffer) const override;
+            uint8_t* buffer) override;
   bool Store(const uint64_t addr, const uint64_t bytes,
              const uint8_t* buffer) override;
   void Reset() override;

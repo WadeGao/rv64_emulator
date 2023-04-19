@@ -46,8 +46,7 @@ bool Plic::GetInterrupt(const uint64_t ctx_id) {
 }
 
 // https://github.com/riscv/riscv-plic-spec/blob/master/riscv-plic.adoc#memory-map
-bool Plic::Load(const uint64_t addr, const uint64_t bytes,
-                uint8_t* buffer) const {
+bool Plic::Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {
   if (kSourcePriorityBase <= addr && addr < kPendingBase) {
     const uint64_t kSourceIndex = addr >> 2;
     if (kSourceIndex > dev_num_) {
@@ -95,7 +94,7 @@ bool Plic::Load(const uint64_t addr, const uint64_t bytes,
       const auto kClaim = contexts_[kCtxId].claim;
       const uint32_t kMask = (1u << (kClaim % kWordBits));
       memcpy(buffer, &kClaim, bytes);
-      claimed_[kClaim / kWordBits] |= kMask;  // TODO
+      claimed_[kClaim / kWordBits] |= kMask;
       return true;
     }
   }
@@ -164,7 +163,7 @@ void Plic::Reset() {
   memset(priority_, 0, sizeof(priority_));
   memset(pending_, 0, sizeof(priority_));
   memset(claimed_, 0, sizeof(priority_));
-  memset(claimed_, 0, sizeof(priority_));
+
   std::fill(contexts_.begin(), contexts_.end(), PlicContext{});
 }
 
