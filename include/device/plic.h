@@ -1,7 +1,5 @@
 #pragma once
 
-#include <_types/_uint64_t.h>
-
 #include <cstdint>
 #include <vector>
 
@@ -35,6 +33,7 @@ using PlicContext = struct PlicContext {
   uint32_t claim = 0;
   uint32_t threshold = 0;
   uint32_t enable[kLenGroupByWord] = {0};
+  uint32_t claimed_[kLenGroupByWord] = {0};
 };
 
 class Plic : public MmioDevice {
@@ -43,7 +42,6 @@ class Plic : public MmioDevice {
   uint64_t dev_num_;
   uint32_t priority_[kPlicMaxDevices] = {0};
   uint32_t pending_[kLenGroupByWord] = {0};
-  uint32_t claimed_[kLenGroupByWord] = {0};
 
  public:
   Plic(const uint64_t cores, bool is_s_mode, uint64_t device_num);

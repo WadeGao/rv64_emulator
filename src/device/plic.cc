@@ -1,5 +1,7 @@
 #include "device/plic.h"
 
+#include <_types/_uint32_t.h>
+
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
@@ -31,10 +33,12 @@ bool Plic::GetInterrupt(const uint64_t ctx_id) {
   for (uint64_t i = 0; i < dev_num_; i++) {
     const uint64_t kIndex = i / kWordBits;
     const uint64_t kOffset = i % kWordBits;
+    const uint32_t kMask = 1u << kOffset;
+
     if ((priority_[i] >= contexts_.at(ctx_id).threshold) &&
-        (pending_[kIndex] >> kOffset) &&
-        (contexts_.at(ctx_id).enable[kIndex] >> kOffset) &&
-        !(claimed_[kIndex] >> kOffset)) {
+        (pending_[kIndex] & kMask) &&
+        (contexts_.at(ctx_id).enable[kIndex] & kMask) &&
+        !(contexts_.at(ctx_id).claimed_[kIndex] & kMask)) {
       if (max_priority < priority_[i]) {
         max_priority = priority_[i];
         best_interrupt = i;
@@ -49,7 +53,7 @@ bool Plic::GetInterrupt(const uint64_t ctx_id) {
 bool Plic::Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {
   if (kSourcePriorityBase <= addr && addr < kPendingBase) {
     const uint64_t kSourceIndex = addr >> 2;
-    if (kSourceIndex > dev_num_) {
+    if (kSourceIndex > dev_num_ - 1) {
       return false;
     }
     memcpy(buffer, &priority_[kSourceIndex], bytes);
@@ -58,7 +62,7 @@ bool Plic::Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {
     const uint64_t kPendingIndex = (addr - kPendingBase) >> 2;
 
     const uint64_t kMinSource = kPendingIndex * kWordBits;
-    if (kMinSource > dev_num_) {
+    if (kMinSource > dev_num_ - 1) {
       return false;
     }
 
@@ -73,7 +77,7 @@ bool Plic::Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {
     const uint64_t kEnableIndex = (addr % kEnableBytesPerHart) >> 2;
 
     const uint64_t kMinSource = kEnableIndex * kWordBits;
-    if (kMinSource > dev_num_) {
+    if (kMinSource > dev_num_ - 1) {
       return false;
     }
 
@@ -94,7 +98,7 @@ bool Plic::Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {
       const auto kClaim = contexts_[kCtxId].claim;
       const uint32_t kMask = (1u << (kClaim % kWordBits));
       memcpy(buffer, &kClaim, bytes);
-      claimed_[kClaim / kWordBits] |= kMask;
+      contexts_[kCtxId].claimed_[kClaim / kWordBits] |= kMask;
       return true;
     }
   }
@@ -106,7 +110,7 @@ bool Plic::Store(const uint64_t addr, const uint64_t bytes,
                  const uint8_t* buffer) {
   if (kSourcePriorityBase <= addr && addr < kPendingBase) {
     const uint64_t kSourceIndex = addr >> 2;
-    if (kSourceIndex > dev_num_) {
+    if (kSourceIndex > dev_num_ - 1) {
       return false;
     }
     memcpy(&priority_[kSourceIndex], buffer, bytes);
@@ -115,7 +119,7 @@ bool Plic::Store(const uint64_t addr, const uint64_t bytes,
     const uint64_t kPendingIndex = (addr - kPendingBase) >> 2;
 
     const uint64_t kMinSource = kPendingIndex * kWordBits;
-    if (kMinSource > dev_num_) {
+    if (kMinSource > dev_num_ - 1) {
       return false;
     }
 
@@ -130,7 +134,7 @@ bool Plic::Store(const uint64_t addr, const uint64_t bytes,
     const uint64_t kEnableIndex = (addr % kEnableBytesPerHart) >> 2;
 
     const uint64_t kMinSource = kEnableIndex * kWordBits;
-    if (kMinSource > dev_num_) {
+    if (kMinSource > dev_num_ - 1) {
       return false;
     }
 
@@ -148,10 +152,15 @@ bool Plic::Store(const uint64_t addr, const uint64_t bytes,
       return true;
     } else if (kOffset == 4) {
       const uint32_t kVal = *reinterpret_cast<const uint32_t*>(buffer);
+
+      if (kVal > dev_num_ - 1) {
+        return false;
+      }
+
       const uint32_t kIndex = kVal / kWordBits;
       const uint32_t kOffset = kVal % kWordBits;
       const uint32_t kMask = ~(1u << kOffset);
-      claimed_[kIndex] &= kMask;
+      contexts_[kCtxId].claimed_[kIndex] &= kMask;
       return true;
     }
   }
@@ -161,8 +170,7 @@ bool Plic::Store(const uint64_t addr, const uint64_t bytes,
 
 void Plic::Reset() {
   memset(priority_, 0, sizeof(priority_));
-  memset(pending_, 0, sizeof(priority_));
-  memset(claimed_, 0, sizeof(priority_));
+  memset(pending_, 0, sizeof(pending_));
 
   std::fill(contexts_.begin(), contexts_.end(), PlicContext{});
 }
