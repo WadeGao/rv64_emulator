@@ -33,8 +33,7 @@ std::list<MmioDeviceNode>::const_iterator Bus::GetDeviceByRange(
   return GetDeviceByRangeImpl(addr);
 }
 
-bool Bus::Load(const uint64_t addr, const uint64_t bytes,
-               uint8_t* buffer) const {
+bool Bus::Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {
   const auto kDevNode = GetDeviceByRange(addr);
   if (kDevNode == device_.end()) {
     return false;

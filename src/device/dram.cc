@@ -12,8 +12,7 @@ DRAM::DRAM(const uint64_t mem_size) : size_(mem_size), memory_(mem_size, 0) {}
 
 uint64_t DRAM::GetSize() const { return size_; }
 
-bool DRAM::Load(const uint64_t addr, const uint64_t bytes,
-                uint8_t* buffer) const {
+bool DRAM::Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {
   if (addr + bytes <= size_) {
     memcpy(buffer, &memory_[addr], bytes);
     return true;

@@ -99,7 +99,7 @@ class Sv39 : public MmioDevice {
   Sv39TlbEntry* GetTlbEntry(const SatpDesc satp, const uint64_t vaddr);
 
   bool Load(const uint64_t addr, const uint64_t bytes,
-            uint8_t* buffer) const override;
+            uint8_t* buffer) override;
   bool Store(const uint64_t addr, const uint64_t bytes,
              const uint8_t* buffer) override;
 

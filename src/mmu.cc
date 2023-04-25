@@ -200,8 +200,7 @@ Sv39TlbEntry* Sv39::GetTlbEntry(const SatpDesc satp, const uint64_t vaddr) {
   return res;
 }
 
-bool Sv39::Load(const uint64_t addr, const uint64_t bytes,
-                uint8_t* buffer) const {
+bool Sv39::Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {
   return bus_->Load(addr, bytes, buffer);
 }
 
