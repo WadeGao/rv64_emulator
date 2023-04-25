@@ -1,7 +1,5 @@
 #include "device/plic.h"
 
-#include <_types/_uint32_t.h>
-
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
