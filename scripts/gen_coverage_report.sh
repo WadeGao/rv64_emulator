@@ -10,8 +10,8 @@ MODE=$(xmake show | grep mode | awk '{print $3}' | sed -r "s/\x1B\[([0-9]{1,2}(;
 paths=("./include" "./src" "./test")
 for path in "${paths[@]}"
 do
-  find $path -name "*.gcno" -exec rm {} \;
-  find $path -name "*.gcda" -exec rm {} \;
+  find "$path" -name "*.gcno" -exec rm {} \;
+  find "$path" -name "*.gcda" -exec rm {} \;
 done
 
 "$BUILD_DIR"/unit_test
@@ -43,21 +43,18 @@ do
 done;
 
 LCOV_CMD="$LCOV_CMD -o $BUILD_DIR/all.info -c --rc lcov_branch_coverage=1"
-echo "$LCOV_CMD"
-
 $LCOV_CMD
 
-MACOSX_SED_TMP_FILENAME="''"
-if [ "$PLATFORM" != "macosx" ]; then
-    MACOSX_SED_TMP_FILENAME=""
-fi
+TEMP_FILE="tmp.info"
 
-sed -i $MACOSX_SED_TMP_FILENAME 's/__cpp_//g' "$BUILD_DIR"/all.info
-sed -i $MACOSX_SED_TMP_FILENAME 's/.cc.cc/.cc/g' "$BUILD_DIR"/all.info
+cat "$BUILD_DIR/all.info" | sed 's/__cpp_//g' > "$BUILD_DIR/$TEMP_FILE"
+cat "$BUILD_DIR/$TEMP_FILE" | sed 's/.cc.cc/.cc/g' > "$BUILD_DIR/all.info"
 
 TMP_DIR="$BUILD_DIR/.objs/unit_test/$PLATFORM/$ARCH/$MODE/"
 TMP_DIR_ESC=$(echo $TMP_DIR | sed 's#\/#\\\/#g')
-sed -i $MACOSX_SED_TMP_FILENAME "s/$TMP_DIR_ESC//g" "$BUILD_DIR"/all.info
+
+cat "$BUILD_DIR/all.info" | sed "s/$TMP_DIR_ESC//g" > "$BUILD_DIR/$TEMP_FILE"
+mv "$BUILD_DIR/$TEMP_FILE" "$BUILD_DIR/all.info"
 
 genhtml -o "$BUILD_DIR/coverage" $BUILD_DIR/all.info --rc lcov_branch_coverage=1
 
