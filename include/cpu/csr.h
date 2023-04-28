@@ -27,9 +27,9 @@ constexpr uint16_t kCsrMstatus = 0x300;
 constexpr uint16_t kCsrSstatus = 0x100;
 constexpr uint16_t kCsrUstatus = 0x000;
 
-constexpr uint16_t kCsrMisa = 0x301;   // ISA and extensions
+constexpr uint16_t kCsrMisa = 0x301;  // ISA and extensions
 constexpr uint16_t kCsrMedeleg =
-    0x302;                             // Machine exception delegation register
+    0x302;  // Machine exception delegation register
 constexpr uint16_t kCsrMideleg =
     0x303;                             // Machine interrupt delegation register
 constexpr uint16_t kCsrMie = 0x304;    // Machine interrupt-enable register
@@ -50,9 +50,9 @@ constexpr uint16_t kCsrMtinst =
 constexpr uint16_t kCsrMtval2 = 0x34b;  // Machine bad guest physical address
 
 // Machine Timers and Counters
-constexpr uint16_t kCsrMCycle = 0xb00;   // Machine cycle counter
+constexpr uint16_t kCsrMCycle = 0xb00;  // Machine cycle counter
 constexpr uint16_t kCsrMinstret =
-    0xb02;                               // Machine instructions-retired counter
+    0xb02;  // Machine instructions-retired counter
 
 constexpr uint16_t kCsrMCycleH = 0xb80;  // Upper 32 bits of mcycle, RV32 only.
 constexpr uint16_t kCsrMinstretH =
@@ -96,9 +96,9 @@ using SatpDesc = struct SatpDesc {
 using MstatusDesc = struct MstatusDesc {
   // https://blog.csdn.net/dai_xiangjun/article/details/123373456
   uint64_t blank0 : 1;
-  uint64_t sie : 1;   // supervisor interrupt enable
+  uint64_t sie : 1;  // supervisor interrupt enable
   uint64_t blank1 : 1;
-  uint64_t mie : 1;   // machine interrupt enable
+  uint64_t mie : 1;  // machine interrupt enable
   uint64_t blank2 : 1;
   uint64_t spie : 1;  // sie prior to trapping
   uint64_t ube : 1;   // u big-endian, zero
@@ -123,12 +123,12 @@ using MstatusDesc = struct MstatusDesc {
   uint64_t sbe : 1;  // s big-endian
   uint64_t mbe : 1;  // m big-endian
   uint64_t blank4 : 25;
-  uint64_t sd : 1;   // no vs,fs,xs, zero
+  uint64_t sd : 1;  // no vs,fs,xs, zero
 };
 
 using SstatusDesc = struct SstatusDesc {
   uint64_t blank0 : 1;
-  uint64_t sie : 1;     // supervisor interrupt enable
+  uint64_t sie : 1;  // supervisor interrupt enable
   uint64_t blank1 : 3;
   uint64_t spie : 1;    // sie prior to trapping
   uint64_t ube : 1;     // u big-endian, zero
@@ -139,12 +139,12 @@ using SstatusDesc = struct SstatusDesc {
   uint64_t fs : 2;      // without float, zero
   uint64_t xs : 2;      // without user ext, zero
   uint64_t blank4 : 1;
-  uint64_t sum : 1;     // permit Supervisor User Memory access
-  uint64_t mxr : 1;     // Make eXecutable Readable
+  uint64_t sum : 1;  // permit Supervisor User Memory access
+  uint64_t mxr : 1;  // Make eXecutable Readable
   uint64_t blank5 : 12;
-  uint64_t uxl : 2;     // user xlen
+  uint64_t uxl : 2;  // user xlen
   uint64_t blank6 : 29;
-  uint64_t sd : 1;      // no vs,fs,xs, zero
+  uint64_t sd : 1;  // no vs,fs,xs, zero
 };
 
 using UstatusDesc = struct UstatusDesc {
@@ -169,6 +169,25 @@ using MieDesc = struct MieDesc {
   uint64_t seie : 1;
   uint64_t blank2 : 1;
   uint64_t meie : 1;
+
+  uint64_t blank3 : 52;
+};
+
+using MipDesc = struct MipDesc {
+  uint64_t usip : 1;
+  uint64_t ssip : 1;
+  uint64_t blank0 : 1;
+  uint64_t msip : 1;
+
+  uint64_t utip : 1;
+  uint64_t stip : 1;
+  uint64_t blank1 : 1;
+  uint64_t mtip : 1;
+
+  uint64_t ueip : 1;
+  uint64_t seip : 1;
+  uint64_t blank2 : 1;
+  uint64_t meip : 1;
 
   uint64_t blank3 : 52;
 };

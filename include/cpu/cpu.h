@@ -85,6 +85,8 @@ class CPU {
 
   trap::Trap Fetch(const uint64_t addr, const uint64_t bytes, uint8_t* buffer);
   trap::Trap Decode(const uint32_t word, int64_t* index);
+
+  void Tick(bool meip, bool seip, bool msip, bool mtip, bool update);
   void Tick();
 
   uint64_t GetReg(const uint64_t reg_num) const;

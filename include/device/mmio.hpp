@@ -22,7 +22,7 @@ class MmioDevice {
   virtual ~MmioDevice() = default;
 };
 
-struct MmioDeviceNode {
+using MmioDeviceNode = struct MmioDeviceNode {
   uint64_t base;
   uint64_t size;
   std::unique_ptr<MmioDevice> dev;

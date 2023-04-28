@@ -1,10 +1,12 @@
 #include <cstdlib>
 #include <memory>
+#include <thread>
 #include <utility>
 
 #include "conf.h"
 #include "cpu/cpu.h"
 #include "device/bus.h"
+#include "device/clint.h"
 #include "device/dram.h"
 #include "device/mmio.hpp"
 #include "elfio/elfio.hpp"
@@ -19,11 +21,26 @@ int main(int argc, char* argv[]) {
   }
 
   auto dram = std::make_unique<rv64_emulator::device::dram::DRAM>(kDramSize);
+  auto clint = std::make_unique<rv64_emulator::device::clint::Clint>(1);
+  auto raw_clint = clint.get();
+  std::thread oscillator([raw_clint] {
+    while (true) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      raw_clint->Tick();
+    }
+  });
+  oscillator.detach();
+
   auto bus = std::make_unique<rv64_emulator::device::bus::Bus>();
   bus->MountDevice({
       .base = kDramBaseAddr,
       .size = kDramSize,
       .dev = std::move(dram),
+  });
+  bus->MountDevice({
+      .base = kClintBase,
+      .size = kClintAddrSpaceRange,
+      .dev = std::move(clint),
   });
 
   auto sv39 = std::make_unique<rv64_emulator::mmu::Sv39>(std::move(bus));
@@ -38,7 +55,8 @@ int main(int argc, char* argv[]) {
   cpu->SetPC(reader.get_entry());
 
   while (true) {
-    cpu->Tick();
+    cpu->Tick(false, false, raw_clint->MachineSoftwareIrq(0),
+              raw_clint->MachineTimerIrq(0), true);
 #ifdef DEBUG
     cpu->DumpRegs();
 #endif
