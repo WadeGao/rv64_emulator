@@ -44,18 +44,6 @@ const std::map<PrivilegeMode, uint64_t> kTvecReg = {
     {PrivilegeMode::kUser, csr::kCsrUtvec},
 };
 
-const std::map<PrivilegeMode, uint64_t> kStatusReg = {
-    {PrivilegeMode::kMachine, csr::kCsrMstatus},
-    {PrivilegeMode::kSupervisor, csr::kCsrSstatus},
-    {PrivilegeMode::kUser, csr::kCsrUstatus},
-};
-
-const std::map<PrivilegeMode, uint64_t> kInterruptEnableReg = {
-    {PrivilegeMode::kMachine, csr::kCsrMie},
-    {PrivilegeMode::kSupervisor, csr::kCsrSie},
-    {PrivilegeMode::kUser, csr::kCsrUie},
-};
-
 uint32_t gpr_change_record = 0;
 
 CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
@@ -288,9 +276,19 @@ trap::Trap CPU::TickOperate() {
   return kExecTrap;
 }
 
-void CPU::Tick() {
+void CPU::Tick(bool meip, bool seip, bool msip, bool mtip, bool update) {
   // pre exec
   state_.Write(csr::kCsrMCycle, ++clock_);
+
+  if (update) {
+    uint64_t mip_val = state_.Read(csr::kCsrMip);
+    auto* mip_desc = reinterpret_cast<csr::MipDesc*>(&mip_val);
+    mip_desc->meip = meip;
+    mip_desc->seip = seip;
+    mip_desc->msip = msip;
+    mip_desc->mtip = mtip;
+    state_.Write(csr::kCsrMip, *reinterpret_cast<const uint64_t*>(mip_desc));
+  }
 
   const uint64_t kEpc = GetPC();
   const trap::Trap kTrap = TickOperate();
@@ -301,6 +299,8 @@ void CPU::Tick() {
   // post exec
   state_.Write(csr::kCsrMinstret, ++instret_);
 }
+
+void CPU::Tick() { Tick(false, false, false, false, false); }
 
 void CPU::FlushTlb(const uint64_t vaddr, const uint64_t asid) {
   mmu_->FlushTlb(vaddr, asid);

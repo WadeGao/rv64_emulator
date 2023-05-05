@@ -5,12 +5,13 @@
 #include <cstdint>
 #include <filesystem>
 #include <memory>
-#include <tuple>
+#include <thread>
 
 #include "conf.h"
 #include "cpu/csr.h"
 #include "cpu/trap.h"
 #include "device/bus.h"
+#include "device/clint.h"
 #include "device/dram.h"
 #include "elfio/elf_types.hpp"
 #include "elfio/elfio.hpp"
@@ -33,11 +34,27 @@ class CpuTest : public testing::Test {
 
   void SetUp() override {
     auto dram = std::make_unique<rv64_emulator::device::dram::DRAM>(kDramSize);
+    auto clint = std::make_unique<rv64_emulator::device::clint::Clint>(1);
+    raw_clint_ = clint.get();
+    auto tmp = raw_clint_;
+    std::thread oscillator([tmp]() {
+      while (true) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        tmp->Tick();
+      }
+    });
+    oscillator.detach();
+
     auto bus = std::make_unique<rv64_emulator::device::bus::Bus>();
     bus->MountDevice({
         .base = kDramBaseAddr,
         .size = kDramSize,
         .dev = std::move(dram),
+    });
+    bus->MountDevice({
+        .base = kClintBase,
+        .size = kClintAddrSpaceRange,
+        .dev = std::move(clint),
     });
 
     auto sv39 = std::make_unique<rv64_emulator::mmu::Sv39>(std::move(bus));
@@ -49,6 +66,7 @@ class CpuTest : public testing::Test {
   void TearDown() override {}
 
   std::unique_ptr<rv64_emulator::cpu::CPU> cpu_;
+  rv64_emulator::device::clint::Clint* raw_clint_;
 };
 
 constexpr uint64_t kMaxInstructions = 100000;
@@ -190,7 +208,8 @@ TEST_F(CpuTest, OfficalTests) {
     auto start = std::chrono::high_resolution_clock::now();
 
     while (true) {
-      cpu_->Tick();
+      cpu_->Tick(false, false, raw_clint_->MachineSoftwareIrq(0),
+                 raw_clint_->MachineTimerIrq(0), true);
 #ifdef DEBUG
       cpu_->DumpRegs();
 #endif

@@ -1,0 +1,6 @@
+*.sh eol=lf
+*.cc eol=lf
+*.h eol=lf
+*.hpp eol=lf
+*.py eol=lf
+*.md eol=lf
