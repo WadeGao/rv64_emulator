@@ -1,11 +1,10 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
 
 namespace rv64_emulator::cpu::decode {
 
-enum class OpCode : uint8_t {
+enum class OpCode : uint32_t {
   kReg = 0b0110011,
   kImm = 0b0010011,
   kLui = 0b0110111,
@@ -100,6 +99,13 @@ enum class InstToken {
   REMUW,
   SRET,
   SFENCE_VMA,
+};
+
+using DecodeResDesc = struct DecodeResDesc {
+  OpCode opcode;
+  InstToken token;
+  uint32_t word;
+  int32_t index;
 };
 
 using InstDesc = struct InstDesc {

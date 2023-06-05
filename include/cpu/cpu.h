@@ -65,7 +65,7 @@ class CPU {
   std::unique_ptr<mmu::Mmu> mmu_;
 
   // decode lookaside buffer
-  libs::LRUCache<uint32_t, int64_t> dlb_;
+  libs::LRUCache<uint32_t, int32_t> dlb_;
 
   trap::Trap TickOperate();
 
@@ -84,7 +84,7 @@ class CPU {
                    const uint8_t* buffer);
 
   trap::Trap Fetch(const uint64_t addr, const uint64_t bytes, uint8_t* buffer);
-  trap::Trap Decode(const uint32_t word, int64_t* index);
+  trap::Trap Decode(const uint32_t word, decode::DecodeResDesc* res);
 
   void Tick(bool meip, bool seip, bool msip, bool mtip, bool update);
   void Tick();
