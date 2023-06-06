@@ -190,18 +190,13 @@ trap::Trap CPU::Fetch(const uint64_t addr, const uint64_t bytes,
   return mmu_->VirtualFetch(addr, bytes, buffer);
 }
 
-trap::Trap CPU::Decode(const uint32_t word, decode::DecodeResDesc* decode_res) {
+trap::Trap CPU::Decode(decode::DecodeResDesc* decode_res) {
   int32_t res = 0;
-
+  const uint32_t word = decode_res->word;
   // decode cache hit current instruction
   if (dlb_.Get(word, &res)) {
-    *decode_res = {
-        .opcode = static_cast<decode::OpCode>(
-            reinterpret_cast<const decode::RTypeDesc*>(&word)->opcode),
-        .token = decode::kInstTable[res].token,
-        .word = word,
-        .index = res,
-    };
+    decode_res->token = decode::kInstTable[res].token;
+    decode_res->index = res;
     return trap::kNoneTrap;
   }
 
@@ -210,13 +205,8 @@ trap::Trap CPU::Decode(const uint32_t word, decode::DecodeResDesc* decode_res) {
   for (const auto& inst : decode::kInstTable) {
     if ((word & inst.mask) == inst.signature) {
       dlb_.Set(word, res);
-      *decode_res = {
-          .opcode = static_cast<decode::OpCode>(
-              reinterpret_cast<const decode::RTypeDesc*>(&word)->opcode),
-          .token = decode::kInstTable[res].token,
-          .word = word,
-          .index = res,
-      };
+      decode_res->token = decode::kInstTable[res].token;
+      decode_res->index = res;
       return trap::kNoneTrap;
     }
     res++;
@@ -251,8 +241,15 @@ trap::Trap CPU::TickOperate() {
   // TODO
   SetPC(kInstructionAddr + 4);
 
-  decode::DecodeResDesc decode_res;
-  const trap::Trap kDecodeTrap = Decode(word, &decode_res);
+  decode::DecodeResDesc decode_res = {
+      .opcode = static_cast<decode::OpCode>(
+          reinterpret_cast<const decode::RTypeDesc*>(&word)->opcode),
+      .token = decode::InstToken::UNKNOWN,
+      .index = -1,
+      .word = word,
+      .addr = kInstructionAddr,
+  };
+  const trap::Trap kDecodeTrap = Decode(&decode_res);
   if (kDecodeTrap.type != trap::TrapType::kNone) {
     return kDecodeTrap;
   }

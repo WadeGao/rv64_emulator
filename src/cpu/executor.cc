@@ -11,6 +11,7 @@
 namespace rv64_emulator::cpu::executor {
 
 using rv64_emulator::cpu::decode::OpCode;
+using rv64_emulator::libs::arithmetic::MulUnsignedHi;
 
 Executor::Executor(CPU* cpu) : cpu_(cpu) {}
 
@@ -61,20 +62,17 @@ trap::Trap Executor::RegTypeExec(const decode::DecodeResDesc desc) {
       const bool kNegativeRes = (rs1_val < 0) ^ (rs2_val < 0);
       const uint64_t abs_rs1_val = std::abs(rs1_val);
       const uint64_t abs_rs2_val = std::abs(rs1_val);
-      const uint64_t res = rv64_emulator::libs::arithmetic::MulUnsignedHi(
-          abs_rs1_val, abs_rs2_val);
+      const uint64_t res = MulUnsignedHi(abs_rs1_val, abs_rs2_val);
       val = kNegativeRes ? (~res + (rs2_val * rs2_val == 0)) : res;
     } break;
     case decode::InstToken::MULHSU: {
       const bool kNegativeRes = rs1_val < 0;
       const uint64_t abs_rs1_val = std::abs(rs1_val);
-      const uint64_t res = rv64_emulator::libs::arithmetic::MulUnsignedHi(
-          abs_rs1_val, u64_rs2_val);
+      const uint64_t res = MulUnsignedHi(abs_rs1_val, u64_rs2_val);
       val = kNegativeRes ? (~res + (rs1_val * u64_rs2_val == 0)) : res;
     } break;
     case decode::InstToken::MULHU:
-      val = rv64_emulator::libs::arithmetic::MulUnsignedHi(u64_rs1_val,
-                                                           u64_rs2_val);
+      val = MulUnsignedHi(u64_rs1_val, u64_rs2_val);
       break;
     case decode::InstToken::DIV:
       if (rs2_val == 0) {
@@ -104,6 +102,73 @@ trap::Trap Executor::RegTypeExec(const decode::DecodeResDesc desc) {
       break;
   }
 
+  cpu_->SetReg(r_desc.rd, val);
+  return trap::kNoneTrap;
+}
+
+trap::Trap Executor::Rv32TypeExec(const decode::DecodeResDesc desc) {
+  const decode::RTypeDesc r_desc =
+      *reinterpret_cast<const decode::RTypeDesc*>(&desc.word);
+  const int64_t rs1_val = (int64_t)((int32_t)cpu_->GetReg(r_desc.rs1));
+  const int64_t rs2_val = (int64_t)((int32_t)cpu_->GetReg(r_desc.rs2));
+  const int32_t half_rs1_val = (int32_t)rs1_val;
+  const int32_t half_rs2_val = (int32_t)rs2_val;
+  int64_t val = 0;
+
+  switch (desc.token) {
+    case decode::InstToken::ADDW:
+      val = rs1_val + rs2_val;
+      break;
+    case decode::InstToken::SUBW:
+      val = rs1_val - rs2_val;
+      break;
+    case decode::InstToken::SLLW:
+      val = rs1_val << rs2_val;
+      break;
+    case decode::InstToken::SRLW:
+      val = (int64_t)(int32_t)(rs1_val >> rs2_val);
+      break;
+    case decode::InstToken::SRAW:
+      val = rs1_val >> rs2_val;
+      break;
+    case decode::InstToken::MULW:
+      val = half_rs1_val * half_rs2_val;
+      break;
+    case decode::InstToken::DIVW:
+      if (half_rs2_val == 0) {
+        val = UINT64_MAX;
+      } else if (half_rs1_val == INT32_MIN && half_rs2_val == -1) {
+        val = INT32_MIN;
+      } else {
+        val = (int64_t)(half_rs1_val / half_rs2_val);
+      }
+      break;
+    case decode::InstToken::DIVUW: {
+      const uint32_t a = (uint32_t)half_rs1_val;
+      const uint32_t b = (uint32_t)half_rs2_val;
+      if (b == 0) {
+        val = UINT64_MAX;
+      } else {
+        val = (int32_t)(a / b);
+      }
+    } break;
+    case decode::InstToken::REMW:
+      if (half_rs2_val == 0) {
+        val = half_rs1_val;
+      } else if (half_rs1_val == INT32_MIN && half_rs2_val == -1) {
+        val = 0;
+      } else {
+        val = (int64_t)((int32_t)(half_rs1_val % half_rs2_val));
+      }
+      break;
+    case decode::InstToken::REMUW: {
+      const uint32_t a = (uint32_t)half_rs1_val;
+      const uint32_t b = (uint32_t)half_rs2_val;
+      val = (int32_t)(b == 0 ? a : a % b);
+    } break;
+    default:
+      break;
+  }
   cpu_->SetReg(r_desc.rd, val);
   return trap::kNoneTrap;
 }

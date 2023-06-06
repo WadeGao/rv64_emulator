@@ -5,6 +5,7 @@
 namespace rv64_emulator::cpu::decode {
 
 enum class OpCode : uint32_t {
+  kUndef = 0b0000000,
   kReg = 0b0110011,
   kImm = 0b0010011,
   kLui = 0b0110111,
@@ -102,10 +103,11 @@ enum class InstToken {
 };
 
 using DecodeResDesc = struct DecodeResDesc {
-  OpCode opcode;
-  InstToken token;
-  uint32_t word;
-  int32_t index;
+  OpCode opcode;    // instruction opcode
+  InstToken token;  // instruction token
+  int32_t index;    // instruction index in decode::kInstTable
+  uint32_t word;    // instruction word
+  uint64_t addr;    // instruction addr
 };
 
 using InstDesc = struct InstDesc {
