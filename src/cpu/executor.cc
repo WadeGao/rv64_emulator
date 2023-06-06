@@ -13,6 +13,24 @@ namespace rv64_emulator::cpu::executor {
 using rv64_emulator::cpu::decode::OpCode;
 using rv64_emulator::libs::arithmetic::MulUnsignedHi;
 
+template <typename T>
+static inline int64_t GetImm(const T desc) {
+  if constexpr (std::is_same_v<T, decode::BTypeDesc>) {
+    return (desc.imm12 << 12) | (desc.imm11 << 11) | (desc.imm10_5 << 5) |
+           (desc.imm4_1 << 1);
+  } else if constexpr (std::is_same_v<T, decode::JTypeDesc>) {
+    return (desc.imm20 << 20) | (desc.imm19_12 << 12) | (desc.imm11 << 11) |
+           (desc.imm10_1 << 1);
+  } else if constexpr (std::is_same_v<T, decode::ITypeDesc>) {
+    return desc.imm;
+  } else if constexpr (std::is_same_v<T, decode::STypeDesc>) {
+    return desc.imm11_5 << 5 | desc.imm4_0;
+  } else if constexpr (std::is_same_v<T, decode::UTypeDesc>) {
+    return desc.imm_31_12 << 12;
+  }
+  return INT64_MIN;
+}
+
 Executor::Executor(CPU* cpu) : cpu_(cpu) {}
 
 trap::Trap Executor::RegTypeExec(const decode::DecodeResDesc desc) {
@@ -242,6 +260,13 @@ trap::Trap Executor::Imm32TypeExec(const decode::DecodeResDesc desc) {
   return trap::kNoneTrap;
 }
 
+trap::Trap Executor::LuiTypeExec(const decode::DecodeResDesc desc) {
+  const decode::UTypeDesc u_desc =
+      *reinterpret_cast<const decode::UTypeDesc*>(&desc.word);
+  cpu_->SetReg(u_desc.rd, GetImm(u_desc));
+  return trap::kNoneTrap;
+}
+
 trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {
   trap::Trap ret = trap::kNoneTrap;
   switch (desc.opcode) {
@@ -252,6 +277,7 @@ trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {
       ret = ImmTypeExec(desc);
       break;
     case OpCode::kLui:
+      ret = LuiTypeExec(desc);
       break;
     case OpCode::kBranch:
       break;
