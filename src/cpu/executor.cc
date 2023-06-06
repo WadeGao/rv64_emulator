@@ -173,6 +173,49 @@ trap::Trap Executor::Rv32TypeExec(const decode::DecodeResDesc desc) {
   return trap::kNoneTrap;
 }
 
+trap::Trap Executor::ImmTypeExec(const decode::DecodeResDesc desc) {
+  const decode::ITypeDesc i_desc =
+      *reinterpret_cast<const decode::ITypeDesc*>(&desc.word);
+  const int64_t rs1_val = (int64_t)cpu_->GetReg(i_desc.rs1);
+  const int32_t imm = i_desc.imm;
+  const uint8_t kShamt = decode::GetShamt(i_desc, false);
+  int64_t val = 0;
+  switch (desc.token) {
+    case decode::InstToken::ADDI:
+      val = rs1_val + imm;
+      break;
+    case decode::InstToken::SLTI:
+      val = rs1_val < imm ? 1 : 0;
+      break;
+    case decode::InstToken::SLTIU:
+      val = (uint64_t)rs1_val < (uint64_t)imm ? 1 : 0;
+      break;
+    case decode::InstToken::XORI:
+      val = rs1_val ^ imm;
+      break;
+    case decode::InstToken::ORI:
+      val = rs1_val | imm;
+      break;
+    case decode::InstToken::ANDI:
+      val = rs1_val & imm;
+      break;
+    case decode::InstToken::SLLI:
+      val = rs1_val << (int64_t)kShamt;
+      break;
+    case decode::InstToken::SRLI:
+      val = (uint64_t)rs1_val >> kShamt;
+      break;
+    case decode::InstToken::SRAI:
+      val = rs1_val >> kShamt;
+      break;
+    default:
+      break;
+  }
+
+  cpu_->SetReg(i_desc.rd, val);
+  return trap::kNoneTrap;
+}
+
 trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {
   trap::Trap ret = trap::kNoneTrap;
   switch (desc.opcode) {
@@ -200,6 +243,7 @@ trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {
     case OpCode::kImm32:
       break;
     case OpCode::kRv32:
+      ret = Rv32TypeExec(desc);
       break;
     default:
       break;
