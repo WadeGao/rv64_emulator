@@ -35,6 +35,20 @@
     return kStoreTrap;                                                \
   }
 
+#define CHECK_CSR_ACCESS_PRIVILEGE(csr_num, write, proc) \
+  bool is_privileged = false;                            \
+  if (cpu::PrivilegeMode(((csr_num) >> 8) & 0b11) <=     \
+      (proc)->GetPrivilegeMode()) {                      \
+    is_privileged = true;                                \
+  }                                                      \
+  const bool kReadOnly = ((csr_num) >> 10) == 0b11;      \
+  if (!is_privileged || ((write) && kReadOnly)) {        \
+    return {                                             \
+        .type = trap::TrapType::kIllegalInstruction,     \
+        .val = (proc)->GetPC() - 4,                      \
+    };                                                   \
+  }
+
 namespace rv64_emulator::cpu::executor {
 
 using rv64_emulator::cpu::decode::OpCode;
@@ -425,6 +439,66 @@ trap::Trap Executor::StoreTypeExec(const decode::DecodeResDesc desc) {
   const uint64_t kBytes = kAccessMemBytes.at(desc.token);
   STORE_VIRTUAL_MEMORY(kBytes, kTargetAddr, kU64Rs2Val, cpu_);
   return trap::kNoneTrap;
+}
+
+trap::Trap Executor::CsrTypeExec(const decode::DecodeResDesc desc) {
+  const auto kCsrDesc =
+      *reinterpret_cast<const decode::CsrTypeDesc*>(&desc.word);
+
+  bool writable = kCsrDesc.rs1 != 0;
+  if (desc.token == decode::InstToken::CSRRW ||
+      desc.token == decode::InstToken::CSRRWI) {
+    writable = true;
+  }
+  CHECK_CSR_ACCESS_PRIVILEGE(kCsrDesc.imm, writable, cpu_);
+
+  const uint64_t kCsrVal = cpu_->state_.Read(kCsrDesc.imm);
+  cpu_->SetReg(kCsrDesc.rd, kCsrVal);
+
+  const int64_t kRs1Val = (int64_t)cpu_->GetReg(kCsrDesc.rs1);
+  uint64_t new_csr_val = 0;
+  switch (desc.token) {
+    case decode::InstToken::CSRRW:
+      new_csr_val = kRs1Val;
+      break;
+    case decode::InstToken::CSRRS:
+      new_csr_val = kRs1Val | (int64_t)kCsrVal;
+      break;
+    case decode::InstToken::CSRRC:
+      new_csr_val = (int64_t)kCsrVal & (~kRs1Val);
+      break;
+    case decode::InstToken::CSRRWI:
+      new_csr_val = kCsrDesc.rs1;
+      break;
+    case decode::InstToken::CSRRSI:
+      new_csr_val = (int64_t)kCsrVal | (int64_t)kCsrDesc.rs1;
+      break;
+    case decode::InstToken::CSRRCI:
+      new_csr_val = (int64_t)kCsrVal & (~((int64_t)kCsrDesc.rs1));
+      break;
+    default:
+      break;
+  }
+
+  cpu_->state_.Write(kCsrDesc.imm, new_csr_val);
+  return trap::kNoneTrap;
+}
+
+trap::Trap Executor::SystemTypeExec(const decode::DecodeResDesc desc) {
+  trap::Trap ret = trap::kNoneTrap;
+  switch (desc.token) {
+    case decode::InstToken::CSRRW:
+    case decode::InstToken::CSRRS:
+    case decode::InstToken::CSRRC:
+    case decode::InstToken::CSRRWI:
+    case decode::InstToken::CSRRSI:
+    case decode::InstToken::CSRRCI:
+      ret = CsrTypeExec(desc);
+      break;
+    default:
+      break;
+  }
+  return ret;
 }
 
 trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {

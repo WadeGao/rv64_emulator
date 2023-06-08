@@ -24,6 +24,8 @@ class Executor {
   trap::Trap Imm32TypeExec(const decode::DecodeResDesc desc);
   trap::Trap Rv32TypeExec(const decode::DecodeResDesc desc);
 
+  trap::Trap CsrTypeExec(const decode::DecodeResDesc desc);
+
  public:
   explicit Executor(CPU* cpu);
   trap::Trap Exec(const decode::DecodeResDesc desc);
