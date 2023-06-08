@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <unordered_map>
 
 #include "cpu/cpu.h"
 #include "cpu/decode.h"
@@ -20,17 +21,39 @@
     };                                                          \
   }
 
-#define LOAD_VIRTUAL_MEMORY(T, vaddr, data, proc)                     \
-  uint8_t* ptr = reinterpret_cast<uint8_t*>(&(data));                 \
-  const trap::Trap kLoadTrap = (proc)->Load((vaddr), sizeof(T), ptr); \
-  if (kLoadTrap.type != trap::TrapType::kNone) {                      \
-    return kLoadTrap;                                                 \
+#define LOAD_VIRTUAL_MEMORY(size, vaddr, data, proc)               \
+  uint8_t* ptr = reinterpret_cast<uint8_t*>(&(data));              \
+  const trap::Trap kLoadTrap = (proc)->Load((vaddr), (size), ptr); \
+  if (kLoadTrap.type != trap::TrapType::kNone) {                   \
+    return kLoadTrap;                                              \
+  }
+
+#define STORE_VIRTUAL_MEMORY(size, vaddr, data, proc)                 \
+  const uint8_t* kPtr = reinterpret_cast<const uint8_t*>(&(data));    \
+  const trap::Trap kStoreTrap = (proc)->Store((vaddr), (size), kPtr); \
+  if (kStoreTrap.type != trap::TrapType::kNone) {                     \
+    return kStoreTrap;                                                \
   }
 
 namespace rv64_emulator::cpu::executor {
 
 using rv64_emulator::cpu::decode::OpCode;
 using rv64_emulator::libs::arithmetic::MulUnsignedHi;
+
+const std::unordered_map<decode::InstToken, uint64_t> kAccessMemBytes{
+    {decode::InstToken::LB, sizeof(int8_t)},
+    {decode::InstToken::LH, sizeof(int16_t)},
+    {decode::InstToken::LW, sizeof(int32_t)},
+    {decode::InstToken::LD, sizeof(int64_t)},
+    {decode::InstToken::LBU, sizeof(uint8_t)},
+    {decode::InstToken::LHU, sizeof(uint16_t)},
+    {decode::InstToken::LWU, sizeof(uint32_t)},
+
+    {decode::InstToken::SB, sizeof(int8_t)},
+    {decode::InstToken::SH, sizeof(int16_t)},
+    {decode::InstToken::SW, sizeof(int32_t)},
+    {decode::InstToken::SD, sizeof(int64_t)},
+};
 
 template <typename T>
 static inline constexpr int64_t GetImm(const T desc) {
@@ -362,48 +385,45 @@ trap::Trap Executor::LoadTypeExec(const decode::DecodeResDesc desc) {
   const auto kImmDesc = *reinterpret_cast<const decode::ITypeDesc*>(&desc.word);
   const uint64_t kTargetAddr = desc.addr + 4 + kImmDesc.imm;
 
+  const uint64_t kBytes = kAccessMemBytes.at(desc.token);
+  uint64_t data = 0;
+  LOAD_VIRTUAL_MEMORY(kBytes, kTargetAddr, data, cpu_);
+
   int64_t val = 0;
   switch (desc.token) {
-    case decode::InstToken::LB: {
-      int8_t data = 0;
-      LOAD_VIRTUAL_MEMORY(int8_t, kTargetAddr, data, cpu_);
-      val = data;
-    } break;
-    case decode::InstToken::LH: {
-      int16_t data = 0;
-      LOAD_VIRTUAL_MEMORY(int16_t, kTargetAddr, data, cpu_);
-      val = data;
-    } break;
-    case decode::InstToken::LW: {
-      int32_t data = 0;
-      LOAD_VIRTUAL_MEMORY(int32_t, kTargetAddr, data, cpu_);
-      val = data;
-    } break;
-    case decode::InstToken::LBU: {
-      uint8_t data = 0;
-      LOAD_VIRTUAL_MEMORY(uint8_t, kTargetAddr, data, cpu_);
+    case decode::InstToken::LB:
+      val = (int64_t)(int8_t)(uint8_t)data;
+      break;
+    case decode::InstToken::LH:
+      val = (int64_t)(int16_t)(uint16_t)data;
+      break;
+    case decode::InstToken::LW:
+      val = (int64_t)(int32_t)(uint32_t)data;
+      break;
+    case decode::InstToken::LD:
+      val = (int64_t)data;
+      break;
+    case decode::InstToken::LBU:
+    case decode::InstToken::LHU:
+    case decode::InstToken::LWU:
       val = (int64_t)(uint64_t)data;
-    } break;
-    case decode::InstToken::LHU: {
-      uint16_t data = 0;
-      LOAD_VIRTUAL_MEMORY(uint16_t, kTargetAddr, data, cpu_);
-      val = (int64_t)(uint64_t)data;
-    } break;
-    case decode::InstToken::LWU: {
-      uint32_t data = 0;
-      LOAD_VIRTUAL_MEMORY(uint32_t, kTargetAddr, data, cpu_);
-      val = (int64_t)(uint64_t)data;
-    } break;
-    case decode::InstToken::LD: {
-      int64_t data = 0;
-      LOAD_VIRTUAL_MEMORY(int64_t, kTargetAddr, data, cpu_);
-      val = data;
-    } break;
+      break;
     default:
       break;
   }
 
   cpu_->SetReg(kImmDesc.rd, val);
+  return trap::kNoneTrap;
+}
+
+trap::Trap Executor::StoreTypeExec(const decode::DecodeResDesc desc) {
+  const auto kSDesc = *reinterpret_cast<const decode::STypeDesc*>(&desc.word);
+  const int64_t kRs1Val = (int64_t)cpu_->GetReg(kSDesc.rs1);
+  const uint64_t kU64Rs2Val = cpu_->GetReg(kSDesc.rs2);
+  const uint64_t kTargetAddr = kRs1Val + GetImm(kSDesc);
+
+  const uint64_t kBytes = kAccessMemBytes.at(desc.token);
+  STORE_VIRTUAL_MEMORY(kBytes, kTargetAddr, kU64Rs2Val, cpu_);
   return trap::kNoneTrap;
 }
 
@@ -423,6 +443,7 @@ trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {
       ret = BranchTypeExec(desc);
       break;
     case OpCode::kStore:
+      ret = StoreTypeExec(desc);
       break;
     case OpCode::kLoad:
       ret = LoadTypeExec(desc);
