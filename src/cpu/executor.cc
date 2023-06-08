@@ -293,6 +293,13 @@ trap::Trap Executor::JalrTypeExec(const decode::DecodeResDesc desc) {
   return trap::kNoneTrap;
 }
 
+trap::Trap Executor::AuipcTypeExec(const decode::DecodeResDesc desc) {
+  const auto kUDesc = *reinterpret_cast<const decode::UTypeDesc*>(&desc.word);
+  const int64_t kVal = desc.addr + GetImm(kUDesc);
+  cpu_->SetReg(kUDesc.rd, kVal);
+  return trap::kNoneTrap;
+}
+
 trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {
   trap::Trap ret = trap::kNoneTrap;
   switch (desc.opcode) {
@@ -314,6 +321,7 @@ trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {
     case OpCode::kSystem:
       break;
     case OpCode::kAuipc:
+      ret = AuipcTypeExec(desc);
       break;
     case OpCode::kJal:
       ret = JalTypeExec(desc);
