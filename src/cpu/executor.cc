@@ -300,6 +300,57 @@ trap::Trap Executor::AuipcTypeExec(const decode::DecodeResDesc desc) {
   return trap::kNoneTrap;
 }
 
+trap::Trap Executor::BranchTypeExec(const decode::DecodeResDesc desc) {
+  const auto kBrDesc = *reinterpret_cast<const decode::BTypeDesc*>(&desc.word);
+  const uint64_t kU64Rs1Val = cpu_->GetReg(kBrDesc.rs1);
+  const uint64_t kU64Rs2Val = cpu_->GetReg(kBrDesc.rs2);
+  const int64_t kRs1Val = (int64_t)kU64Rs1Val;
+  const int64_t kRs2Val = (int64_t)kU64Rs2Val;
+  const int64_t kImm = GetImm(kBrDesc);
+
+  uint64_t new_pc = 0;
+  const uint64_t kPredictedPC = desc.addr + kImm;
+
+  switch (desc.token) {
+    case decode::InstToken::BEQ:
+      if (kRs1Val == kRs2Val) {
+        new_pc = kPredictedPC;
+      }
+      break;
+    case decode::InstToken::BNE:
+      if (kRs1Val != kRs2Val) {
+        new_pc = kPredictedPC;
+      }
+      break;
+    case decode::InstToken::BLT:
+      if (kRs1Val < kRs2Val) {
+        new_pc = kPredictedPC;
+      }
+      break;
+    case decode::InstToken::BGE:
+      if (kRs1Val >= kRs2Val) {
+        new_pc = kPredictedPC;
+      }
+      break;
+    case decode::InstToken::BLTU:
+      if (kU64Rs1Val < kU64Rs2Val) {
+        new_pc = kPredictedPC;
+      }
+      break;
+    case decode::InstToken::BGEU:
+      if (kU64Rs1Val >= kU64Rs2Val) {
+        new_pc = kPredictedPC;
+      }
+      break;
+    default:
+      break;
+  }
+
+  CHECK_MISALIGN_INSTRUCTION(new_pc, cpu_);
+  cpu_->SetPC(new_pc);
+  return trap::kNoneTrap;
+}
+
 trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {
   trap::Trap ret = trap::kNoneTrap;
   switch (desc.opcode) {
@@ -313,6 +364,7 @@ trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {
       ret = LuiTypeExec(desc);
       break;
     case OpCode::kBranch:
+      ret = BranchTypeExec(desc);
       break;
     case OpCode::kStore:
       break;
