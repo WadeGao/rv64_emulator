@@ -7,6 +7,18 @@
 #include "cpu/decode.h"
 #include "cpu/trap.h"
 #include "libs/arithmetic.hpp"
+#include "libs/utils.h"
+
+#define CHECK_MISALIGN_INSTRUCTION(pc, proc)                    \
+  using rv64_emulator::libs::util::CheckPcAlign;                \
+  const uint64_t kMisaVal = (proc)->state_.Read(csr::kCsrMisa); \
+  const bool kNewPcAlign = CheckPcAlign((pc), kMisaVal);        \
+  if (!kNewPcAlign) {                                           \
+    return {                                                    \
+        .type = trap::TrapType::kInstructionAddressMisaligned,  \
+        .val = (pc),                                            \
+    };                                                          \
+  }
 
 namespace rv64_emulator::cpu::executor {
 
@@ -14,7 +26,7 @@ using rv64_emulator::cpu::decode::OpCode;
 using rv64_emulator::libs::arithmetic::MulUnsignedHi;
 
 template <typename T>
-static inline int64_t GetImm(const T desc) {
+static inline constexpr int64_t GetImm(const T desc) {
   if constexpr (std::is_same_v<T, decode::BTypeDesc>) {
     return (desc.imm12 << 12) | (desc.imm11 << 11) | (desc.imm10_5 << 5) |
            (desc.imm4_1 << 1);
@@ -267,6 +279,25 @@ trap::Trap Executor::LuiTypeExec(const decode::DecodeResDesc desc) {
   return trap::kNoneTrap;
 }
 
+trap::Trap Executor::JalTypeExec(const decode::DecodeResDesc desc) {
+  const auto kJDesc = *reinterpret_cast<const decode::JTypeDesc*>(&desc.word);
+  const uint64_t kNewPC = (int64_t)desc.addr + GetImm(kJDesc);
+  CHECK_MISALIGN_INSTRUCTION(kNewPC, cpu_);
+  cpu_->SetReg(kJDesc.rd, desc.addr + 4);
+  cpu_->SetPC(kNewPC);
+  return trap::kNoneTrap;
+}
+
+trap::Trap Executor::JalrTypeExec(const decode::DecodeResDesc desc) {
+  const auto kImmDesc = *reinterpret_cast<const decode::ITypeDesc*>(&desc.word);
+  const int64_t kRs1Val = (int64_t)cpu_->GetReg(kImmDesc.rs1);
+  const uint64_t kNewPC = (kImmDesc.imm + kRs1Val) & 0xfffffffffffffffe;
+  CHECK_MISALIGN_INSTRUCTION(kNewPC, cpu_);
+  cpu_->SetPC(kNewPC);
+  cpu_->SetReg(kImmDesc.rd, desc.addr + 4);
+  return trap::kNoneTrap;
+}
+
 trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {
   trap::Trap ret = trap::kNoneTrap;
   switch (desc.opcode) {
@@ -290,8 +321,10 @@ trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {
     case OpCode::kAuipc:
       break;
     case OpCode::kJal:
+      ret = JalTypeExec(desc);
       break;
     case OpCode::kJalr:
+      ret = JalrTypeExec(desc);
       break;
     case OpCode::kImm32:
       ret = Imm32TypeExec(desc);

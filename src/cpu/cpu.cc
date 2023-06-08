@@ -185,7 +185,13 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
 
 trap::Trap CPU::Fetch(const uint64_t addr, const uint64_t bytes,
                       uint8_t* buffer) {
-  CHECK_MISALIGN_INSTRUCTION(addr, this);
+  const uint64_t kMisaVal = state_.Read(csr::kCsrMisa);
+  if (!libs::util::CheckPcAlign(addr, kMisaVal)) {
+    return {
+        .type = trap::TrapType::kInstructionAddressMisaligned,
+        .val = addr,
+    };
+  }
 
   return mmu_->VirtualFetch(addr, bytes, buffer);
 }
