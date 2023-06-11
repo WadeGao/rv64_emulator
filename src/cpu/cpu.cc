@@ -9,7 +9,6 @@
 #include "cpu/csr.h"
 #include "cpu/decode.h"
 #include "cpu/executor.h"
-#include "cpu/instruction.h"
 #include "cpu/trap.h"
 #include "fmt/core.h"
 #include "fmt/format.h"
