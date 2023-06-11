@@ -1,6 +1,7 @@
 #include "cpu/cpu.h"
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
@@ -33,17 +34,17 @@ class CpuTest : public testing::Test {
   }
 
   void SetUp() override {
+    poweron_.store(true);
     auto dram = std::make_unique<rv64_emulator::device::dram::DRAM>(kDramSize);
     auto clint = std::make_unique<rv64_emulator::device::clint::Clint>(1);
     raw_clint_ = clint.get();
-    auto tmp = raw_clint_;
-    std::thread oscillator([tmp]() {
-      while (true) {
+    // auto tmp = raw_clint_;
+    oscillator_ = std::thread([this]() {
+      while (poweron_.load()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        tmp->Tick();
+        raw_clint_->Tick();
       }
     });
-    oscillator.detach();
 
     auto bus = std::make_unique<rv64_emulator::device::bus::Bus>();
     bus->MountDevice({
@@ -63,10 +64,15 @@ class CpuTest : public testing::Test {
     cpu_ = std::move(cpu);
   }
 
-  void TearDown() override {}
+  void TearDown() override {
+    poweron_.store(false);
+    oscillator_.join();
+  }
 
+  std::atomic<bool> poweron_ = false;
   std::unique_ptr<rv64_emulator::cpu::CPU> cpu_;
   rv64_emulator::device::clint::Clint* raw_clint_;
+  std::thread oscillator_;
 };
 
 constexpr uint64_t kMaxInstructions = 100000;
@@ -74,9 +80,9 @@ constexpr uint64_t kArbitrarilyHandlerVector = 0x100000;
 
 static float GetMips(decltype(std::chrono::high_resolution_clock::now()) start,
                      const uint64_t insret_cnt) {
-  const auto end = std::chrono::high_resolution_clock::now();
+  const auto kEnd = std::chrono::high_resolution_clock::now();
   const auto kDurationUs =
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+      std::chrono::duration_cast<std::chrono::microseconds>(kEnd - start);
   const float kMips =
       static_cast<float>(insret_cnt) / static_cast<float>(kDurationUs.count());
   return kMips;
@@ -226,7 +232,7 @@ TEST_F(CpuTest, OfficalTests) {
             "Failed {} with .tohost section val = {}, MIPS = {:.2f}\n",
             kFileName, val, kMips);
         if (val == 1) {
-          fmt::print("Pass {}, MIPS = {:.2f}\n", kFileName, kMips);
+          fmt::print("[ MIPS = {:#05.2f} ] Pass {}\n", kMips, kFileName);
         }
         break;
       }

@@ -102,7 +102,7 @@ void State::Write(const uint64_t addr, const uint64_t val) {
       ms_desc->sum = val_desc->sum;  // always true
       ms_desc->mxr = val_desc->mxr;  // always true
       ms_desc->tvm = val_desc->tvm;
-      ms_desc->tw = val_desc->tw;    // not supported but wfi impl as nop
+      ms_desc->tw = val_desc->tw;  // not supported but wfi impl as nop
       ms_desc->tsr = val_desc->tsr;
     } break;
     case kCsrMideleg:

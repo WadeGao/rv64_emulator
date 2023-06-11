@@ -2,15 +2,14 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <tuple>
 
 #include "conf.h"
 #include "cpu/csr.h"
 #include "cpu/decode.h"
-#include "cpu/instruction.h"
+#include "cpu/executor.h"
 #include "cpu/trap.h"
-#include "device/bus.h"
-#include "fmt/color.h"
 #include "fmt/core.h"
 #include "fmt/format.h"
 #include "libs/arithmetic.hpp"
@@ -44,8 +43,6 @@ const std::map<PrivilegeMode, uint64_t> kTvecReg = {
     {PrivilegeMode::kUser, csr::kCsrUtvec},
 };
 
-uint32_t gpr_change_record = 0;
-
 CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
     : clock_(0),
       instret_(0),
@@ -56,10 +53,9 @@ CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
   static_assert(
       sizeof(float) == 4,
       "float is not 4 bytes, can't assure the bit width of floating point reg");
+  executor_ = std::make_unique<executor::Executor>();
+  executor_->SetProcessor(this);
   mmu_->SetProcessor(this);
-#ifdef DEBUG
-  fmt::print("cpu init, mmu addr is {}\n", fmt::ptr(mmu_.get()));
-#endif
 }
 
 void CPU::Reset() {
@@ -192,26 +188,34 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
 
 trap::Trap CPU::Fetch(const uint64_t addr, const uint64_t bytes,
                       uint8_t* buffer) {
-  CHECK_MISALIGN_INSTRUCTION(addr, this);
+  const uint64_t kMisaVal = state_.Read(csr::kCsrMisa);
+  if (!libs::util::CheckPcAlign(addr, kMisaVal)) {
+    return {
+        .type = trap::TrapType::kInstructionAddressMisaligned,
+        .val = addr,
+    };
+  }
 
   return mmu_->VirtualFetch(addr, bytes, buffer);
 }
 
-trap::Trap CPU::Decode(const uint32_t word, int64_t* index) {
-  int64_t res = 0;
-
+trap::Trap CPU::Decode(decode::DecodeResDesc* decode_res) {
+  int32_t res = 0;
+  const uint32_t word = decode_res->word;
   // decode cache hit current instruction
   if (dlb_.Get(word, &res)) {
-    *index = res;
+    decode_res->token = decode::kInstTable[res].token;
+    decode_res->index = res;
     return trap::kNoneTrap;
   }
 
   // decode cache miss, find the index in instruction table
   res = 0;
-  for (const auto& inst : instruction::kInstructionTable) {
+  for (const auto& inst : decode::kInstTable) {
     if ((word & inst.mask) == inst.signature) {
       dlb_.Set(word, res);
-      *index = res;
+      decode_res->token = decode::kInstTable[res].token;
+      decode_res->index = res;
       return trap::kNoneTrap;
     }
     res++;
@@ -235,10 +239,8 @@ trap::Trap CPU::TickOperate() {
 
   const uint64_t kInstructionAddr = GetPC();
 
-  int64_t index = 0;
   uint32_t word = 0;
 
-  // TODO
   const trap::Trap kFetchTrap = Fetch(kInstructionAddr, sizeof(uint32_t),
                                       reinterpret_cast<uint8_t*>(&word));
   if (kFetchTrap.type != trap::TrapType::kNone) {
@@ -248,30 +250,24 @@ trap::Trap CPU::TickOperate() {
   // TODO
   SetPC(kInstructionAddr + 4);
 
-  const trap::Trap kDecodeTrap = Decode(word, &index);
+  decode::DecodeResDesc decode_res = {
+      .opcode = static_cast<decode::OpCode>(
+          reinterpret_cast<const decode::RTypeDesc*>(&word)->opcode),
+      .token = decode::InstToken::UNKNOWN,
+      .index = -1,
+      .word = word,
+      .addr = kInstructionAddr,
+  };
+  const trap::Trap kDecodeTrap = Decode(&decode_res);
   if (kDecodeTrap.type != trap::TrapType::kNone) {
     return kDecodeTrap;
   }
 
+  const trap::Trap kExecTrap = executor_->Exec(decode_res);
 #ifdef DEBUG
-  Disassemble(kInstructionAddr, word, index);
-  uint64_t backup_reg[kGeneralPurposeRegNum] = {0};
-  memcpy(backup_reg, reg_, kGeneralPurposeRegNum * sizeof(uint64_t));
+  Disassemble(decode_res.addr, decode_res.word, decode_res.index);
 #endif
-
-  const trap::Trap kExecTrap =
-      instruction::kInstructionTable[index].Exec(this, word);
-
   reg_[0] = 0;
-
-#ifdef DEBUG
-  gpr_change_record = 0;
-  for (uint64_t i = 0; i < kGeneralPurposeRegNum; i++) {
-    if (backup_reg[i] != reg_[i]) {
-      gpr_change_record |= (1 << i);
-    }
-  }
-#endif
 
   return kExecTrap;
 }
@@ -309,7 +305,7 @@ void CPU::FlushTlb(const uint64_t vaddr, const uint64_t asid) {
 void CPU::Disassemble(const uint64_t pc, const uint32_t word,
                       const int64_t index) const {
   fmt::print("{:#018x} {:#010x} {}\n", pc, word,
-             instruction::kInstructionTable[index].name);
+             decode::kInstTable[index].name);
 }
 
 void CPU::DumpRegs() const {
@@ -323,18 +319,10 @@ void CPU::DumpRegs() const {
   constexpr int kBiasTable[4] = {0, 8, 16, 24};
 
   for (int i = 0; i < 8; i++) {
-    for (const auto bias : kBiasTable) {
-      const int index = i + bias;
-      if (gpr_change_record & (1 << index)) {
-        fmt::print(
-            "      {:>28}",
-            fmt::format(fmt::bg(fmt::color::green) | fmt::fg(fmt::color::red),
-                        "{}: {:#018x}", abi[index], reg_[index]));
-        //  fmt::bg(fmt::color::green) | fmt::fg(fmt::color::red)
-      } else {
-        fmt::print("{:>28}",
-                   fmt::format("{}: {:#018x}", abi[index], reg_[index]));
-      }
+    for (const auto kBias : kBiasTable) {
+      const int kIndex = i + kBias;
+      fmt::print("{:>28}",
+                 fmt::format("{}: {:#018x}", abi[kIndex], reg_[kIndex]));
     }
     fmt::print("\n");
   }

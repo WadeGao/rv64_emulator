@@ -376,8 +376,8 @@ Trap Mmu::VirtualAddressStore(const uint64_t addr, const uint64_t bytes,
                            cpu::trap::TrapType::kStoreAddressMisaligned);
 
     const Sv39TlbEntry* kTlbEntry = sv39_->GetTlbEntry(kSatpDesc, addr);
-    // D 位在 C906 的硬件实现与 W 属性类似。当 D 位为 0 时，store 会触发 Page
-    // Fault
+    // D 位在 C906 的硬件实现与 W 属性类似。
+    // 当 D 位为 0 时，store 会触发 Page Fault
     if (!kTlbEntry || !kTlbEntry->A || !kTlbEntry->W || !kTlbEntry->D) {
       return {
           .type = cpu::trap::TrapType::kStorePageFault,

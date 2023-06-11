@@ -81,7 +81,6 @@ Checks: >
 WarningsAsErrors: "performance-*, bugprone-*"
 
 HeaderFilterRegex: ".*third_party/*.*"
-HeaderFileExtensions: "h,hh,hpp,hxx,"
 
 CheckOptions:
   - key: readability-identifier-naming.NamespaceCase
@@ -148,3 +147,5 @@ CheckOptions:
     value: 1
   - key: readability-function-cognitive-complexity.Threshold
     value: 20
+  - key: readability-avoid-const-params-in-decls.IgnoreMacros
+    value: true
