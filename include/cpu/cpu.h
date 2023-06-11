@@ -9,6 +9,7 @@
 #include "conf.h"
 #include "cpu/csr.h"
 #include "cpu/decode.h"
+#include "cpu/executor.h"
 #include "cpu/trap.h"
 #include "libs/lru.hpp"
 // #include "mmu.h"
@@ -18,7 +19,12 @@ namespace rv64_emulator {
 namespace mmu {
 class Mmu;
 }
+
 namespace cpu {
+
+namespace executor {
+class Executor;
+};
 
 constexpr uint64_t kGeneralPurposeRegNum = 32;
 constexpr uint64_t kFloatingPointRegNum = 32;
@@ -62,6 +68,7 @@ class CPU {
   +───────────+───────────+────────────────────────────────────+────────+
   */
 
+  std::unique_ptr<executor::Executor> executor_;
   std::unique_ptr<mmu::Mmu> mmu_;
 
   // decode lookaside buffer

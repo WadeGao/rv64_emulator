@@ -5,8 +5,9 @@
 #include "cpu/decode.h"
 #include "cpu/trap.h"
 
-namespace rv64_emulator::cpu::executor {
-
+namespace rv64_emulator::cpu {
+class CPU;
+namespace executor {
 class Executor {
  private:
   CPU* cpu_;
@@ -31,8 +32,8 @@ class Executor {
   trap::Trap SRetExec(const decode::DecodeResDesc desc);
 
  public:
-  explicit Executor(CPU* cpu);
+  void SetProcessor(CPU* cpu);
   trap::Trap Exec(const decode::DecodeResDesc desc);
 };
-
-}  // namespace rv64_emulator::cpu::executor
+}  // namespace executor
+}  // namespace rv64_emulator::cpu

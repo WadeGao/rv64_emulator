@@ -2,11 +2,13 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <tuple>
 
 #include "conf.h"
 #include "cpu/csr.h"
 #include "cpu/decode.h"
+#include "cpu/executor.h"
 #include "cpu/instruction.h"
 #include "cpu/trap.h"
 #include "fmt/core.h"
@@ -52,6 +54,8 @@ CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
   static_assert(
       sizeof(float) == 4,
       "float is not 4 bytes, can't assure the bit width of floating point reg");
+  executor_ = std::make_unique<executor::Executor>();
+  executor_->SetProcessor(this);
   mmu_->SetProcessor(this);
 }
 
@@ -260,9 +264,10 @@ trap::Trap CPU::TickOperate() {
     return kDecodeTrap;
   }
 
-  const trap::Trap kExecTrap =
-      instruction::kInstructionTable[decode_res.index].Exec(this, word);
-
+  const trap::Trap kExecTrap = executor_->Exec(decode_res);
+#ifdef DEBUG
+  Disassemble(decode_res.addr, decode_res.word, decode_res.index);
+#endif
   reg_[0] = 0;
 
   return kExecTrap;
@@ -301,7 +306,7 @@ void CPU::FlushTlb(const uint64_t vaddr, const uint64_t asid) {
 void CPU::Disassemble(const uint64_t pc, const uint32_t word,
                       const int64_t index) const {
   fmt::print("{:#018x} {:#010x} {}\n", pc, word,
-             instruction::kInstructionTable[index].name);
+             decode::kInstTable[index].name);
 }
 
 void CPU::DumpRegs() const {

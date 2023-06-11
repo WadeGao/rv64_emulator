@@ -87,7 +87,7 @@ inline constexpr int64_t GetImm(const T desc) {
   return INT64_MIN;
 }
 
-Executor::Executor(CPU* cpu) : cpu_(cpu) {}
+void Executor::SetProcessor(CPU* cpu) { cpu_ = cpu; }
 
 trap::Trap Executor::RegTypeExec(const decode::DecodeResDesc desc) {
   const auto kRegDesc = *reinterpret_cast<const decode::RTypeDesc*>(&desc.word);
@@ -134,9 +134,9 @@ trap::Trap Executor::RegTypeExec(const decode::DecodeResDesc desc) {
     case decode::InstToken::MULH: {
       const bool kNegativeRes = (kRs1Val < 0) ^ (kRs2Val < 0);
       const uint64_t kAbsRs1Val = std::abs(kRs1Val);
-      const uint64_t kAbsRs2Val = std::abs(kRs1Val);
+      const uint64_t kAbsRs2Val = std::abs(kRs2Val);
       const uint64_t kRes = MulUnsignedHi(kAbsRs1Val, kAbsRs2Val);
-      val = kNegativeRes ? (~kRes + (kRs2Val * kRs2Val == 0)) : kRes;
+      val = kNegativeRes ? (~kRes + (kRs1Val * kRs2Val == 0)) : kRes;
     } break;
     case decode::InstToken::MULHSU: {
       const bool kNegativeRes = kRs1Val < 0;
@@ -352,7 +352,7 @@ trap::Trap Executor::BranchTypeExec(const decode::DecodeResDesc desc) {
   const int64_t kRs2Val = (int64_t)kU64Rs2Val;
   const int64_t kImm = GetImm(kBrDesc);
 
-  uint64_t new_pc = 0;
+  uint64_t new_pc = desc.addr + 4;
   const uint64_t kPredictedPC = desc.addr + kImm;
 
   switch (desc.token) {
@@ -397,7 +397,8 @@ trap::Trap Executor::BranchTypeExec(const decode::DecodeResDesc desc) {
 
 trap::Trap Executor::LoadTypeExec(const decode::DecodeResDesc desc) {
   const auto kImmDesc = *reinterpret_cast<const decode::ITypeDesc*>(&desc.word);
-  const uint64_t kTargetAddr = desc.addr + 4 + kImmDesc.imm;
+  const uint64_t kTargetAddr =
+      (int64_t)cpu_->GetReg(kImmDesc.rs1) + kImmDesc.imm;
 
   const uint64_t kBytes = kAccessMemBytes.at(desc.token);
   uint64_t data = 0;
@@ -453,7 +454,6 @@ trap::Trap Executor::CsrTypeExec(const decode::DecodeResDesc desc) {
   CHECK_CSR_ACCESS_PRIVILEGE(kCsrDesc.imm, writable, cpu_);
 
   const uint64_t kCsrVal = cpu_->state_.Read(kCsrDesc.imm);
-  cpu_->SetReg(kCsrDesc.rd, kCsrVal);
 
   const int64_t kRs1Val = (int64_t)cpu_->GetReg(kCsrDesc.rs1);
   uint64_t new_csr_val = 0;
@@ -480,6 +480,7 @@ trap::Trap Executor::CsrTypeExec(const decode::DecodeResDesc desc) {
       break;
   }
 
+  cpu_->SetReg(kCsrDesc.rd, kCsrVal);
   cpu_->state_.Write(kCsrDesc.imm, new_csr_val);
   return trap::kNoneTrap;
 }
@@ -608,8 +609,10 @@ trap::Trap Executor::SystemTypeExec(const decode::DecodeResDesc desc) {
       break;
     case decode::InstToken::MRET:
       ret = MRetExec(desc);
+      break;
     case decode::InstToken::SRET:
       ret = SRetExec(desc);
+      break;
     default:
       break;
   }
