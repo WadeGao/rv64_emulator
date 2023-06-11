@@ -619,6 +619,11 @@ trap::Trap Executor::SystemTypeExec(const decode::DecodeResDesc desc) {
   return ret;
 }
 
+trap::Trap Executor::FenceTypeExec(const decode::DecodeResDesc desc) {
+  // TODO(wade): implement fence
+  return trap::kNoneTrap;
+}
+
 trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {
   trap::Trap ret = trap::kNoneTrap;
   switch (desc.opcode) {
@@ -657,6 +662,9 @@ trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {
       break;
     case OpCode::kRv32:
       ret = Rv32TypeExec(desc);
+      break;
+    case OpCode::kFence:
+      ret = FenceTypeExec(desc);
       break;
     default:
       break;

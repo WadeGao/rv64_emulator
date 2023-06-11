@@ -18,6 +18,7 @@ enum class OpCode : uint32_t {
   kJalr = 0b1100111,
   kImm32 = 0b0011011,
   kRv32 = 0b0111011,
+  kFence = 0b0001111,
 };
 
 enum class InstToken {
