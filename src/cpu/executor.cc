@@ -515,6 +515,71 @@ trap::Trap Executor::SfenceVmaExec(const decode::DecodeResDesc desc) {
   return trap::kNoneTrap;
 }
 
+trap::Trap Executor::MRetExec(const decode::DecodeResDesc desc) {
+  const uint64_t kOriginMstatusVal = cpu_->state_.Read(csr::kCsrMstatus);
+  const auto kOriginMstatusDesc =
+      *reinterpret_cast<const csr::MstatusDesc*>(&kOriginMstatusVal);
+  if (cpu_->GetPrivilegeMode() < PrivilegeMode::kMachine) {
+    return {
+        .type = trap::TrapType::kIllegalInstruction,
+        .val = desc.addr,
+    };
+  }
+
+  csr::MstatusDesc new_mstatus_desc = kOriginMstatusDesc;
+  new_mstatus_desc.mpp = 0;
+  new_mstatus_desc.mpie = 1;
+  new_mstatus_desc.mie = kOriginMstatusDesc.mpie;
+  new_mstatus_desc.mprv = (static_cast<PrivilegeMode>(kOriginMstatusDesc.mpp) <
+                                   PrivilegeMode::kMachine
+                               ? 0
+                               : kOriginMstatusDesc.mprv);
+
+  const uint64_t kNewMstatusVal =
+      *reinterpret_cast<const uint64_t*>(&new_mstatus_desc);
+  cpu_->state_.Write(csr::kCsrMstatus, kNewMstatusVal);
+  cpu_->SetPrivilegeMode(static_cast<PrivilegeMode>(kOriginMstatusDesc.mpp));
+
+  const uint64_t kNewPc = cpu_->state_.Read(csr::kCsrMepc);
+  cpu_->SetPC(kNewPc);
+
+  return trap::kNoneTrap;
+}
+
+trap::Trap Executor::SRetExec(const decode::DecodeResDesc desc) {
+  const uint64_t kOriginSstatusVal = cpu_->state_.Read(csr::kCsrSstatus);
+  const auto* kOriginSsDesc =
+      reinterpret_cast<const csr::MstatusDesc*>(&kOriginSstatusVal);
+
+  // 当TSR=1时，尝试在s模式下执行SRET将引发非法的指令异常
+  if (cpu_->GetPrivilegeMode() < PrivilegeMode::kSupervisor ||
+      kOriginSsDesc->tsr) {
+    return {
+        .type = trap::TrapType::kIllegalInstruction,
+        .val = desc.addr,
+    };
+  }
+
+  csr::MstatusDesc new_status_desc = *kOriginSsDesc;
+  new_status_desc.spp = 0;
+  new_status_desc.spie = 1;
+  new_status_desc.sie = kOriginSsDesc->spie;
+  new_status_desc.mprv =
+      (static_cast<PrivilegeMode>(kOriginSsDesc->spp) < PrivilegeMode::kMachine)
+          ? 0
+          : kOriginSsDesc->mprv;
+
+  const uint64_t kNewSstatusVal =
+      *reinterpret_cast<const uint64_t*>(&new_status_desc);
+  cpu_->state_.Write(csr::kCsrSstatus, kNewSstatusVal);
+  cpu_->SetPrivilegeMode(static_cast<PrivilegeMode>(kOriginSsDesc->spp));
+
+  const uint64_t kNewPc = cpu_->state_.Read(csr::kCsrSepc);
+  cpu_->SetPC(kNewPc);
+
+  return trap::kNoneTrap;
+}
+
 trap::Trap Executor::SystemTypeExec(const decode::DecodeResDesc desc) {
   trap::Trap ret = trap::kNoneTrap;
   switch (desc.token) {
@@ -541,6 +606,10 @@ trap::Trap Executor::SystemTypeExec(const decode::DecodeResDesc desc) {
     case decode::InstToken::SFENCE_VMA:
       ret = SfenceVmaExec(desc);
       break;
+    case decode::InstToken::MRET:
+      ret = MRetExec(desc);
+    case decode::InstToken::SRET:
+      ret = SRetExec(desc);
     default:
       break;
   }

@@ -27,6 +27,8 @@ class Executor {
   trap::Trap CsrTypeExec(const decode::DecodeResDesc desc);
   trap::Trap ECallExec(const decode::DecodeResDesc desc);
   trap::Trap SfenceVmaExec(const decode::DecodeResDesc desc);
+  trap::Trap MRetExec(const decode::DecodeResDesc desc);
+  trap::Trap SRetExec(const decode::DecodeResDesc desc);
 
  public:
   explicit Executor(CPU* cpu);
