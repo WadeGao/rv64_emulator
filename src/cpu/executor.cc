@@ -70,7 +70,7 @@ const std::unordered_map<decode::InstToken, uint64_t> kAccessMemBytes{
 };
 
 template <typename T>
-static inline constexpr int64_t GetImm(const T desc) {
+inline constexpr int64_t GetImm(const T desc) {
   if constexpr (std::is_same_v<T, decode::BTypeDesc>) {
     return (desc.imm12 << 12) | (desc.imm11 << 11) | (desc.imm10_5 << 5) |
            (desc.imm4_1 << 1);
@@ -484,6 +484,37 @@ trap::Trap Executor::CsrTypeExec(const decode::DecodeResDesc desc) {
   return trap::kNoneTrap;
 }
 
+trap::Trap Executor::ECallExec(const decode::DecodeResDesc desc) {
+  const PrivilegeMode kPrivMode = cpu_->GetPrivilegeMode();
+  trap::TrapType exception_type = trap::TrapType::kNone;
+  switch (kPrivMode) {
+    case PrivilegeMode::kUser:
+      exception_type = trap::TrapType::kEnvironmentCallFromUMode;
+      break;
+    case PrivilegeMode::kSupervisor:
+      exception_type = trap::TrapType::kEnvironmentCallFromSMode;
+      break;
+    case PrivilegeMode::kMachine:
+      exception_type = trap::TrapType::kEnvironmentCallFromMMode;
+      break;
+    case PrivilegeMode::kReserved:
+    default:
+      break;
+  }
+  return {
+      .type = exception_type,
+      .val = desc.addr + 4,
+  };
+}
+
+trap::Trap Executor::SfenceVmaExec(const decode::DecodeResDesc desc) {
+  const auto kDesc = *reinterpret_cast<const decode::RTypeDesc*>(&desc.word);
+  const auto kVirtAddr = (int64_t)cpu_->GetReg(kDesc.rs1);
+  const auto kAsid = (int64_t)cpu_->GetReg(kDesc.rs2);
+  cpu_->FlushTlb(kVirtAddr, kAsid & 0xffff);
+  return trap::kNoneTrap;
+}
+
 trap::Trap Executor::SystemTypeExec(const decode::DecodeResDesc desc) {
   trap::Trap ret = trap::kNoneTrap;
   switch (desc.token) {
@@ -494,6 +525,21 @@ trap::Trap Executor::SystemTypeExec(const decode::DecodeResDesc desc) {
     case decode::InstToken::CSRRSI:
     case decode::InstToken::CSRRCI:
       ret = CsrTypeExec(desc);
+      break;
+    case decode::InstToken::EBREAK:
+      ret = {
+          .type = trap::TrapType::kBreakpoint,
+          .val = desc.addr + 4,
+      };
+      break;
+    case decode::InstToken::ECALL:
+      ret = ECallExec(desc);
+      break;
+    case decode::InstToken::WFI:
+      cpu_->state_.SetWfi(true);
+      break;
+    case decode::InstToken::SFENCE_VMA:
+      ret = SfenceVmaExec(desc);
       break;
     default:
       break;
@@ -523,6 +569,7 @@ trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {
       ret = LoadTypeExec(desc);
       break;
     case OpCode::kSystem:
+      ret = SystemTypeExec(desc);
       break;
     case OpCode::kAuipc:
       ret = AuipcTypeExec(desc);

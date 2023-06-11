@@ -1366,7 +1366,7 @@ const Instruction kInstructionTable[] = {
         .name = "SRET",
         .Exec = [](CPU* cpu, const uint32_t inst_word) -> trap::Trap {
           const uint64_t kOriginSstatusVal = cpu->state_.Read(csr::kCsrSstatus);
-          const csr::MstatusDesc* kOriginSsDesc =
+          const auto* kOriginSsDesc =
               reinterpret_cast<const csr::MstatusDesc*>(&kOriginSstatusVal);
 
           // 当TSR=1时，尝试在s模式下执行SRET将引发非法的指令异常
