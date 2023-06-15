@@ -21,20 +21,6 @@
     };                                                          \
   }
 
-#define LOAD_VIRTUAL_MEMORY(size, vaddr, data, proc)               \
-  uint8_t* ptr = reinterpret_cast<uint8_t*>(&(data));              \
-  const trap::Trap kLoadTrap = (proc)->Load((vaddr), (size), ptr); \
-  if (kLoadTrap.type != trap::TrapType::kNone) {                   \
-    return kLoadTrap;                                              \
-  }
-
-#define STORE_VIRTUAL_MEMORY(size, vaddr, data, proc)                 \
-  const uint8_t* kPtr = reinterpret_cast<const uint8_t*>(&(data));    \
-  const trap::Trap kStoreTrap = (proc)->Store((vaddr), (size), kPtr); \
-  if (kStoreTrap.type != trap::TrapType::kNone) {                     \
-    return kStoreTrap;                                                \
-  }
-
 #define CHECK_CSR_ACCESS_PRIVILEGE(csr_num, write, proc) \
   bool is_privileged = false;                            \
   if (cpu::PrivilegeMode(((csr_num) >> 8) & 0b11) <=     \
@@ -399,10 +385,14 @@ trap::Trap Executor::LoadTypeExec(const decode::DecodeResDesc desc) {
   const auto kImmDesc = *reinterpret_cast<const decode::ITypeDesc*>(&desc.word);
   const uint64_t kTargetAddr =
       (int64_t)cpu_->GetReg(kImmDesc.rs1) + kImmDesc.imm;
-
   const uint64_t kBytes = kAccessMemBytes.at(desc.token);
+
   uint64_t data = 0;
-  LOAD_VIRTUAL_MEMORY(kBytes, kTargetAddr, data, cpu_);
+  const auto kLoadTrap =
+      cpu_->Load(kTargetAddr, kBytes, reinterpret_cast<uint8_t*>(&data));
+  if (kLoadTrap.type != trap::TrapType::kNone) {
+    return kLoadTrap;
+  }
 
   int64_t val = 0;
   switch (desc.token) {
@@ -436,9 +426,14 @@ trap::Trap Executor::StoreTypeExec(const decode::DecodeResDesc desc) {
   const int64_t kRs1Val = (int64_t)cpu_->GetReg(kSDesc.rs1);
   const uint64_t kU64Rs2Val = cpu_->GetReg(kSDesc.rs2);
   const uint64_t kTargetAddr = kRs1Val + GetImm(kSDesc);
-
   const uint64_t kBytes = kAccessMemBytes.at(desc.token);
-  STORE_VIRTUAL_MEMORY(kBytes, kTargetAddr, kU64Rs2Val, cpu_);
+
+  const auto kStoreTrap = cpu_->Store(
+      kTargetAddr, kBytes, reinterpret_cast<const uint8_t*>(&kU64Rs2Val));
+  if (kStoreTrap.type != trap::TrapType::kNone) {
+    return kStoreTrap;
+  }
+
   return trap::kNoneTrap;
 }
 
