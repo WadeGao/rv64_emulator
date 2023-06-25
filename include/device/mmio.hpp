@@ -5,11 +5,6 @@
 
 namespace rv64_emulator::device {
 
-using MmioRange = struct MmioRange {
-  uint64_t base;
-  uint64_t size;
-};
-
 class MmioDevice {
  public:
   virtual bool Load(const uint64_t addr, const uint64_t bytes,
