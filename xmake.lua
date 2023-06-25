@@ -83,3 +83,8 @@ target("unit_test")
     add_files("src/**.cc|rv64_emulator.cc")
     add_deps("gtest")
     add_defines("FMT_HEADER_ONLY")
+
+target("rv_analyzer")
+    set_kind("binary")
+    set_targetdir("build")
+    add_files("tools/rv_analyzer/**.cc" )
