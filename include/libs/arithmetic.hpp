@@ -9,7 +9,7 @@ template <typename T>
 std::enable_if_t<(std::is_unsigned_v<T> && sizeof(T) > sizeof(uint8_t) &&
                   sizeof(T) <= sizeof(uint64_t)),
                  T>
-MulUnsignedHi(const T a, const T b) {
+PortableMulUnsignedHi(const T a, const T b) {
   using type = std::conditional_t<
       (std::is_same_v<T, uint64_t>), uint32_t,
       std::conditional_t<(std::is_same_v<T, uint32_t>), uint16_t, uint8_t>>;
@@ -34,6 +34,22 @@ MulUnsignedHi(const T a, const T b) {
                  (b_x_a_mid >> kTypeBits) + kCarryBit;
 
   return kRes;
+}
+
+template <typename T>
+std::enable_if_t<(std::is_unsigned_v<T> && sizeof(T) > sizeof(uint8_t) &&
+                  sizeof(T) <= sizeof(uint64_t)),
+                 T>
+MulUnsignedHi(const T a, const T b) {
+  if constexpr (std::is_same_v<T, uint64_t>) {
+    T res = 0;
+
+#ifdef __aarch64__
+    asm volatile("umulh %0, %1, %2" : "=r"(res) : "r"(a), "r"(b));
+    return res;
+#endif
+  }
+  return PortableMulUnsignedHi(a, b);
 }
 
 }  // namespace rv64_emulator::libs::arithmetic
