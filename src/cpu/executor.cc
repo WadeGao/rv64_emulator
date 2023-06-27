@@ -7,7 +7,7 @@
 #include "cpu/cpu.h"
 #include "cpu/decode.h"
 #include "cpu/trap.h"
-#include "libs/arithmetic.hpp"
+#include "libs/arithmetic.h"
 #include "libs/utils.h"
 
 #define CHECK_MISALIGN_INSTRUCTION(pc, proc)                    \
@@ -38,7 +38,7 @@
 namespace rv64_emulator::cpu::executor {
 
 using rv64_emulator::cpu::decode::OpCode;
-using rv64_emulator::libs::arithmetic::MulUnsignedHi;
+using rv64_emulator::libs::arithmetic::MulUint64Hi;
 
 const std::unordered_map<decode::InstToken, uint64_t> kAccessMemBytes{
     {decode::InstToken::LB, sizeof(int8_t)},
@@ -121,17 +121,17 @@ trap::Trap Executor::RegTypeExec(const decode::DecodeResDesc desc) {
       const bool kNegativeRes = (kRs1Val < 0) ^ (kRs2Val < 0);
       const uint64_t kAbsRs1Val = std::abs(kRs1Val);
       const uint64_t kAbsRs2Val = std::abs(kRs2Val);
-      const uint64_t kRes = MulUnsignedHi(kAbsRs1Val, kAbsRs2Val);
+      const uint64_t kRes = MulUint64Hi(kAbsRs1Val, kAbsRs2Val);
       val = kNegativeRes ? (~kRes + (kRs1Val * kRs2Val == 0)) : kRes;
     } break;
     case decode::InstToken::MULHSU: {
       const bool kNegativeRes = kRs1Val < 0;
       const uint64_t kAbsRs1Val = std::abs(kRs1Val);
-      const uint64_t kRes = MulUnsignedHi(kAbsRs1Val, kU64Rs2Val);
+      const uint64_t kRes = MulUint64Hi(kAbsRs1Val, kU64Rs2Val);
       val = kNegativeRes ? (~kRes + (kRs1Val * kU64Rs2Val == 0)) : kRes;
     } break;
     case decode::InstToken::MULHU:
-      val = MulUnsignedHi(kU64Rs1Val, kU64Rs2Val);
+      val = MulUint64Hi(kU64Rs1Val, kU64Rs2Val);
       break;
     case decode::InstToken::DIV:
       if (kRs2Val == 0) {

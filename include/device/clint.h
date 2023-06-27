@@ -4,9 +4,7 @@
 
 #include "device/mmio.hpp"
 
-namespace rv64_emulator {
-
-namespace device::clint {
+namespace rv64_emulator::device::clint {
 
 constexpr uint64_t kMsipBase = 0;
 constexpr uint64_t kMtimeCmpBase = 0x4000;
@@ -35,6 +33,4 @@ class Clint : public MmioDevice {
   void Tick();
 };
 
-}  // namespace device::clint
-
-}  // namespace rv64_emulator
+}  // namespace rv64_emulator::device::clint

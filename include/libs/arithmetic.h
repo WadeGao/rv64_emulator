@@ -36,20 +36,6 @@ PortableMulUnsignedHi(const T a, const T b) {
   return kRes;
 }
 
-template <typename T>
-std::enable_if_t<(std::is_unsigned_v<T> && sizeof(T) > sizeof(uint8_t) &&
-                  sizeof(T) <= sizeof(uint64_t)),
-                 T>
-MulUnsignedHi(const T a, const T b) {
-  if constexpr (std::is_same_v<T, uint64_t>) {
-    T res = 0;
-
-#ifdef __aarch64__
-    asm volatile("umulh %0, %1, %2" : "=r"(res) : "r"(a), "r"(b));
-    return res;
-#endif
-  }
-  return PortableMulUnsignedHi(a, b);
-}
+uint64_t MulUint64Hi(uint64_t a, uint64_t b);
 
 }  // namespace rv64_emulator::libs::arithmetic
