@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "libs/arithmetic.hpp"
+#include "libs/arithmetic.h"
 
 namespace rv64_emulator::cpu::csr {
 

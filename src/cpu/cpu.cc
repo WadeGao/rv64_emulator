@@ -12,7 +12,7 @@
 #include "cpu/trap.h"
 #include "fmt/core.h"
 #include "fmt/format.h"
-#include "libs/arithmetic.hpp"
+#include "libs/arithmetic.h"
 #include "libs/lru.hpp"
 #include "libs/utils.h"
 #include "mmu.h"
