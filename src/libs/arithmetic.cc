@@ -23,6 +23,13 @@ uint64_t MulUint64Hi(uint64_t a, uint64_t b) {
   return res;
 #endif
 
+#ifdef __riscv_xlen
+#if __riscv_xlen == 64
+  asm volatile("mulhu %0, %1, %2" : "=r"(res) : "r"(a), "r"(b));
+  return res;
+#endif
+#endif
+
   return PortableMulUnsignedHi(a, b);
 }
 
