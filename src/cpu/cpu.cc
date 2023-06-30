@@ -64,8 +64,7 @@ void CPU::Reset() {
   priv_mode_ = PrivilegeMode::kMachine;
   pc_ = 0;
 
-  memset(reg_, 0, sizeof(reg_));
-  memset(freg_, 0, sizeof(freg_));
+  reg_file_.Reset();
 
   mmu_->Reset();
   dlb_.Reset();
@@ -81,12 +80,6 @@ trap::Trap CPU::Store(const uint64_t addr, const uint64_t bytes,
                       const uint8_t* buffer) {
   return mmu_->VirtualAddressStore(addr, bytes, buffer);
 }
-
-void CPU::SetReg(const uint64_t reg_num, const uint64_t val) {
-  reg_[reg_num] = val;
-}
-
-uint64_t CPU::GetReg(const uint64_t reg_num) const { return reg_[reg_num]; }
 
 void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
   if (trap.type == trap::TrapType::kNone) {
@@ -118,7 +111,7 @@ void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
   const uint64_t kCsrTvecVal = state_.Read(kCsrTvecAddr);
   const uint64_t kTrapPc = trap::GetTrapPC(kCsrTvecVal, kCauseBits.cause);
 
-  SetPC(kTrapPc);
+  pc_ = kTrapPc;
   state_.Write(kCsrEpcAddr, epc);
   state_.Write(kCsrCauseAddr, *reinterpret_cast<const uint64_t*>(&kCauseBits));
   state_.Write(kCstTvalAddr, trap.val);
@@ -153,7 +146,7 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
 
   trap::Trap final_interrupt = {
       .type = trap::TrapType::kNone,
-      .val = GetPC(),
+      .val = pc_,
   };
 
   using libs::util::InterruptBitsToTrap;
@@ -237,7 +230,7 @@ trap::Trap CPU::TickOperate() {
     return trap::kNoneTrap;
   }
 
-  const uint64_t kInstructionAddr = GetPC();
+  const uint64_t kInstructionAddr = pc_;
 
   uint32_t word = 0;
 
@@ -248,7 +241,7 @@ trap::Trap CPU::TickOperate() {
   }
 
   // TODO
-  SetPC(kInstructionAddr + 4);
+  pc_ = kInstructionAddr + 4;
 
   decode::DecodeResDesc decode_res = {
       .opcode = static_cast<decode::OpCode>(
@@ -267,7 +260,7 @@ trap::Trap CPU::TickOperate() {
 #ifdef DEBUG
   Disassemble(decode_res.addr, decode_res.word, decode_res.index);
 #endif
-  reg_[0] = 0;
+  reg_file_.xregs[0] = 0;
 
   return kExecTrap;
 }
@@ -286,11 +279,11 @@ void CPU::Tick(bool meip, bool seip, bool msip, bool mtip, bool update) {
     state_.Write(csr::kCsrMip, *reinterpret_cast<const uint64_t*>(mip_desc));
   }
 
-  const uint64_t kEpc = GetPC();
+  const uint64_t kEpc = pc_;
   const trap::Trap kTrap = TickOperate();
 
   HandleTrap(kTrap, kEpc);
-  HandleInterrupt(GetPC());
+  HandleInterrupt(pc_);
 
   // post exec
   state_.Write(csr::kCsrMinstret, ++instret_);
@@ -321,8 +314,8 @@ void CPU::DumpRegs() const {
   for (int i = 0; i < 8; i++) {
     for (const auto kBias : kBiasTable) {
       const int kIndex = i + kBias;
-      fmt::print("{:>28}",
-                 fmt::format("{}: {:#018x}", abi[kIndex], reg_[kIndex]));
+      fmt::print("{:>28}", fmt::format("{}: {:#018x}", abi[kIndex],
+                                       reg_file_.xregs[kIndex]));
     }
     fmt::print("\n");
   }

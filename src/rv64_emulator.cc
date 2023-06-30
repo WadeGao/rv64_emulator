@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
 
   rv64_emulator::libs::util::LoadElf(reader, cpu.get());
 
-  cpu->SetPC(reader.get_entry());
+  cpu->pc_ = reader.get_entry();
 
   while (true) {
     cpu->Tick(false, false, raw_clint->MachineSoftwareIrq(0),

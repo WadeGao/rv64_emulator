@@ -95,10 +95,10 @@ TEST_F(CpuTest, HandleTrap) {
               reinterpret_cast<const uint8_t*>(&kEcallWord));
   cpu_->state_.Write(rv64_emulator::cpu::csr::kCsrMtvec,
                      kArbitrarilyHandlerVector);
-  cpu_->SetPC(kDramBaseAddr);
+  cpu_->pc_ = kDramBaseAddr;
   cpu_->Tick();
 
-  ASSERT_EQ(kArbitrarilyHandlerVector, cpu_->GetPC());
+  ASSERT_EQ(kArbitrarilyHandlerVector, cpu_->pc_);
 
   const uint64_t kVal = cpu_->state_.Read(rv64_emulator::cpu::csr::kCsrMcause);
   ASSERT_EQ(rv64_emulator::cpu::trap::kTrapToCauseTable.at(
@@ -119,7 +119,7 @@ TEST_F(CpuTest, HandleInterrupt) {
     constexpr uint32_t kAddiWord = 0x00100013;
     cpu_->Store(kDramBaseAddr, sizeof(uint32_t),
                 reinterpret_cast<const uint8_t*>(&kAddiWord));
-    cpu_->SetPC(kDramBaseAddr);
+    cpu_->pc_ = kDramBaseAddr;
 
     const uint64_t kMask = rv64_emulator::libs::util::TrapToMask(t);
 
@@ -131,15 +131,15 @@ TEST_F(CpuTest, HandleInterrupt) {
     cpu_->Tick();
 
     // mie is disabled
-    ASSERT_EQ(kDramBaseAddr + 4, cpu_->GetPC())
+    ASSERT_EQ(kDramBaseAddr + 4, cpu_->pc_)
         << fmt::format("trap type: {}", static_cast<uint64_t>(t));
 
     // enable mie
-    cpu_->SetPC(kDramBaseAddr);
+    cpu_->pc_ = kDramBaseAddr;
     cpu_->state_.Write(rv64_emulator::cpu::csr::kCsrMstatus, 0b1000);
     cpu_->Tick();
 
-    ASSERT_EQ(kArbitrarilyHandlerVector, cpu_->GetPC());
+    ASSERT_EQ(kArbitrarilyHandlerVector, cpu_->pc_);
 
     const rv64_emulator::cpu::csr::CauseDesc kCause = {
         .cause = rv64_emulator::cpu::trap::kTrapToCauseTable.at(t),
@@ -161,13 +161,13 @@ TEST_F(CpuTest, Wfi) {
   const uint32_t kWfiWord = 0x10500073;
   cpu_->Store(kDramBaseAddr, sizeof(uint32_t),
               reinterpret_cast<const uint8_t*>(&kWfiWord));
-  cpu_->SetPC(kDramBaseAddr);
+  cpu_->pc_ = kDramBaseAddr;
   cpu_->Tick();
-  ASSERT_EQ(kDramBaseAddr + 4, cpu_->GetPC());
+  ASSERT_EQ(kDramBaseAddr + 4, cpu_->pc_);
 
   for (int i = 0; i < 10; i++) {
     cpu_->Tick();
-    ASSERT_EQ(kDramBaseAddr + 4, cpu_->GetPC());
+    ASSERT_EQ(kDramBaseAddr + 4, cpu_->pc_);
   }
 
   constexpr auto kTrap =
@@ -178,7 +178,7 @@ TEST_F(CpuTest, Wfi) {
   cpu_->state_.Write(rv64_emulator::cpu::csr::kCsrMstatus, 0x8);
   cpu_->state_.Write(rv64_emulator::cpu::csr::kCsrMtvec, 0);
   cpu_->Tick();
-  ASSERT_EQ(0, cpu_->GetPC());
+  ASSERT_EQ(0, cpu_->pc_);
 }
 
 TEST_F(CpuTest, OfficalTests) {
@@ -208,7 +208,7 @@ TEST_F(CpuTest, OfficalTests) {
     rv64_emulator::libs::util::LoadElf(reader, cpu_.get());
 
     const uint64_t kEntryAddr = reader.get_entry();
-    cpu_->SetPC(kEntryAddr);
+    cpu_->pc_ = kEntryAddr;
 
     const uint64_t kOriginInsrCnt = cpu_->instret_;
     auto start = std::chrono::high_resolution_clock::now();

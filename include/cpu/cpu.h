@@ -1,10 +1,8 @@
 #pragma once
 
 #include <cstdint>
-#include <map>
 #include <memory>
-#include <tuple>
-#include <vector>
+#include <type_traits>
 
 #include "conf.h"
 #include "cpu/csr.h"
@@ -12,7 +10,6 @@
 #include "cpu/executor.h"
 #include "cpu/trap.h"
 #include "libs/lru.hpp"
-// #include "mmu.h"
 
 namespace rv64_emulator {
 
@@ -26,9 +23,6 @@ namespace executor {
 class Executor;
 };
 
-constexpr uint64_t kGeneralPurposeRegNum = 32;
-constexpr uint64_t kFloatingPointRegNum = 32;
-
 enum class PrivilegeMode {
   kUser = 0,
   kSupervisor,
@@ -36,17 +30,37 @@ enum class PrivilegeMode {
   kMachine,
 };
 
+template <typename T, uint32_t N>
+class RegGroup {
+  static_assert(std::is_floating_point_v<T> || std::is_integral_v<T>,
+                "reg group should be number type");
+
+ private:
+  T reg_[N] = {0};
+
+ public:
+  T& operator[](uint32_t index) { return reg_[index]; }
+  const T& operator[](uint32_t index) const { return reg_[index]; }
+  void Reset() { memset(reg_, 0, sizeof(T) * N); }
+};
+
+class RegFile {
+ public:
+  RegGroup<uint64_t, 32> xregs;
+  // F 拓展说明：https://tclin914.github.io/3d45634e/
+  RegGroup<float, 32> fregs;
+
+  void Reset() {
+    xregs.Reset();
+    fregs.Reset();
+  }
+};
+
 class CPU {
  private:
   uint64_t clock_;
   uint64_t instret_;
   PrivilegeMode priv_mode_;
-  uint64_t pc_;
-
-  uint64_t reg_[kGeneralPurposeRegNum] = {0};
-
-  // F 拓展说明：https://tclin914.github.io/3d45634e/
-  float freg_[kFloatingPointRegNum] = {0.0};
 
   /*
   +───────────+───────────+────────────────────────────────────+────────+
@@ -80,7 +94,9 @@ class CPU {
   void HandleInterrupt(const uint64_t inst_addr);
 
  public:
+  uint64_t pc_;
   csr::State state_;
+  RegFile reg_file_;
 
   explicit CPU(std::unique_ptr<mmu::Mmu> mmu);
   void Reset();
@@ -95,12 +111,6 @@ class CPU {
 
   void Tick(bool meip, bool seip, bool msip, bool mtip, bool update);
   void Tick();
-
-  uint64_t GetReg(const uint64_t reg_num) const;
-  void SetReg(const uint64_t reg_num, const uint64_t val);
-
-  uint64_t GetPC() const { return pc_; }
-  void SetPC(const uint64_t new_pc) { pc_ = new_pc; }
 
   PrivilegeMode GetPrivilegeMode() const { return priv_mode_; }
   void SetPrivilegeMode(const PrivilegeMode mode) { priv_mode_ = mode; }
