@@ -3,6 +3,7 @@ add_rules("mode.debug", "mode.release", "mode.minsizerel", "mode.releasedbg", "m
 
 add_cxxflags("-fno-rtti", "-fno-exceptions")
 add_cxxflags("-fdata-sections", "-ffunction-sections")
+add_cxxflags("-fno-unwind-tables", "-fno-asynchronous-unwind-tables", "-fno-ident")
 
 add_includedirs("include")
 add_includedirs("third_party")
