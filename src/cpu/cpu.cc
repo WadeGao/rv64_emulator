@@ -86,7 +86,7 @@ void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
     return;
   }
 
-  const PrivilegeMode kOriginPM = GetPrivilegeMode();
+  const PrivilegeMode kOriginPM = priv_mode_;
 
   const csr::CauseDesc kCauseBits = {
       .cause = trap::kTrapToCauseTable.at(trap.type),
@@ -130,7 +130,7 @@ void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
     state_.Write(kCsrStatusAddr, *reinterpret_cast<const uint64_t*>(&kMsDesc));
   }
 
-  SetPrivilegeMode(kNewPM);
+  priv_mode_ = kNewPM;
 }
 
 void CPU::HandleInterrupt(const uint64_t inst_addr) {
@@ -139,7 +139,7 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
   const uint64_t kMsVal = state_.Read(csr::kCsrMstatus);
   const uint64_t kMidelegVal = state_.Read(csr::kCsrMideleg);
 
-  const auto kCurPM = GetPrivilegeMode();
+  const auto kCurPM = priv_mode_;
   const auto* kMsDesc = reinterpret_cast<const csr::MstatusDesc*>(&kMsVal);
 
   const uint64_t kInterruptBits = kMip & kMie;

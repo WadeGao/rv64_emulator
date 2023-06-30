@@ -268,7 +268,7 @@ Trap Mmu::VirtualFetch(const uint64_t addr, const uint64_t bytes,
       .val = addr,
   };
 
-  const PrivilegeMode kCurMode = cpu_->GetPrivilegeMode();
+  const PrivilegeMode kCurMode = cpu_->priv_mode_;
   // physical addr load
   if (kCurMode == PrivilegeMode::kMachine || kSatpDesc.mode == 0) {
     const bool kSucc = sv39_->Load(addr, bytes, buffer);
@@ -316,7 +316,7 @@ Trap Mmu::VirtualAddressLoad(const uint64_t addr, const uint64_t bytes,
       .val = addr,
   };
 
-  const PrivilegeMode kCurMode = cpu_->GetPrivilegeMode();
+  const PrivilegeMode kCurMode = cpu_->priv_mode_;
   // physical addr load
   if (kSatpDesc.mode == 0 ||
       ((kCurMode == PrivilegeMode::kMachine) &&
@@ -363,7 +363,7 @@ Trap Mmu::VirtualAddressStore(const uint64_t addr, const uint64_t bytes,
       .val = addr,
   };
 
-  const PrivilegeMode kCurMode = cpu_->GetPrivilegeMode();
+  const PrivilegeMode kCurMode = cpu_->priv_mode_;
   // physical addr store
   if (kSatpDesc.mode == 0 ||
       (kCurMode == PrivilegeMode::kMachine &&

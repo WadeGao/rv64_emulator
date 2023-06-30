@@ -60,7 +60,6 @@ class CPU {
  private:
   uint64_t clock_;
   uint64_t instret_;
-  PrivilegeMode priv_mode_;
 
   /*
   +───────────+───────────+────────────────────────────────────+────────+
@@ -97,6 +96,7 @@ class CPU {
   uint64_t pc_;
   csr::State state_;
   RegFile reg_file_;
+  PrivilegeMode priv_mode_;
 
   explicit CPU(std::unique_ptr<mmu::Mmu> mmu);
   void Reset();
@@ -111,9 +111,6 @@ class CPU {
 
   void Tick(bool meip, bool seip, bool msip, bool mtip, bool update);
   void Tick();
-
-  PrivilegeMode GetPrivilegeMode() const { return priv_mode_; }
-  void SetPrivilegeMode(const PrivilegeMode mode) { priv_mode_ = mode; }
 
   void FlushTlb(const uint64_t vaddr, const uint64_t asid);
 

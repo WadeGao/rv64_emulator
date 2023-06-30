@@ -21,18 +21,17 @@
     };                                                          \
   }
 
-#define CHECK_CSR_ACCESS_PRIVILEGE(csr_num, write, proc) \
-  bool is_privileged = false;                            \
-  if (cpu::PrivilegeMode(((csr_num) >> 8) & 0b11) <=     \
-      (proc)->GetPrivilegeMode()) {                      \
-    is_privileged = true;                                \
-  }                                                      \
-  const bool kReadOnly = ((csr_num) >> 10) == 0b11;      \
-  if (!is_privileged || ((write) && kReadOnly)) {        \
-    return {                                             \
-        .type = trap::TrapType::kIllegalInstruction,     \
-        .val = (proc)->pc_ - 4,                          \
-    };                                                   \
+#define CHECK_CSR_ACCESS_PRIVILEGE(csr_num, write, proc)                   \
+  bool is_privileged = false;                                              \
+  if (cpu::PrivilegeMode(((csr_num) >> 8) & 0b11) <= (proc)->priv_mode_) { \
+    is_privileged = true;                                                  \
+  }                                                                        \
+  const bool kReadOnly = ((csr_num) >> 10) == 0b11;                        \
+  if (!is_privileged || ((write) && kReadOnly)) {                          \
+    return {                                                               \
+        .type = trap::TrapType::kIllegalInstruction,                       \
+        .val = (proc)->pc_ - 4,                                            \
+    };                                                                     \
   }
 
 namespace rv64_emulator::cpu::executor {
@@ -481,9 +480,8 @@ trap::Trap Executor::CsrTypeExec(const decode::DecodeResDesc desc) {
 }
 
 trap::Trap Executor::ECallExec(const decode::DecodeResDesc desc) {
-  const PrivilegeMode kPrivMode = cpu_->GetPrivilegeMode();
   trap::TrapType exception_type = trap::TrapType::kNone;
-  switch (kPrivMode) {
+  switch (cpu_->priv_mode_) {
     case PrivilegeMode::kUser:
       exception_type = trap::TrapType::kEnvironmentCallFromUMode;
       break;
@@ -515,7 +513,7 @@ trap::Trap Executor::MRetExec(const decode::DecodeResDesc desc) {
   const uint64_t kOriginMstatusVal = cpu_->state_.Read(csr::kCsrMstatus);
   const auto kOriginMstatusDesc =
       *reinterpret_cast<const csr::MstatusDesc*>(&kOriginMstatusVal);
-  if (cpu_->GetPrivilegeMode() < PrivilegeMode::kMachine) {
+  if (cpu_->priv_mode_ < PrivilegeMode::kMachine) {
     return {
         .type = trap::TrapType::kIllegalInstruction,
         .val = desc.addr,
@@ -534,8 +532,7 @@ trap::Trap Executor::MRetExec(const decode::DecodeResDesc desc) {
   const uint64_t kNewMstatusVal =
       *reinterpret_cast<const uint64_t*>(&new_mstatus_desc);
   cpu_->state_.Write(csr::kCsrMstatus, kNewMstatusVal);
-  cpu_->SetPrivilegeMode(static_cast<PrivilegeMode>(kOriginMstatusDesc.mpp));
-
+  cpu_->priv_mode_ = static_cast<PrivilegeMode>(kOriginMstatusDesc.mpp);
   cpu_->pc_ = cpu_->state_.Read(csr::kCsrMepc);
 
   return trap::kNoneTrap;
@@ -547,8 +544,7 @@ trap::Trap Executor::SRetExec(const decode::DecodeResDesc desc) {
       reinterpret_cast<const csr::MstatusDesc*>(&kOriginSstatusVal);
 
   // 当TSR=1时，尝试在s模式下执行SRET将引发非法的指令异常
-  if (cpu_->GetPrivilegeMode() < PrivilegeMode::kSupervisor ||
-      kOriginSsDesc->tsr) {
+  if (cpu_->priv_mode_ < PrivilegeMode::kSupervisor || kOriginSsDesc->tsr) {
     return {
         .type = trap::TrapType::kIllegalInstruction,
         .val = desc.addr,
@@ -567,8 +563,7 @@ trap::Trap Executor::SRetExec(const decode::DecodeResDesc desc) {
   const uint64_t kNewSstatusVal =
       *reinterpret_cast<const uint64_t*>(&new_status_desc);
   cpu_->state_.Write(csr::kCsrSstatus, kNewSstatusVal);
-  cpu_->SetPrivilegeMode(static_cast<PrivilegeMode>(kOriginSsDesc->spp));
-
+  cpu_->priv_mode_ = static_cast<PrivilegeMode>(kOriginSsDesc->spp);
   cpu_->pc_ = cpu_->state_.Read(csr::kCsrSepc);
 
   return trap::kNoneTrap;
