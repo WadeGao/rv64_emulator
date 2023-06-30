@@ -46,8 +46,8 @@ const std::map<PrivilegeMode, uint64_t> kTvecReg = {
 CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
     : clock_(0),
       instret_(0),
-      priv_mode_(PrivilegeMode::kMachine),
       pc_(0),
+      priv_mode_(PrivilegeMode::kMachine),
       mmu_(std::move(mmu)),
       dlb_(kDecodeCacheEntryNum) {
   static_assert(
