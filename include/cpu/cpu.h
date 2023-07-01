@@ -32,16 +32,20 @@ enum class PrivilegeMode {
 
 template <typename T, uint32_t N>
 class RegGroup {
-  static_assert(std::is_floating_point_v<T> || std::is_integral_v<T>,
+ public:
+  using value_type = typename std::remove_const_t<std::remove_reference_t<T>>;
+  using reference = value_type&;
+  using const_reference = const value_type&;
+  static_assert(std::is_floating_point_v<value_type> ||
+                    std::is_integral_v<value_type>,
                 "reg group should be number type");
 
- private:
-  T reg_[N] = {0};
+  reference operator[](uint32_t index) { return reg_[index]; }
+  const_reference operator[](uint32_t index) const { return reg_[index]; }
+  void Reset() { memset(reg_, 0, sizeof(value_type) * N); }
 
- public:
-  T& operator[](uint32_t index) { return reg_[index]; }
-  const T& operator[](uint32_t index) const { return reg_[index]; }
-  void Reset() { memset(reg_, 0, sizeof(T) * N); }
+ private:
+  value_type reg_[N] = {0};
 };
 
 /*
