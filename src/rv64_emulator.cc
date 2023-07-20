@@ -14,7 +14,7 @@
 #include "device/mmio.hpp"
 #include "device/plic.h"
 #include "device/uart.h"
-#include "elfio/elfio.hpp"
+// #include "elfio/elfio.hpp"
 #include "fmt/core.h"
 #include "libs/utils.h"
 #include "mmu.h"
@@ -52,7 +52,8 @@ int main(int argc, char* argv[]) {
 
   signal(SIGINT, SigintHangler);
 
-  auto dram = std::make_unique<rv64_emulator::device::dram::DRAM>(kDramSize);
+  auto dram =
+      std::make_unique<rv64_emulator::device::dram::DRAM>(kDramSize, argv[1]);
   auto clint = std::make_unique<rv64_emulator::device::clint::Clint>(1);
   auto plic = std::make_unique<rv64_emulator::device::plic::Plic>(1, true, 4);
   auto uart = std::make_unique<rv64_emulator::device::uart::Uart>();
@@ -97,12 +98,13 @@ int main(int argc, char* argv[]) {
   auto mmu = std::make_unique<rv64_emulator::mmu::Mmu>(std::move(sv39));
   auto cpu = std::make_unique<rv64_emulator::cpu::CPU>(std::move(mmu));
 
-  ELFIO::elfio reader;
-  reader.load(argv[1]);
+  // ELFIO::elfio reader;
+  // reader.load(argv[1]);
 
-  rv64_emulator::libs::util::LoadElf(reader, cpu.get());
+  // rv64_emulator::libs::util::LoadElf(reader, cpu.get());
 
-  cpu->pc_ = reader.get_entry();
+  // cpu->pc_ = reader.get_entry();
+  cpu->pc_ = kDramBaseAddr;
 
   while (true) {
     raw_plic->UpdateExt(1, raw_uart->Irq());
