@@ -112,6 +112,8 @@ class Mmu {
   CPU* cpu_;
   std::unique_ptr<Sv39> sv39_;
 
+  bool UsePhysAddr(SatpDesc satp, cpu::csr::MstatusDesc ms);
+
  public:
   explicit Mmu(std::unique_ptr<Sv39> sv39);
   void SetProcessor(CPU* cpu);

@@ -235,6 +235,13 @@ void Sv39::Reset() {
 
 Mmu::Mmu(std::unique_ptr<Sv39> sv39) : cpu_(nullptr), sv39_(std::move(sv39)) {}
 
+bool Mmu::UsePhysAddr(SatpDesc satp, cpu::csr::MstatusDesc ms) {
+  constexpr auto kMach = cpu::PrivilegeMode::kMachine;
+  constexpr auto kMachVal = static_cast<uint64_t>(kMach);
+  return (satp.mode == 0 ||
+          (cpu_->priv_mode_ == kMach && (!ms.mprv || ms.mpp == kMachVal)));
+}
+
 void Mmu::SetProcessor(CPU* cpu) { cpu_ = cpu; }
 
 void Mmu::FlushTlb(const uint64_t vaddr, const uint64_t asid) {
@@ -318,10 +325,7 @@ Trap Mmu::VirtualAddressLoad(const uint64_t addr, const uint64_t bytes,
 
   const PrivilegeMode kCurMode = cpu_->priv_mode_;
   // physical addr load
-  if (kSatpDesc.mode == 0 ||
-      ((kCurMode == PrivilegeMode::kMachine) &&
-       (!kMstatusDesc.mprv ||
-        kMstatusDesc.mpp == static_cast<uint64_t>(PrivilegeMode::kMachine)))) {
+  if (UsePhysAddr(kSatpDesc, kMstatusDesc)) {
     const bool kSucc = sv39_->Load(addr, bytes, buffer);
     return kSucc ? cpu::trap::kNoneTrap : kLoadAccessTrap;
   } else {
@@ -365,10 +369,7 @@ Trap Mmu::VirtualAddressStore(const uint64_t addr, const uint64_t bytes,
 
   const PrivilegeMode kCurMode = cpu_->priv_mode_;
   // physical addr store
-  if (kSatpDesc.mode == 0 ||
-      (kCurMode == PrivilegeMode::kMachine &&
-       (!kMstatusDesc.mprv ||
-        kMstatusDesc.mpp == static_cast<uint64_t>(PrivilegeMode::kMachine)))) {
+  if (UsePhysAddr(kSatpDesc, kMstatusDesc)) {
     const bool kSucc = sv39_->Store(addr, bytes, buffer);
     return kSucc ? cpu::trap::kNoneTrap : kStoreAccessTrap;
   } else {
