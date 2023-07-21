@@ -656,6 +656,41 @@ trap::Trap Executor::AmoLrExec(const decode::DecodeResDesc desc) {
   return trap::kNoneTrap;
 }
 
+trap::Trap Executor::AmoScExec(const decode::DecodeResDesc desc) {
+  const auto kDesc = *reinterpret_cast<const decode::AmoTypeDesc*>(&desc.word);
+  const uint64_t kU64Rs1Val = cpu_->reg_file_.xregs[kDesc.rs1];
+  const uint64_t kU64Rs2Val = cpu_->reg_file_.xregs[kDesc.rs2];
+  const uint32_t kBytes = 1 << kDesc.funct3;
+
+  // address not align to 4 or 8 bytes
+  if (kU64Rs1Val % kBytes != 0) {
+    return {
+        .type = trap::TrapType::kStoreAddressMisaligned,
+        .val = desc.addr,
+    };
+  }
+
+  bool sc_failed = false;
+  if (reservation_.addr != kU64Rs1Val || reservation_.size != kBytes ||
+      !reservation_.valid || reservation_.hart_id != cpu_->hart_id_) {
+    sc_failed = true;
+    // 同一hart的非对应操作
+    if (reservation_.hart_id == cpu_->hart_id_) {
+      reservation_.valid = 0;
+    }
+  } else {
+    reservation_.valid = 0;
+    const auto kScTrap = cpu_->Store(
+        kU64Rs1Val, kBytes, reinterpret_cast<const uint8_t*>(&kU64Rs2Val));
+    if (kScTrap.type != trap::TrapType::kNone) {
+      return kScTrap;
+    }
+  }
+
+  cpu_->reg_file_.xregs[kDesc.rd] = sc_failed ? 1 : 0;
+  return trap::kNoneTrap;
+}
+
 trap::Trap Executor::AmoTypeExec(const decode::DecodeResDesc desc) {
   // An SC can only pair with the most recent LR in program order
   trap::Trap ret = trap::kNoneTrap;
@@ -668,6 +703,10 @@ trap::Trap Executor::AmoTypeExec(const decode::DecodeResDesc desc) {
     case decode::InstToken::LR_W:
     case decode::InstToken::LR_D:
       ret = AmoLrExec(desc);
+      break;
+    case decode::InstToken::SC_W:
+    case decode::InstToken::SC_D:
+      ret = AmoScExec(desc);
       break;
     default:
       break;

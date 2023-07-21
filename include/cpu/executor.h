@@ -44,6 +44,7 @@ class Executor {
 
   // A Extensions
   trap::Trap AmoLrExec(const decode::DecodeResDesc desc);
+  trap::Trap AmoScExec(const decode::DecodeResDesc desc);
 
  public:
   void SetProcessor(CPU* cpu);
