@@ -5,7 +5,7 @@
 
 namespace rv64_emulator::cpu::decode {
 
-uint8_t GetShamt(const ITypeDesc desc, const bool is_rv32) {
+uint8_t GetShamt(ITypeDesc desc, bool is_rv32) {
   // rv64: shamt[5:0] = imm[5:0]
   // rv32: shamt[4:0] = imm[4:0]
   constexpr uint32_t kShamtImm64Mask = 0x3f;

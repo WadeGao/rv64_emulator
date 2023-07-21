@@ -612,6 +612,69 @@ trap::Trap Executor::FenceTypeExec(const decode::DecodeResDesc desc) {
   return trap::kNoneTrap;
 }
 
+trap::Trap Executor::AmoLrExec(const decode::DecodeResDesc desc) {
+  const auto kDesc = *reinterpret_cast<const decode::AmoTypeDesc*>(&desc.word);
+  const uint64_t kU64Rs1Val = cpu_->reg_file_.xregs[kDesc.rs1];
+  const uint64_t kU64Rs2Val = cpu_->reg_file_.xregs[kDesc.rs2];
+
+  // xreg[rs2] != 0
+  if (kU64Rs2Val != 0) {
+    return {
+        .type = trap::TrapType::kIllegalInstruction,
+        .val = desc.addr,
+    };
+  }
+
+  // address not align to 4 or 8 bytes
+  const uint32_t kBytes = 1 << kDesc.funct3;
+  if (kU64Rs1Val % kBytes != 0) {
+    return {
+        .type = trap::TrapType::kLoadAddressMisaligned,
+        .val = desc.addr,
+    };
+  }
+
+  reservation_ = {
+      .addr = kU64Rs1Val,
+      .size = kBytes,
+      .valid = 1,
+      .hart_id = cpu_->hart_id_,
+  };
+
+  int64_t val = 0;
+  const auto kLrTrap =
+      cpu_->Load(kU64Rs1Val, kBytes, reinterpret_cast<uint8_t*>(&val));
+  if (kLrTrap.type != trap::TrapType::kNone) {
+    return kLrTrap;
+  }
+
+  cpu_->reg_file_.xregs[kDesc.rd] = val;
+  if (desc.token == decode::InstToken::LR_W) {
+    cpu_->reg_file_.xregs[kDesc.rd] = (int64_t)(int32_t)(uint32_t)val;
+  }
+
+  return trap::kNoneTrap;
+}
+
+trap::Trap Executor::AmoTypeExec(const decode::DecodeResDesc desc) {
+  // An SC can only pair with the most recent LR in program order
+  trap::Trap ret = trap::kNoneTrap;
+  const auto kDesc = *reinterpret_cast<const decode::AmoTypeDesc*>(&desc.word);
+  const uint64_t kU64Rs1Val = cpu_->reg_file_.xregs[kDesc.rs1];
+  const uint64_t kU64Rs2Val = cpu_->reg_file_.xregs[kDesc.rs2];
+
+  int64_t val = 0;
+  switch (desc.token) {
+    case decode::InstToken::LR_W:
+    case decode::InstToken::LR_D:
+      ret = AmoLrExec(desc);
+      break;
+    default:
+      break;
+  }
+  return ret;
+}
+
 trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {
   trap::Trap ret = trap::kNoneTrap;
   switch (desc.opcode) {
@@ -653,6 +716,9 @@ trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {
       break;
     case OpCode::kFence:
       ret = FenceTypeExec(desc);
+      break;
+    case OpCode::kAmo:
+      ret = AmoTypeExec(desc);
       break;
     default:
       break;

@@ -19,6 +19,7 @@ enum class OpCode : uint32_t {
   kImm32 = 0b0011011,
   kRv32 = 0b0111011,
   kFence = 0b0001111,
+  kAmo = 0b0101111
 };
 
 enum class InstToken {
@@ -101,6 +102,10 @@ enum class InstToken {
   REMUW,
   SRET,
   SFENCE_VMA,
+  LR_W,
+  LR_D,
+  SC_W,
+  SC_D,
 };
 
 using DecodeResDesc = struct DecodeResDesc {
@@ -674,6 +679,34 @@ constexpr InstDesc kInstTable[] = {
         .name = "SFENCE.VMA",
         .token = InstToken::SFENCE_VMA,
     },
+
+    {
+        .mask = 0xf9f0707f,
+        .signature = 0x1000202f,
+        .name = "LR.W",
+        .token = InstToken::LR_W,
+    },
+
+    {
+        .mask = 0xf9f0707f,
+        .signature = 0x1000302f,
+        .name = "LR.D",
+        .token = InstToken::LR_D,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0x1800202f,
+        .name = "SC.W",
+        .token = InstToken::SC_W,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0x1800302f,
+        .name = "SC.D",
+        .token = InstToken::SC_D,
+    },
 };
 
 using BTypeDesc = struct BTypeDesc {
@@ -736,6 +769,17 @@ using ITypeDesc = struct ITypeDesc {
   int32_t imm : 12;
 };
 
-uint8_t GetShamt(const ITypeDesc desc, const bool kRv32Arch /* = false */);
+using AmoTypeDesc = struct AmoTypeDesc {
+  uint32_t opcode : 7;
+  uint32_t rd : 5;
+  uint32_t funct3 : 3;
+  uint32_t rs1 : 5;
+  uint32_t rs2 : 5;
+  uint32_t release : 1;
+  uint32_t acquire : 1;
+  uint32_t funct5 : 5;
+};
+
+uint8_t GetShamt(ITypeDesc desc, bool is_rv32 /* = false */);
 
 }  // namespace rv64_emulator::cpu::decode
