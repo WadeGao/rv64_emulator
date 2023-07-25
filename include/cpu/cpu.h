@@ -93,11 +93,12 @@ class CPU {
 
   trap::Trap TickOperate();
 
-  void HandleTrap(const trap::Trap trap, const uint64_t inst_addr);
+  void HandleTrap(const trap::Trap trap, const uint64_t epc);
   void HandleInterrupt(const uint64_t inst_addr);
 
  public:
   uint64_t pc_;
+  uint32_t hart_id_;
   csr::State state_;
   RegFile reg_file_;
   PrivilegeMode priv_mode_;

@@ -43,10 +43,13 @@ const std::map<PrivilegeMode, uint64_t> kTvecReg = {
     {PrivilegeMode::kUser, csr::kCsrUtvec},
 };
 
+static uint32_t gHartID = 0;
+
 CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
     : clock_(0),
       instret_(0),
       pc_(0),
+      hart_id_(gHartID++),
       priv_mode_(PrivilegeMode::kMachine),
       mmu_(std::move(mmu)),
       dlb_(kDecodeCacheEntryNum) {

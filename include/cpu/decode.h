@@ -19,6 +19,7 @@ enum class OpCode : uint32_t {
   kImm32 = 0b0011011,
   kRv32 = 0b0111011,
   kFence = 0b0001111,
+  kAmo = 0b0101111
 };
 
 enum class InstToken {
@@ -101,6 +102,28 @@ enum class InstToken {
   REMUW,
   SRET,
   SFENCE_VMA,
+  LR_W,
+  LR_D,
+  SC_W,
+  SC_D,
+  AMOSWAP_D,
+  AMOSWAP_W,
+  AMOADD_D,
+  AMOADD_W,
+  AMOXOR_D,
+  AMOXOR_W,
+  AMOAND_D,
+  AMOAND_W,
+  AMOOR_D,
+  AMOOR_W,
+  AMOMIN_D,
+  AMOMIN_W,
+  AMOMAX_D,
+  AMOMAX_W,
+  AMOMINU_D,
+  AMOMINU_W,
+  AMOMAXU_D,
+  AMOMAXU_W,
 };
 
 using DecodeResDesc = struct DecodeResDesc {
@@ -674,6 +697,160 @@ constexpr InstDesc kInstTable[] = {
         .name = "SFENCE.VMA",
         .token = InstToken::SFENCE_VMA,
     },
+
+    {
+        .mask = 0xf9f0707f,
+        .signature = 0x1000202f,
+        .name = "LR.W",
+        .token = InstToken::LR_W,
+    },
+
+    {
+        .mask = 0xf9f0707f,
+        .signature = 0x1000302f,
+        .name = "LR.D",
+        .token = InstToken::LR_D,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0x1800202f,
+        .name = "SC.W",
+        .token = InstToken::SC_W,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0x1800302f,
+        .name = "SC.D",
+        .token = InstToken::SC_D,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0x800302f,
+        .name = "AMOSWAP.D",
+        .token = InstToken::AMOSWAP_D,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0x800202f,
+        .name = "AMOSWAP.W",
+        .token = InstToken::AMOSWAP_W,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0x302f,
+        .name = "AMOADD.D",
+        .token = InstToken::AMOADD_D,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0x202f,
+        .name = "AMOADD.W",
+        .token = InstToken::AMOADD_W,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0x2000302f,
+        .name = "AMOXOR.D",
+        .token = InstToken::AMOXOR_D,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0x2000202f,
+        .name = "AMOXOR.W",
+        .token = InstToken::AMOXOR_W,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0x6000302f,
+        .name = "AMOAND.D",
+        .token = InstToken::AMOAND_D,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0x6000202f,
+        .name = "AMOAND.W",
+        .token = InstToken::AMOAND_W,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0x4000302f,
+        .name = "AMOOR.D",
+        .token = InstToken::AMOOR_D,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0x4000202f,
+        .name = "AMOOR.W",
+        .token = InstToken::AMOOR_W,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0x8000302f,
+        .name = "AMOMIN.D",
+        .token = InstToken::AMOMIN_D,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0x8000202f,
+        .name = "AMOMIN.W",
+        .token = InstToken::AMOMIN_W,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0xa000302f,
+        .name = "AMOMAX.D",
+        .token = InstToken::AMOMAX_D,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0xa000202f,
+        .name = "AMOMAX.W",
+        .token = InstToken::AMOMAX_W,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0xc000302f,
+        .name = "AMOMINU.D",
+        .token = InstToken::AMOMINU_D,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0xc000202f,
+        .name = "AMOMINU.W",
+        .token = InstToken::AMOMINU_W,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0xe000302f,
+        .name = "AMOMAXU.D",
+        .token = InstToken::AMOMAXU_D,
+    },
+
+    {
+        .mask = 0xf800707f,
+        .signature = 0xe000202f,
+        .name = "AMOMAXU.W",
+        .token = InstToken::AMOMAXU_W,
+    },
 };
 
 using BTypeDesc = struct BTypeDesc {
@@ -736,6 +913,17 @@ using ITypeDesc = struct ITypeDesc {
   int32_t imm : 12;
 };
 
-uint8_t GetShamt(const ITypeDesc desc, const bool kRv32Arch /* = false */);
+using AmoTypeDesc = struct AmoTypeDesc {
+  uint32_t opcode : 7;
+  uint32_t rd : 5;
+  uint32_t funct3 : 3;
+  uint32_t rs1 : 5;
+  uint32_t rs2 : 5;
+  uint32_t release : 1;
+  uint32_t acquire : 1;
+  uint32_t funct5 : 5;
+};
+
+uint8_t GetShamt(ITypeDesc desc, bool is_rv32 /* = false */);
 
 }  // namespace rv64_emulator::cpu::decode
