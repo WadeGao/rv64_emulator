@@ -11,7 +11,7 @@ constexpr uint64_t kPlicBase = 0xc000000;
 constexpr uint64_t kPlicAddrSpaceRange = 0x4000000;
 
 constexpr uint64_t kClintBase = 0x2000000;
-constexpr uint64_t kClintAddrSpaceRange = 0xc000;
+constexpr uint64_t kClintAddrSpaceRange = 0x10000;
 
 constexpr uint64_t kUartBase = 0x60100000;
 constexpr uint64_t kUartAddrSpaceRange = 0x1000;
