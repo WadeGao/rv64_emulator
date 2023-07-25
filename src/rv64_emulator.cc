@@ -1,6 +1,7 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include <csignal>
 #include <cstdlib>
 #include <memory>
 #include <thread>

@@ -17,7 +17,7 @@ State::State() : wfi_(false), csr_(kCsrCapacity, 0) {
   misa_desc->F = 0;  // Single-precision floating-point extension implemented
   misa_desc->D = 0;  // Double-precision floating-point extension implemented
   misa_desc->C = 0;  // Compressed extension implemented
-  misa_desc->A = 0;  // Atomic extension implemented
+  misa_desc->A = 1;  // Atomic extension implemented
 
   // set up Mstatus val
   auto* mstatus_desc = reinterpret_cast<MstatusDesc*>(&csr_[kCsrMstatus]);
@@ -68,13 +68,13 @@ void State::Write(const uint64_t addr, const uint64_t val) {
   switch (addr) {
     case kCsrSstatus: {
       const auto* val_desc = reinterpret_cast<const SstatusDesc*>(&val);
-      auto* ms_desc = reinterpret_cast<SstatusDesc*>(&csr_[kCsrMstatus]);
+      auto* ss_desc = reinterpret_cast<SstatusDesc*>(&csr_[kCsrMstatus]);
 
-      ms_desc->sie = val_desc->sie;
-      ms_desc->spie = val_desc->spie;
-      ms_desc->spp = val_desc->spp;
-      ms_desc->sum = val_desc->sum;
-      ms_desc->mxr = val_desc->mxr;
+      ss_desc->sie = val_desc->sie;
+      ss_desc->spie = val_desc->spie;
+      ss_desc->spp = val_desc->spp;
+      ss_desc->sum = val_desc->sum;
+      ss_desc->mxr = val_desc->mxr;
     } break;
     case kCsrMie:
     case kCsrMip:

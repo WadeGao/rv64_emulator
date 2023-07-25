@@ -7,7 +7,7 @@
 namespace rv64_emulator::device::plic {
 
 Plic::Plic(const uint64_t cores, bool is_s_mode, uint64_t device_num)
-    : contexts_(cores * (is_s_mode ? 2 : 1)), dev_num_(device_num) {
+    : contexts_(cores * (is_s_mode ? 2 : 1)), dev_num_(device_num + 1) {
   const uint8_t context_per_hart = is_s_mode ? 2 : 1;
   for (size_t i = 0; i < contexts_.size(); i++) {
     contexts_[i].id = i;

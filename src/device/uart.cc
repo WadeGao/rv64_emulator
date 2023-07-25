@@ -2,12 +2,12 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <mutex>
 #include <queue>
 
-namespace rv64_emulator::device {
-namespace uart {
+namespace rv64_emulator::device::uart {
 
 constexpr uint32_t kTxFifoFull = 0b1000;
 constexpr uint32_t kTxFifoEmpty = 0b0100;
@@ -117,5 +117,4 @@ bool Uart::Irq() {
   return !rx_buffer_.empty() || wait_ack_;
 }
 
-}  // namespace uart
-}  // namespace rv64_emulator::device
+}  // namespace rv64_emulator::device::uart
