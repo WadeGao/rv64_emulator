@@ -260,9 +260,7 @@ trap::Trap CPU::TickOperate() {
   }
 
   const trap::Trap kExecTrap = executor_->Exec(decode_res);
-#ifdef DEBUG
-  Disassemble(decode_res.addr, decode_res.word, decode_res.index);
-#endif
+
   reg_file_.xregs[0] = 0;
 
   return kExecTrap;

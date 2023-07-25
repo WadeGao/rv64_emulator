@@ -65,8 +65,6 @@ static uint64_t GetTagVirtualAddress(const uint64_t vaddr,
 }
 
 static uint64_t GetTagMask(const uint64_t page_size) {
-  // const uint64_t kTagMask =
-  //     UINT64_MAX & (~((uint64_t(1) << (12 + (page_size - 1) * 9)) - 1));
   const uint64_t kTagMask = 0xfffffffffffffff8 << (page_size * 9);
   return kTagMask;
 }
