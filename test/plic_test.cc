@@ -52,7 +52,7 @@ TEST_F(PlicTest, StorePriority) {
     ASSERT_TRUE(plic_->priority_[src_num] == kPriority);
   }
 
-  const uint64_t kAddr = kSourcePriorityBase + 2 * 4;
+  const uint64_t kAddr = kSourcePriorityBase + (plic_->dev_num_ + 1) * 4;
   ASSERT_FALSE(plic_->Store(kAddr, sizeof(kPriority),
                             reinterpret_cast<const uint8_t*>(&kPriority)));
 }
@@ -153,7 +153,7 @@ TEST_F(PlicTest, LoadPriority) {
     ASSERT_EQ(val, kPriority);
   }
 
-  const uint64_t kAddr = kSourcePriorityBase + 2 * 4;
+  const uint64_t kAddr = kSourcePriorityBase + (plic_->dev_num_ + 1) * 4;
   uint32_t val = UINT32_MAX;
   ASSERT_FALSE(
       plic_->Load(kAddr, sizeof(val), reinterpret_cast<uint8_t*>(&val)));

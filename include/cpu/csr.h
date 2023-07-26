@@ -87,6 +87,10 @@ constexpr uint64_t kCsrSatp = 0x180;
 constexpr uint64_t kCsrTselect = 0x7a0;
 constexpr uint64_t kCsrTdata1 = 0x7a1;
 
+constexpr uint64_t kCsrMconfigPtr = 0xf15;
+constexpr uint64_t kCsrScounteren = 0x106;
+constexpr uint64_t kCsrSscratch = 0x140;
+
 using SatpDesc = struct SatpDesc {
   uint64_t ppn : 44;
   uint64_t asid : 16;

@@ -118,6 +118,9 @@ void State::Write(const uint64_t addr, const uint64_t val) {
     case kCsrMArchId:
     case kCsrMImpId:
       break;
+      // FIXME(Wade): fix tvm logic in r/w satp
+    // case kCsrSatp:
+    //   break;
     default:
       csr_[addr] = val;
       break;

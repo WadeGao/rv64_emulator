@@ -98,17 +98,23 @@ void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
 
   const uint64_t kMxdeleg =
       state_.Read(kCauseBits.interrupt ? csr::kCsrMideleg : csr::kCsrMedeleg);
-  const bool kTrapToSMode = (kOriginPM <= PrivilegeMode::kSupervisor &&
-                             (kMxdeleg & (1 << kCauseBits.cause)));
+
+  bool trap_to_s = false;
+  if (priv_mode_ != PrivilegeMode::kMachine) {
+    if ((kMxdeleg & (1 << kCauseBits.cause)) != 0) {
+      trap_to_s = true;
+    }
+  }
+
   const PrivilegeMode kNewPM =
-      kTrapToSMode ? PrivilegeMode::kSupervisor : PrivilegeMode::kMachine;
+      trap_to_s ? PrivilegeMode::kSupervisor : PrivilegeMode::kMachine;
 
   const uint64_t kCsrTvecAddr = kTvecReg.at(kNewPM);
   const uint64_t kCsrEpcAddr = kEpcReg.at(kNewPM);
   const uint64_t kCsrCauseAddr = kCauseReg.at(kNewPM);
   const uint64_t kCstTvalAddr = kTvalReg.at(kNewPM);
   const uint64_t kCsrStatusAddr =
-      kTrapToSMode ? csr::kCsrSstatus : csr::kCsrMstatus;
+      trap_to_s ? csr::kCsrSstatus : csr::kCsrMstatus;
 
   const uint64_t kStatus = state_.Read(kCsrStatusAddr);
   const uint64_t kCsrTvecVal = state_.Read(kCsrTvecAddr);
@@ -119,7 +125,7 @@ void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
   state_.Write(kCsrCauseAddr, *reinterpret_cast<const uint64_t*>(&kCauseBits));
   state_.Write(kCstTvalAddr, trap.val);
 
-  if (kTrapToSMode) {
+  if (trap_to_s) {
     auto kSsDesc = *reinterpret_cast<const csr::SstatusDesc*>(&kStatus);
     kSsDesc.spie = kSsDesc.sie;
     kSsDesc.sie = 0;
@@ -263,6 +269,10 @@ trap::Trap CPU::TickOperate() {
 
   reg_file_.xregs[0] = 0;
 
+  // TODO(Wade): delete the debug log
+  if (pc_ == 0x80c05cb8 + 4) {
+    printf("instr: 0x%llx; a4: 0x%llx\n", word, reg_file_.xregs[14]);
+  }
   return kExecTrap;
 }
 
