@@ -269,10 +269,6 @@ trap::Trap CPU::TickOperate() {
 
   reg_file_.xregs[0] = 0;
 
-  // TODO(Wade): delete the debug log
-  if (pc_ == 0x80c05cb8 + 4) {
-    printf("instr: 0x%llx; a4: 0x%llx\n", word, reg_file_.xregs[14]);
-  }
   return kExecTrap;
 }
 

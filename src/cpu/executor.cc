@@ -462,9 +462,9 @@ trap::Trap Executor::CsrTypeExec(const decode::DecodeResDesc desc) {
       *reinterpret_cast<const decode::CsrTypeDesc*>(&desc.word);
 
   // TODO(Wade): test if nothing bad happened after fix satp tvm
-  //  if (kAllowedCsrs.find(kCsrDesc.imm) == kAllowedCsrs.end()) {
-  //    return ILL_TRAP(desc.word);
-  //  }
+  // if (kAllowedCsrs.find(kCsrDesc.imm) == kAllowedCsrs.end()) {
+  //   return ILL_TRAP(desc.word);
+  // }
 
   bool writable = kCsrDesc.rs1 != 0;
   if (desc.token == decode::InstToken::CSRRW ||

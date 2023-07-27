@@ -119,8 +119,14 @@ void State::Write(const uint64_t addr, const uint64_t val) {
     case kCsrMImpId:
       break;
       // FIXME(Wade): fix tvm logic in r/w satp
-    // case kCsrSatp:
-    //   break;
+    case kCsrSatp: {
+      auto new_satp = *reinterpret_cast<const SatpDesc*>(&val);
+      const auto old_satp = *reinterpret_cast<const SatpDesc*>(&csr_[addr]);
+      if (new_satp.mode != 0 && new_satp.mode != 8) {
+        new_satp.mode = old_satp.mode;
+      }
+      csr_[addr] = *reinterpret_cast<uint64_t*>(&new_satp);
+    } break;
     default:
       csr_[addr] = val;
       break;
