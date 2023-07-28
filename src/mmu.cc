@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <memory>
 
 #include "cpu/cpu.h"
 #include "cpu/csr.h"
@@ -69,7 +70,7 @@ static uint64_t GetTagMask(const uint64_t page_size) {
   return kTagMask;
 }
 
-Sv39::Sv39(std::unique_ptr<Bus> bus) : index_(0), bus_(std::move(bus)) {
+Sv39::Sv39(std::shared_ptr<Bus>& bus) : index_(0), bus_(bus) {
   memset(tlb_, 0, sizeof(tlb_));
 }
 

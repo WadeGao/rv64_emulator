@@ -86,7 +86,7 @@ class Sv39 : public MmioDevice {
   uint64_t index_;
   Sv39TlbEntry tlb_[kTlbSize];
 
-  std::unique_ptr<Bus> bus_;
+  std::shared_ptr<Bus> bus_;
 
   Sv39TlbEntry* LookUpTlb(const SatpDesc satp, const uint64_t vaddr);
 
@@ -94,7 +94,7 @@ class Sv39 : public MmioDevice {
                      Sv39PageTableEntry* pte, uint64_t* page_size);
 
  public:
-  explicit Sv39(std::unique_ptr<Bus> bus);
+  explicit Sv39(std::shared_ptr<Bus>& bus);
 
   Sv39TlbEntry* GetTlbEntry(const SatpDesc satp, const uint64_t vaddr);
 

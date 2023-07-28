@@ -53,9 +53,7 @@ CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
       priv_mode_(PrivilegeMode::kMachine),
       mmu_(std::move(mmu)),
       dlb_(kDecodeCacheEntryNum) {
-  static_assert(
-      sizeof(float) == 4,
-      "float is not 4 bytes, can't assure the bit width of floating point reg");
+  reg_file_.xregs[10] = hart_id_;
   executor_ = std::make_unique<executor::Executor>();
   executor_->SetProcessor(this);
   mmu_->SetProcessor(this);

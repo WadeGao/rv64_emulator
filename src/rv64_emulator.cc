@@ -15,7 +15,6 @@
 #include "device/mmio.hpp"
 #include "device/plic.h"
 #include "device/uart.h"
-// #include "elfio/elfio.hpp"
 #include "fmt/core.h"
 #include "libs/utils.h"
 #include "mmu.h"
@@ -45,6 +44,13 @@ void SigintHangler(int x) {
   send_ctrl_c = true;
 }
 
+std::unique_ptr<rv64_emulator::cpu::CPU> MakeCPU(
+    std::shared_ptr<rv64_emulator::device::bus::Bus>& bus) {
+  auto sv39 = std::make_unique<rv64_emulator::mmu::Sv39>(bus);
+  auto mmu = std::make_unique<rv64_emulator::mmu::Mmu>(std::move(sv39));
+  return std::make_unique<rv64_emulator::cpu::CPU>(std::move(mmu));
+}
+
 int main(int argc, char* argv[]) {
   if (argc != 2) {
     fmt::print("{} error: no input elf file\n", argv[0]);
@@ -56,7 +62,7 @@ int main(int argc, char* argv[]) {
   auto dram =
       std::make_unique<rv64_emulator::device::dram::DRAM>(kDramSize, argv[1]);
   auto clint = std::make_unique<rv64_emulator::device::clint::Clint>(1);
-  auto plic = std::make_unique<rv64_emulator::device::plic::Plic>(1, true, 4);
+  auto plic = std::make_unique<rv64_emulator::device::plic::Plic>(1, true, 2);
   auto uart = std::make_unique<rv64_emulator::device::uart::Uart>();
 
   auto raw_clint = clint.get();
@@ -71,7 +77,7 @@ int main(int argc, char* argv[]) {
   });
   oscillator.detach();
 
-  auto bus = std::make_unique<rv64_emulator::device::bus::Bus>();
+  auto bus = std::make_shared<rv64_emulator::device::bus::Bus>();
   bus->MountDevice({
       .base = kDramBaseAddr,
       .size = kDramSize,
@@ -95,23 +101,15 @@ int main(int argc, char* argv[]) {
 
   std::thread uart_input_thread(UartInput, raw_uart);
 
-  auto sv39 = std::make_unique<rv64_emulator::mmu::Sv39>(std::move(bus));
-  auto mmu = std::make_unique<rv64_emulator::mmu::Mmu>(std::move(sv39));
-  auto cpu = std::make_unique<rv64_emulator::cpu::CPU>(std::move(mmu));
+  auto cpu1 = MakeCPU(bus);
 
-  // ELFIO::elfio reader;
-  // reader.load(argv[1]);
-
-  // rv64_emulator::libs::util::LoadElf(reader, cpu.get());
-
-  // cpu->pc_ = reader.get_entry();
-  cpu->pc_ = kDramBaseAddr;
+  cpu1->pc_ = kDramBaseAddr;
 
   while (true) {
     raw_plic->UpdateExt(1, raw_uart->Irq());
-    cpu->Tick(raw_plic->GetInterrupt(0), raw_plic->GetInterrupt(1),
-              raw_clint->MachineSoftwareIrq(0), raw_clint->MachineTimerIrq(0),
-              true);
+    cpu1->Tick(raw_plic->GetInterrupt(0), raw_plic->GetInterrupt(1),
+               raw_clint->MachineSoftwareIrq(0), raw_clint->MachineTimerIrq(0),
+               true);
     while (raw_uart->TxBufferNotEmpty()) {
       const char c = raw_uart->Getc();
       fmt::print("{}", c);
