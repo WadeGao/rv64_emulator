@@ -69,14 +69,6 @@ int main(int argc, char* argv[]) {
   auto raw_uart = uart.get();
   auto raw_plic = plic.get();
 
-  std::thread oscillator([raw_clint] {
-    while (true) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      raw_clint->Tick();
-    }
-  });
-  oscillator.detach();
-
   auto bus = std::make_shared<rv64_emulator::device::bus::Bus>();
   bus->MountDevice({
       .base = kDramBaseAddr,
@@ -106,12 +98,13 @@ int main(int argc, char* argv[]) {
   cpu1->pc_ = kDramBaseAddr;
 
   while (true) {
+    raw_clint->Tick();
     raw_plic->UpdateExt(1, raw_uart->Irq());
     cpu1->Tick(raw_plic->GetInterrupt(0), raw_plic->GetInterrupt(1),
                raw_clint->MachineSoftwareIrq(0), raw_clint->MachineTimerIrq(0),
                true);
     while (raw_uart->TxBufferNotEmpty()) {
-      const char c = raw_uart->Getc();
+      char c = raw_uart->Getc();
       fmt::print("{}", c);
     }
     if (send_ctrl_c) {

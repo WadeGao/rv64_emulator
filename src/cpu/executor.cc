@@ -462,9 +462,18 @@ trap::Trap Executor::CsrTypeExec(const decode::DecodeResDesc desc) {
       *reinterpret_cast<const decode::CsrTypeDesc*>(&desc.word);
 
   // TODO(Wade): test if nothing bad happened after fix satp tvm
-  // if (kAllowedCsrs.find(kCsrDesc.imm) == kAllowedCsrs.end()) {
-  //   return ILL_TRAP(desc.word);
-  // }
+  if (kAllowedCsrs.find(kCsrDesc.imm) == kAllowedCsrs.end()) {
+    return ILL_TRAP(desc.word);
+  }
+
+  if (kCsrDesc.imm == csr::kCsrSatp) {
+    const uint64_t kMstatusVal = cpu_->state_.Read(csr::kCsrMstatus);
+    const auto kMstatusDesc =
+        *reinterpret_cast<const csr::MstatusDesc*>(&kMstatusVal);
+    if (cpu_->priv_mode_ == PrivilegeMode::kSupervisor && kMstatusDesc.tvm) {
+      return ILL_TRAP(desc.word);
+    }
+  }
 
   bool writable = kCsrDesc.rs1 != 0;
   if (desc.token == decode::InstToken::CSRRW ||
@@ -526,6 +535,14 @@ trap::Trap Executor::ECallExec(const decode::DecodeResDesc desc) {
 }
 
 trap::Trap Executor::SfenceVmaExec(const decode::DecodeResDesc desc) {
+  const uint64_t kMstatusVal = cpu_->state_.Read(csr::kCsrMstatus);
+  const auto kMstatusDesc =
+      *reinterpret_cast<const csr::MstatusDesc*>(&kMstatusVal);
+  if (cpu_->priv_mode_ < PrivilegeMode::kSupervisor ||
+      (cpu_->priv_mode_ == PrivilegeMode::kSupervisor && kMstatusDesc.tvm)) {
+    return ILL_TRAP(desc.word);
+  }
+
   const auto kDesc = *reinterpret_cast<const decode::RTypeDesc*>(&desc.word);
   const auto kVirtAddr = (int64_t)cpu_->reg_file_.xregs[kDesc.rs1];
   const auto kAsid = (int64_t)cpu_->reg_file_.xregs[kDesc.rs2];
@@ -608,7 +625,7 @@ trap::Trap Executor::SystemTypeExec(const decode::DecodeResDesc desc) {
       ret = ECallExec(desc);
       break;
     case decode::InstToken::WFI:
-      cpu_->state_.SetWfi(true);
+      // cpu_->state_.SetWfi(true);
       break;
     case decode::InstToken::SFENCE_VMA:
       ret = SfenceVmaExec(desc);

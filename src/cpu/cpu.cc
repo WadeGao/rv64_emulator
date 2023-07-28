@@ -124,17 +124,17 @@ void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
   state_.Write(kCstTvalAddr, trap.val);
 
   if (trap_to_s) {
-    auto kSsDesc = *reinterpret_cast<const csr::SstatusDesc*>(&kStatus);
-    kSsDesc.spie = kSsDesc.sie;
-    kSsDesc.sie = 0;
-    kSsDesc.spp = static_cast<uint64_t>(kOriginPM);
-    state_.Write(kCsrStatusAddr, *reinterpret_cast<const uint64_t*>(&kSsDesc));
+    auto ss_desc = *reinterpret_cast<const csr::SstatusDesc*>(&kStatus);
+    ss_desc.spie = ss_desc.sie;
+    ss_desc.sie = 0;
+    ss_desc.spp = static_cast<uint64_t>(kOriginPM);
+    state_.Write(kCsrStatusAddr, *reinterpret_cast<const uint64_t*>(&ss_desc));
   } else {
-    auto kMsDesc = *reinterpret_cast<const csr::MstatusDesc*>(&kStatus);
-    kMsDesc.mpie = kMsDesc.mie;
-    kMsDesc.mie = 0;
-    kMsDesc.mpp = static_cast<uint64_t>(kOriginPM);
-    state_.Write(kCsrStatusAddr, *reinterpret_cast<const uint64_t*>(&kMsDesc));
+    auto ms_desc = *reinterpret_cast<const csr::MstatusDesc*>(&kStatus);
+    ms_desc.mpie = ms_desc.mie;
+    ms_desc.mie = 0;
+    ms_desc.mpp = static_cast<uint64_t>(kOriginPM);
+    state_.Write(kCsrStatusAddr, *reinterpret_cast<const uint64_t*>(&ms_desc));
   }
 
   priv_mode_ = kNewPM;
