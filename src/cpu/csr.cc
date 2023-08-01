@@ -10,14 +10,11 @@ State::State() : wfi_(false), csr_(kCsrCapacity, 0) {
   // set up MISA description
   auto* misa_desc = reinterpret_cast<MisaDesc*>(&csr_[kCsrMisa]);
   misa_desc->mxl = static_cast<uint64_t>(RiscvMXL::kRv64);
-  misa_desc->U = 1;  // User mode implemented
-  misa_desc->S = 1;  // Supervisor mode implemented
-  misa_desc->M = 1;  // Integer Multiply/Divide extension implemented
   misa_desc->I = 1;  // RV32I/64I/128I base ISA implemented
-  misa_desc->F = 0;  // Single-precision floating-point extension implemented
-  misa_desc->D = 0;  // Double-precision floating-point extension implemented
-  misa_desc->C = 0;  // Compressed extension implemented
+  misa_desc->M = 1;  // Integer Multiply/Divide extension implemented
   misa_desc->A = 1;  // Atomic extension implemented
+  misa_desc->S = 1;  // Supervisor mode implemented
+  misa_desc->U = 1;  // User mode implemented
 
   // set up Mstatus val
   auto* mstatus_desc = reinterpret_cast<MstatusDesc*>(&csr_[kCsrMstatus]);

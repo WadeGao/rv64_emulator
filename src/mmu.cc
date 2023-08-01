@@ -182,6 +182,7 @@ Sv39TlbEntry* Sv39::GetTlbEntry(const SatpDesc satp, const uint64_t vaddr) {
   tlb_[index_] = {
       .ppn = GetPpnByPageTableEntry(&pte),
       .tag = GetTagVirtualAddress(vaddr, out_size),
+      .asid = satp.asid,
       .R = pte.R,
       .W = pte.W,
       .X = pte.X,
@@ -189,7 +190,6 @@ Sv39TlbEntry* Sv39::GetTlbEntry(const SatpDesc satp, const uint64_t vaddr) {
       .G = pte.G,
       .A = pte.A,
       .D = pte.D,
-      .asid = satp.asid,
       .page_size = kTlbPageSizeField,
   };
 
@@ -366,11 +366,11 @@ Trap Mmu::VirtualAddressStore(const uint64_t addr, const uint64_t bytes,
       .val = addr,
   };
 
-  const PrivilegeMode kCurMode = cpu_->priv_mode_;
+  const auto kCurMode = cpu_->priv_mode_;
+  bool store_succ = false;
   // physical addr store
   if (UsePhysAddr(kSatpDesc, kMstatusDesc)) {
-    const bool kSucc = sv39_->Store(addr, bytes, buffer);
-    return kSucc ? cpu::trap::kNoneTrap : kStoreAccessTrap;
+    store_succ = sv39_->Store(addr, bytes, buffer);
   } else {
     CHECK_RANGE_PAGE_ALIGN(addr, bytes,
                            cpu::trap::TrapType::kStoreAddressMisaligned);
@@ -389,12 +389,10 @@ Trap Mmu::VirtualAddressStore(const uint64_t addr, const uint64_t bytes,
                                           addr, Store);
 
     const uint64_t kPhysicalAddr = MapVirtualAddress(kTlbEntry, addr);
-
-    const bool kSucc = sv39_->Store(kPhysicalAddr, bytes, buffer);
-    return kSucc ? cpu::trap::kNoneTrap : kStoreAccessTrap;
+    store_succ = sv39_->Store(kPhysicalAddr, bytes, buffer);
   }
 
-  return kStoreAccessTrap;
+  return store_succ ? cpu::trap::kNoneTrap : kStoreAccessTrap;
 }
 
 void Mmu::Reset() { sv39_->Reset(); }

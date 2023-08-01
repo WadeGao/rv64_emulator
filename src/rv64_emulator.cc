@@ -2,6 +2,7 @@
 #include <unistd.h>
 
 #include <csignal>
+#include <cstdio>
 #include <cstdlib>
 #include <memory>
 #include <thread>
@@ -19,6 +20,7 @@
 #include "libs/utils.h"
 #include "mmu.h"
 
+bool delay_cr = false;
 bool send_ctrl_c = false;
 
 void UartInput(rv64_emulator::device::uart::Uart* uart) {
@@ -103,10 +105,21 @@ int main(int argc, char* argv[]) {
     cpu1->Tick(raw_plic->GetInterrupt(0), raw_plic->GetInterrupt(1),
                raw_clint->MachineSoftwareIrq(0), raw_clint->MachineTimerIrq(0),
                true);
+
     while (raw_uart->TxBufferNotEmpty()) {
-      char c = raw_uart->Getc();
-      fmt::print("{}", c);
+      char ch = raw_uart->Getc();
+      if (ch == '\r') {
+        delay_cr = true;
+      } else {
+        if (delay_cr && ch != '\n') {
+          fmt::print("\r");
+        }
+        fmt::print("{}", ch);
+        fflush(stdout);
+        delay_cr = false;
+      }
     }
+
     if (send_ctrl_c) {
       raw_uart->Putc(3);
       send_ctrl_c = false;

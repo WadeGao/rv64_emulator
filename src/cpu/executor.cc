@@ -461,7 +461,6 @@ trap::Trap Executor::CsrTypeExec(const decode::DecodeResDesc desc) {
   const auto kCsrDesc =
       *reinterpret_cast<const decode::CsrTypeDesc*>(&desc.word);
 
-  // TODO(Wade): test if nothing bad happened after fix satp tvm
   if (kAllowedCsrs.find(kCsrDesc.imm) == kAllowedCsrs.end()) {
     return ILL_TRAP(desc.word);
   }
