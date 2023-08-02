@@ -53,9 +53,7 @@ CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
       priv_mode_(PrivilegeMode::kMachine),
       mmu_(std::move(mmu)),
       dlb_(kDecodeCacheEntryNum) {
-  static_assert(
-      sizeof(float) == 4,
-      "float is not 4 bytes, can't assure the bit width of floating point reg");
+  reg_file_.xregs[10] = hart_id_;
   executor_ = std::make_unique<executor::Executor>();
   executor_->SetProcessor(this);
   mmu_->SetProcessor(this);
@@ -98,17 +96,23 @@ void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
 
   const uint64_t kMxdeleg =
       state_.Read(kCauseBits.interrupt ? csr::kCsrMideleg : csr::kCsrMedeleg);
-  const bool kTrapToSMode = (kOriginPM <= PrivilegeMode::kSupervisor &&
-                             (kMxdeleg & (1 << kCauseBits.cause)));
+
+  bool trap_to_s = false;
+  if (priv_mode_ != PrivilegeMode::kMachine) {
+    if ((kMxdeleg & (1 << kCauseBits.cause)) != 0) {
+      trap_to_s = true;
+    }
+  }
+
   const PrivilegeMode kNewPM =
-      kTrapToSMode ? PrivilegeMode::kSupervisor : PrivilegeMode::kMachine;
+      trap_to_s ? PrivilegeMode::kSupervisor : PrivilegeMode::kMachine;
 
   const uint64_t kCsrTvecAddr = kTvecReg.at(kNewPM);
   const uint64_t kCsrEpcAddr = kEpcReg.at(kNewPM);
   const uint64_t kCsrCauseAddr = kCauseReg.at(kNewPM);
   const uint64_t kCstTvalAddr = kTvalReg.at(kNewPM);
   const uint64_t kCsrStatusAddr =
-      kTrapToSMode ? csr::kCsrSstatus : csr::kCsrMstatus;
+      trap_to_s ? csr::kCsrSstatus : csr::kCsrMstatus;
 
   const uint64_t kStatus = state_.Read(kCsrStatusAddr);
   const uint64_t kCsrTvecVal = state_.Read(kCsrTvecAddr);
@@ -119,18 +123,18 @@ void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
   state_.Write(kCsrCauseAddr, *reinterpret_cast<const uint64_t*>(&kCauseBits));
   state_.Write(kCstTvalAddr, trap.val);
 
-  if (kTrapToSMode) {
-    auto kSsDesc = *reinterpret_cast<const csr::SstatusDesc*>(&kStatus);
-    kSsDesc.spie = kSsDesc.sie;
-    kSsDesc.sie = 0;
-    kSsDesc.spp = static_cast<uint64_t>(kOriginPM);
-    state_.Write(kCsrStatusAddr, *reinterpret_cast<const uint64_t*>(&kSsDesc));
+  if (trap_to_s) {
+    auto ss_desc = *reinterpret_cast<const csr::SstatusDesc*>(&kStatus);
+    ss_desc.spie = ss_desc.sie;
+    ss_desc.sie = 0;
+    ss_desc.spp = static_cast<uint64_t>(kOriginPM);
+    state_.Write(kCsrStatusAddr, *reinterpret_cast<const uint64_t*>(&ss_desc));
   } else {
-    auto kMsDesc = *reinterpret_cast<const csr::MstatusDesc*>(&kStatus);
-    kMsDesc.mpie = kMsDesc.mie;
-    kMsDesc.mie = 0;
-    kMsDesc.mpp = static_cast<uint64_t>(kOriginPM);
-    state_.Write(kCsrStatusAddr, *reinterpret_cast<const uint64_t*>(&kMsDesc));
+    auto ms_desc = *reinterpret_cast<const csr::MstatusDesc*>(&kStatus);
+    ms_desc.mpie = ms_desc.mie;
+    ms_desc.mie = 0;
+    ms_desc.mpp = static_cast<uint64_t>(kOriginPM);
+    state_.Write(kCsrStatusAddr, *reinterpret_cast<const uint64_t*>(&ms_desc));
   }
 
   priv_mode_ = kNewPM;
@@ -304,7 +308,7 @@ void CPU::Disassemble(const uint64_t pc, const uint32_t word,
 
 void CPU::DumpRegs() const {
   // Application Binary Interface registers
-  const char* abi[] = {
+  constexpr char* abi[] = {
       "zero", "ra", "sp", "gp", "tp",  "t0",  "t1", "t2", "s0", "s1", "a0",
       "a1",   "a2", "a3", "a4", "a5",  "a6",  "a7", "s2", "s3", "s4", "s5",
       "s6",   "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6",

@@ -46,7 +46,7 @@ class CpuTest : public testing::Test {
       }
     });
 
-    auto bus = std::make_unique<rv64_emulator::device::bus::Bus>();
+    auto bus = std::make_shared<rv64_emulator::device::bus::Bus>();
     bus->MountDevice({
         .base = kDramBaseAddr,
         .size = kDramSize,
@@ -58,7 +58,7 @@ class CpuTest : public testing::Test {
         .dev = std::move(clint),
     });
 
-    auto sv39 = std::make_unique<rv64_emulator::mmu::Sv39>(std::move(bus));
+    auto sv39 = std::make_unique<rv64_emulator::mmu::Sv39>(bus);
     auto mmu = std::make_unique<rv64_emulator::mmu::Mmu>(std::move(sv39));
     auto cpu = std::make_unique<rv64_emulator::cpu::CPU>(std::move(mmu));
     cpu_ = std::move(cpu);

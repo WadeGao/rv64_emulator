@@ -27,8 +27,9 @@ enum class AddressMode {
 };
 
 using Sv39TlbEntry = struct Sv39TlbEntry {
-  uint64_t ppn;    // 56 bits
-  uint64_t tag;    // 52 bits
+  uint64_t ppn;
+  uint64_t tag;
+  uint64_t asid : 16;
   uint64_t R : 1;  // read
   uint64_t W : 1;  // write
   uint64_t X : 1;  // execute
@@ -36,7 +37,6 @@ using Sv39TlbEntry = struct Sv39TlbEntry {
   uint64_t G : 1;  // global
   uint64_t A : 1;  // access
   uint64_t D : 1;  // dirty
-  uint64_t asid : 16;
 
   // 0: invalid
   // 1: 4KB
@@ -86,7 +86,7 @@ class Sv39 : public MmioDevice {
   uint64_t index_;
   Sv39TlbEntry tlb_[kTlbSize];
 
-  std::unique_ptr<Bus> bus_;
+  std::shared_ptr<Bus> bus_;
 
   Sv39TlbEntry* LookUpTlb(const SatpDesc satp, const uint64_t vaddr);
 
@@ -94,7 +94,7 @@ class Sv39 : public MmioDevice {
                      Sv39PageTableEntry* pte, uint64_t* page_size);
 
  public:
-  explicit Sv39(std::unique_ptr<Bus> bus);
+  explicit Sv39(std::shared_ptr<Bus>& bus);
 
   Sv39TlbEntry* GetTlbEntry(const SatpDesc satp, const uint64_t vaddr);
 

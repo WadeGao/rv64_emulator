@@ -4,18 +4,20 @@
 #include <cstdint>
 #include <cstdlib>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "cpu/cpu.h"
+#include "cpu/csr.h"
 #include "cpu/decode.h"
 #include "cpu/trap.h"
 #include "fmt/core.h"
 #include "libs/arithmetic.h"
 #include "libs/utils.h"
 
-#define MAKE_TRAP(etype, addr) \
-  { .type = (etype), .val = (addr), }
+#define MAKE_TRAP(etype, value) \
+  { .type = (etype), .val = (value), }
 
-#define ILL_TRAP(addr) MAKE_TRAP(trap::TrapType::kIllegalInstruction, (addr))
+#define ILL_TRAP(val) MAKE_TRAP(trap::TrapType::kIllegalInstruction, (val))
 
 #define CHECK_MISALIGN_INSTRUCTION(pc, proc)                    \
   using rv64_emulator::libs::util::CheckPcAlign;                \
@@ -28,14 +30,14 @@
     };                                                          \
   }
 
-#define CHECK_CSR_ACCESS_PRIVILEGE(csr_num, write, proc)                   \
-  bool is_privileged = false;                                              \
-  if (cpu::PrivilegeMode(((csr_num) >> 8) & 0b11) <= (proc)->priv_mode_) { \
-    is_privileged = true;                                                  \
-  }                                                                        \
-  const bool kReadOnly = ((csr_num) >> 10) == 0b11;                        \
-  if (!is_privileged || ((write) && kReadOnly)) {                          \
-    return ILL_TRAP((proc)->pc_ - 4);                                      \
+#define CHECK_CSR_ACCESS_PRIVILEGE(index, write, mode, word) \
+  bool is_privileged = false;                                \
+  if (cpu::PrivilegeMode(((index) >> 8) & 0b11) <= (mode)) { \
+    is_privileged = true;                                    \
+  }                                                          \
+  const bool kReadOnly = ((index) >> 10) == 0b11;            \
+  if (!is_privileged || ((write) && kReadOnly)) {            \
+    return ILL_TRAP((word));                                 \
   }
 
 namespace rv64_emulator::cpu::executor {
@@ -56,6 +58,20 @@ const std::unordered_map<decode::InstToken, uint64_t> kAccessMemBytes{
     {decode::InstToken::SH, sizeof(int16_t)},
     {decode::InstToken::SW, sizeof(int32_t)},
     {decode::InstToken::SD, sizeof(int64_t)},
+};
+
+const std::unordered_set<uint64_t> kAllowedCsrs = {
+    csr::kCsrMVendorId,  csr::kCsrMArchId,  csr::kCsrMcause,
+    csr::kCsrMVendorId,  csr::kCsrMCycle,   csr::kCsrMedeleg,
+    csr::kCsrMepc,       csr::kCsrMHartId,  csr::kCsrMideleg,
+    csr::kCsrMie,        csr::kCsrMip,      csr::kCsrMisa,
+    csr::kCsrMstatus,    csr::kCsrMtval,    csr::kCsrMtvec,
+    csr::kCsrMscratch,   csr::kCsrMImpId,   csr::kCsrMinstret,
+    csr::kCsrMcounteren, csr::kCsrSatp,     csr::kCsrScause,
+    csr::kCsrSepc,       csr::kCsrSie,      csr::kCsrSip,
+    csr::kCsrSstatus,    csr::kCsrStval,    csr::kCsrStvec,
+    csr::kCsrTdata1,     csr::kCsrTselect,  csr::kCsrMconfigPtr,
+    csr::kCsrScounteren, csr::kCsrSscratch,
 };
 
 template <typename T>
@@ -161,7 +177,7 @@ trap::Trap Executor::RegTypeExec(const decode::DecodeResDesc desc) {
       val = kU64Rs2Val == 0 ? kU64Rs1Val : kU64Rs1Val % kU64Rs2Val;
       break;
     default:
-      return ILL_TRAP(desc.addr);
+      return ILL_TRAP(desc.word);
   }
 
   cpu_->reg_file_.xregs[kRegDesc.rd] = val;
@@ -227,7 +243,7 @@ trap::Trap Executor::Rv32TypeExec(const decode::DecodeResDesc desc) {
       val = (int32_t)(kArg2 == 0 ? kArg1 : kArg1 % kArg2);
     } break;
     default:
-      return ILL_TRAP(desc.addr);
+      return ILL_TRAP(desc.word);
   }
   cpu_->reg_file_.xregs[kRegDesc.rd] = val;
   return trap::kNoneTrap;
@@ -268,7 +284,7 @@ trap::Trap Executor::ImmTypeExec(const decode::DecodeResDesc desc) {
       val = kRs1Val >> kShamt;
       break;
     default:
-      return ILL_TRAP(desc.addr);
+      return ILL_TRAP(desc.word);
   }
 
   cpu_->reg_file_.xregs[kImmDesc.rd] = val;
@@ -295,7 +311,7 @@ trap::Trap Executor::Imm32TypeExec(const decode::DecodeResDesc desc) {
       val = kRs1Val >> kShamt;
       break;
     default:
-      return ILL_TRAP(desc.addr);
+      return ILL_TRAP(desc.word);
   }
 
   cpu_->reg_file_.xregs[kImmDesc.rd] = val;
@@ -377,7 +393,7 @@ trap::Trap Executor::BranchTypeExec(const decode::DecodeResDesc desc) {
       }
       break;
     default:
-      return ILL_TRAP(desc.addr);
+      return ILL_TRAP(desc.word);
   }
 
   CHECK_MISALIGN_INSTRUCTION(new_pc, cpu_);
@@ -418,7 +434,7 @@ trap::Trap Executor::LoadTypeExec(const decode::DecodeResDesc desc) {
       val = (int64_t)(uint64_t)data;
       break;
     default:
-      return ILL_TRAP(desc.addr);
+      return ILL_TRAP(desc.word);
   }
 
   cpu_->reg_file_.xregs[kImmDesc.rd] = val;
@@ -445,12 +461,26 @@ trap::Trap Executor::CsrTypeExec(const decode::DecodeResDesc desc) {
   const auto kCsrDesc =
       *reinterpret_cast<const decode::CsrTypeDesc*>(&desc.word);
 
+  if (kAllowedCsrs.find(kCsrDesc.imm) == kAllowedCsrs.end()) {
+    return ILL_TRAP(desc.word);
+  }
+
+  if (kCsrDesc.imm == csr::kCsrSatp) {
+    const uint64_t kMstatusVal = cpu_->state_.Read(csr::kCsrMstatus);
+    const auto kMstatusDesc =
+        *reinterpret_cast<const csr::MstatusDesc*>(&kMstatusVal);
+    if (cpu_->priv_mode_ == PrivilegeMode::kSupervisor && kMstatusDesc.tvm) {
+      return ILL_TRAP(desc.word);
+    }
+  }
+
   bool writable = kCsrDesc.rs1 != 0;
   if (desc.token == decode::InstToken::CSRRW ||
       desc.token == decode::InstToken::CSRRWI) {
     writable = true;
   }
-  CHECK_CSR_ACCESS_PRIVILEGE(kCsrDesc.imm, writable, cpu_);
+  CHECK_CSR_ACCESS_PRIVILEGE(kCsrDesc.imm, writable, cpu_->priv_mode_,
+                             desc.word);
 
   const uint64_t kCsrVal = cpu_->state_.Read(kCsrDesc.imm);
   const int64_t kRs1Val = (int64_t)cpu_->reg_file_.xregs[kCsrDesc.rs1];
@@ -475,7 +505,7 @@ trap::Trap Executor::CsrTypeExec(const decode::DecodeResDesc desc) {
       new_csr_val = (int64_t)kCsrVal & (~((int64_t)kCsrDesc.rs1));
       break;
     default:
-      return ILL_TRAP(desc.addr);
+      return ILL_TRAP(desc.word);
   }
 
   cpu_->reg_file_.xregs[kCsrDesc.rd] = kCsrVal;
@@ -504,6 +534,14 @@ trap::Trap Executor::ECallExec(const decode::DecodeResDesc desc) {
 }
 
 trap::Trap Executor::SfenceVmaExec(const decode::DecodeResDesc desc) {
+  const uint64_t kMstatusVal = cpu_->state_.Read(csr::kCsrMstatus);
+  const auto kMstatusDesc =
+      *reinterpret_cast<const csr::MstatusDesc*>(&kMstatusVal);
+  if (cpu_->priv_mode_ < PrivilegeMode::kSupervisor ||
+      (cpu_->priv_mode_ == PrivilegeMode::kSupervisor && kMstatusDesc.tvm)) {
+    return ILL_TRAP(desc.word);
+  }
+
   const auto kDesc = *reinterpret_cast<const decode::RTypeDesc*>(&desc.word);
   const auto kVirtAddr = (int64_t)cpu_->reg_file_.xregs[kDesc.rs1];
   const auto kAsid = (int64_t)cpu_->reg_file_.xregs[kDesc.rs2];
@@ -516,7 +554,7 @@ trap::Trap Executor::MRetExec(const decode::DecodeResDesc desc) {
   const auto kOriginMstatusDesc =
       *reinterpret_cast<const csr::MstatusDesc*>(&kOriginMstatusVal);
   if (cpu_->priv_mode_ < PrivilegeMode::kMachine) {
-    return ILL_TRAP(desc.addr);
+    return ILL_TRAP(desc.word);
   }
 
   csr::MstatusDesc new_mstatus_desc = kOriginMstatusDesc;
@@ -544,7 +582,7 @@ trap::Trap Executor::SRetExec(const decode::DecodeResDesc desc) {
 
   // 当TSR=1时，尝试在s模式下执行SRET将引发非法的指令异常
   if (cpu_->priv_mode_ < PrivilegeMode::kSupervisor || kOriginSsDesc->tsr) {
-    return ILL_TRAP(desc.addr);
+    return ILL_TRAP(desc.word);
   }
 
   csr::MstatusDesc new_status_desc = *kOriginSsDesc;
@@ -579,14 +617,14 @@ trap::Trap Executor::SystemTypeExec(const decode::DecodeResDesc desc) {
     case decode::InstToken::EBREAK:
       ret = {
           .type = trap::TrapType::kBreakpoint,
-          .val = desc.addr + 4,
+          .val = 0,
       };
       break;
     case decode::InstToken::ECALL:
       ret = ECallExec(desc);
       break;
     case decode::InstToken::WFI:
-      cpu_->state_.SetWfi(true);
+      // cpu_->state_.SetWfi(true);
       break;
     case decode::InstToken::SFENCE_VMA:
       ret = SfenceVmaExec(desc);
@@ -598,7 +636,7 @@ trap::Trap Executor::SystemTypeExec(const decode::DecodeResDesc desc) {
       ret = SRetExec(desc);
       break;
     default:
-      return ILL_TRAP(desc.addr);
+      return ILL_TRAP(desc.word);
   }
   return ret;
 }
@@ -615,7 +653,7 @@ trap::Trap Executor::AmoLrExec(const decode::DecodeResDesc desc) {
 
   // xreg[rs2] != 0
   if (kU64Rs2Val != 0) {
-    return ILL_TRAP(desc.addr);
+    return ILL_TRAP(desc.word);
   }
 
   // address not align to 4 or 8 bytes
@@ -774,7 +812,7 @@ trap::Trap Executor::AmoTypeExec(const decode::DecodeResDesc desc) {
       target_val = std::max(kU64Rs2Val, mem_rs1);
       break;
     default:
-      return ILL_TRAP(desc.addr);
+      return ILL_TRAP(desc.word);
   }
   const auto kStoreTrap = cpu_->Store(
       kU64Rs1Val, kBytes, reinterpret_cast<const uint8_t*>(&target_val));
@@ -832,7 +870,7 @@ trap::Trap Executor::Exec(const decode::DecodeResDesc desc) {
       ret = AmoTypeExec(desc);
       break;
     default:
-      ret = ILL_TRAP(desc.addr);
+      ret = ILL_TRAP(desc.word);
       break;
   }
   return ret;
