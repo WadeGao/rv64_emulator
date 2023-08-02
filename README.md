@@ -50,6 +50,7 @@ $ xmake
 After finish building rv64_emulator, if you don't want to waste time on compiling customized riscv toolchain and essential components of the bootable kernel, just download the pre-build bootable kernel from [GitHub release pages](https://github.com/WadeGao/rv64_emulator/releases) and download `fw_payload.bin` and then jump to Step 4
 
 _**Step 2: Building riscv-gnu-toolchain**_
+
 Assume that the customized toolchain will be installed to `/data/riscv-gnu-toolchains`
 ```
 $ sudo apt install autoconf automake autotools-dev curl libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc zlib1g-dev
@@ -63,6 +64,7 @@ $ make linux
 After the compilation finish, make sure to add the installation path of the toolchain (`/data/riscv-gnu-toolchains/bin`) into your PATH.
 
 _**Step 3: Build the bootable kernel**_
+
 Option dependencies should be installed. [An one-click kernel building script](scripts/build_kernel.sh) has been provided.
 
 ```bash
@@ -74,6 +76,7 @@ About 15 ~ 20 minutes will be taken for this script to finish. The exact time de
 After the compilation finishes succcessfully, the bootable kernel will be found at `./build/kernel/fw_payload.bin`
 
 _**Step 4: Booting Linux kernel using rv64_emulator**_
+
 If you reach here from Step 1, assuming the download path is `~/Download/fw_payload.bin`, just run the following command to boot the kernel:
 ```bash
 $ ./build/rv64_emulator ~/Download/fw_payload.bin
@@ -86,29 +89,11 @@ $ ./build/rv64_emulator ./build/kernel/fw_payload.bin
 
 ## Screenshots
 
-<center>
-    <img style="border-radius: 0.3125em;
-    box-shadow: 0 2px 4px 0 rgba(34,36,38,.12),0 2px 10px 0 rgba(34,36,38,.08);" 
-    src="docs/images/run_kernel.png">
-    <br>
-    <div style="color:orange; border-bottom: 1px solid #d9d9d9;
-    display: inline-block;
-    color: #999;
-    padding: 2px;">Running Linux kernel</div>
-</center>
+#### Running Linux kernel
+![](docs/images/run_kernel.png)
 
-<center>
-    <img style="border-radius: 0.3125em;
-    box-shadow: 0 2px 4px 0 rgba(34,36,38,.12),0 2px 10px 0 rgba(34,36,38,.08);" 
-    src="docs/images/analyzer.png">
-    <br>
-    <div style="color:orange; border-bottom: 1px solid #d9d9d9;
-    display: inline-block;
-    color: #999;
-    padding: 2px;">Analyze Linux Kernel Instruction Frequency</div>
-</center>
-
-
+#### Analyze Linux Kernel Instruction Frequency
+![](docs/images/analyzer.png)
 
 ## Project Structure
 
