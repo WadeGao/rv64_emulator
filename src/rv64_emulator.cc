@@ -124,9 +124,6 @@ int main(int argc, char* argv[]) {
       raw_uart->Putc(3);
       send_ctrl_c = false;
     }
-#ifdef DEBUG
-    // cpu->DumpRegs();
-#endif
   }
 
   return 0;

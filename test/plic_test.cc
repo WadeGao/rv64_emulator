@@ -102,11 +102,12 @@ TEST_F(PlicTest, StoreContext) {
     ASSERT_EQ(plic_->contexts_.at(ctx_id).threshold, kCtxThreshold);
 
     // bias is 4, store context claimed bitset
-    for (uint32_t claimed_bit : {0, 1, 2}) {
+    for (uint32_t claimed_bit = 0; claimed_bit <= plic_->dev_num_;
+         claimed_bit++) {
       // set all bits of the context claimed bitset
       plic_->contexts_.at(ctx_id).claimed_[0] = 0xffffffff;
 
-      if (claimed_bit < 2) {
+      if (claimed_bit < plic_->dev_num_) {
         // store operation
         ASSERT_TRUE(
             plic_->Store(kAddr + 4, sizeof(claimed_bit),
@@ -153,7 +154,8 @@ TEST_F(PlicTest, LoadPriority) {
     ASSERT_EQ(val, kPriority);
   }
 
-  const uint64_t kAddr = kSourcePriorityBase + (plic_->dev_num_ + 1) * 4;
+  // out of bound
+  const uint64_t kAddr = kSourcePriorityBase + plic_->dev_num_ * 4;
   uint32_t val = UINT32_MAX;
   ASSERT_FALSE(
       plic_->Load(kAddr, sizeof(val), reinterpret_cast<uint8_t*>(&val)));
