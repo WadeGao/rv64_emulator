@@ -36,6 +36,6 @@ PortableMulUnsignedHi(T a, T b) {
   return kRes;
 }
 
-uint64_t __attribute__((always_inline)) MulUint64Hi(uint64_t a, uint64_t b);
+uint64_t MulUint64Hi(uint64_t a, uint64_t b);
 
 }  // namespace rv64_emulator::libs::arithmetic
