@@ -6,10 +6,21 @@
 
 #include "device/mmio.hpp"
 
-namespace rv64_emulator::device {
-namespace uart {
+namespace rv64_emulator::device::uart {
 
 class Uart : public MmioDevice {
+ public:
+  Uart();
+  bool Load(uint64_t addr, uint64_t bytes, uint8_t* buffer) override;
+  bool Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer) override;
+  void Reset() override;
+
+  void Putc(char c);
+  char Getc();
+
+  bool TxBufferNotEmpty();
+  bool Irq();
+
  private:
   struct UartReg {
     uint32_t rx_fifo = 0;
@@ -26,21 +37,6 @@ class Uart : public MmioDevice {
 
   std::queue<char> rx_buffer_;
   std::queue<char> tx_buffer_;
-
- public:
-  Uart();
-  bool Load(const uint64_t addr, const uint64_t bytes,
-            uint8_t* buffer) override;
-  bool Store(const uint64_t addr, const uint64_t bytes,
-             const uint8_t* buffer) override;
-  void Reset() override;
-
-  void Putc(const char c);
-  char Getc();
-
-  bool TxBufferNotEmpty();
-  bool Irq();
 };
 
-}  // namespace uart
-}  // namespace rv64_emulator::device
+}  // namespace rv64_emulator::device::uart

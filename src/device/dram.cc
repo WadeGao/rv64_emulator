@@ -10,9 +10,9 @@
 
 namespace rv64_emulator::device::dram {
 
-DRAM::DRAM(const uint64_t mem_size) : size_(mem_size), memory_(mem_size, 0) {}
+DRAM::DRAM(uint64_t mem_size) : size_(mem_size), memory_(mem_size, 0) {}
 
-DRAM::DRAM(const uint64_t mem_size, const char* in_file) : DRAM(mem_size) {
+DRAM::DRAM(uint64_t mem_size, const char* in_file) : DRAM(mem_size) {
   uint64_t file_size = std::filesystem::file_size(in_file);
   std::ifstream file(in_file, std::ios::in | std::ios::binary);
 
@@ -22,7 +22,7 @@ DRAM::DRAM(const uint64_t mem_size, const char* in_file) : DRAM(mem_size) {
 
 uint64_t DRAM::GetSize() const { return size_; }
 
-bool DRAM::Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {
+bool DRAM::Load(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
   if (addr + bytes <= size_) {
     memcpy(buffer, &memory_[addr], bytes);
     return true;
@@ -31,8 +31,7 @@ bool DRAM::Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {
   return false;
 }
 
-bool DRAM::Store(const uint64_t addr, const uint64_t bytes,
-                 const uint8_t* buffer) {
+bool DRAM::Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer) {
   if (addr + bytes <= size_) {
     memcpy(&memory_[addr], buffer, bytes);
     return true;

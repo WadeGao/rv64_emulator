@@ -114,7 +114,7 @@ TEST_F(PlicTest, StoreContext) {
                          reinterpret_cast<const uint8_t*>(&claimed_bit)));
         // store operation make the corresponding bit reset
         ASSERT_EQ(plic_->contexts_.at(ctx_id).claimed_[0],
-                  ~(1u << claimed_bit));
+                  ~(1U << claimed_bit));
         continue;
       }
 
@@ -228,7 +228,7 @@ TEST_F(PlicTest, LoadContext) {
       ASSERT_TRUE(plic_->Load(kAddr + 4, sizeof(val),
                               reinterpret_cast<uint8_t*>(&val)));
       ASSERT_EQ(plic_->contexts_.at(ctx_id).claim, val);
-      ASSERT_EQ(plic_->contexts_.at(ctx_id).claimed_[0], (1u << val));
+      ASSERT_EQ(plic_->contexts_.at(ctx_id).claimed_[0], (1U << val));
     }
 
     // offset == 8 is reserved
@@ -294,13 +294,13 @@ TEST_F(PlicTest, UpdateExt) {
   ASSERT_TRUE(plic_->Store(kPendingBase, sizeof(pending_word),
                            reinterpret_cast<const uint8_t*>(&pending_word)));
   plic_->UpdateExt(1, true);
-  ASSERT_EQ(plic_->pending_[0], (1u << kSourceId));
+  ASSERT_EQ(plic_->pending_[0], (1U << kSourceId));
 
   pending_word = 0xffffffff;
   ASSERT_TRUE(plic_->Store(kPendingBase, sizeof(pending_word),
                            reinterpret_cast<const uint8_t*>(&pending_word)));
   plic_->UpdateExt(1, false);
-  ASSERT_EQ(plic_->pending_[0], ~(1u << kSourceId));
+  ASSERT_EQ(plic_->pending_[0], ~(1U << kSourceId));
 }
 
 TEST_F(PlicTest, Reset) { plic_->Reset(); }

@@ -81,6 +81,26 @@ class RegFile {
 };
 
 class CPU {
+ public:
+  uint64_t pc_;
+  uint32_t hart_id_;
+  csr::State state_;
+  RegFile reg_file_;
+  PrivilegeMode priv_mode_;
+
+  explicit CPU(std::unique_ptr<mmu::Mmu> mmu);
+  void Reset();
+  trap::Trap Load(uint64_t addr, uint64_t bytes, uint8_t* buffer) const;
+  trap::Trap Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer);
+  trap::Trap Fetch(uint64_t addr, uint64_t bytes, uint8_t* buffer);
+  trap::Trap Decode(decode::DecodeResDesc* res);
+  void Tick(bool meip, bool seip, bool msip, bool mtip, bool update);
+  void Tick();
+  void FlushTlb(uint64_t vaddr, uint64_t asid);
+  void DumpRegs() const;
+
+  uint64_t GetInstret() const;
+
  private:
   uint64_t clock_;
   uint64_t instret_;
@@ -92,36 +112,8 @@ class CPU {
   libs::LRUCache<uint32_t, int32_t> dlb_;
 
   trap::Trap TickOperate();
-
-  void HandleTrap(const trap::Trap trap, const uint64_t epc);
-  void HandleInterrupt(const uint64_t inst_addr);
-
- public:
-  uint64_t pc_;
-  uint32_t hart_id_;
-  csr::State state_;
-  RegFile reg_file_;
-  PrivilegeMode priv_mode_;
-
-  explicit CPU(std::unique_ptr<mmu::Mmu> mmu);
-  void Reset();
-
-  trap::Trap Load(const uint64_t addr, const uint64_t bytes,
-                  uint8_t* buffer) const;
-  trap::Trap Store(const uint64_t addr, const uint64_t bytes,
-                   const uint8_t* buffer);
-
-  trap::Trap Fetch(const uint64_t addr, const uint64_t bytes, uint8_t* buffer);
-  trap::Trap Decode(decode::DecodeResDesc* res);
-
-  void Tick(bool meip, bool seip, bool msip, bool mtip, bool update);
-  void Tick();
-
-  void FlushTlb(const uint64_t vaddr, const uint64_t asid);
-
-  void Disassemble(const uint64_t pc, const uint32_t word,
-                   const int64_t index) const;
-  void DumpRegs() const;
+  void HandleTrap(trap::Trap trap, uint64_t epc);
+  void HandleInterrupt(uint64_t inst_addr);
 };
 
 }  // namespace cpu

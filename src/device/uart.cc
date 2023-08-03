@@ -19,7 +19,7 @@ constexpr uint32_t kControlRstRx = 2;
 
 Uart::Uart() : wait_ack_(false) { reg_.status = kTxFifoEmpty; }
 
-bool Uart::Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {
+bool Uart::Load(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
   std::unique_lock<std::mutex> lock(rx_lock_);
   if (addr + bytes > sizeof(reg_)) {
     return false;
@@ -44,8 +44,7 @@ bool Uart::Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {
   return true;
 }
 
-bool Uart::Store(const uint64_t addr, const uint64_t bytes,
-                 const uint8_t* buffer) {
+bool Uart::Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer) {
   std::unique_lock<std::mutex> lock_rx(rx_lock_);
   std::unique_lock<std::mutex> lock_tx(tx_lock_);
 
@@ -89,15 +88,15 @@ void Uart::Reset() {
   }
 }
 
-void Uart::Putc(const char c) {
+void Uart::Putc(char ch) {
   std::unique_lock<std::mutex> lock(rx_lock_);
-  rx_buffer_.push(c);
+  rx_buffer_.push(ch);
 }
 
 char Uart::Getc() {
   std::unique_lock<std::mutex> lock(tx_lock_);
   if (!tx_buffer_.empty()) {
-    const char res = tx_buffer_.front();
+    char res = tx_buffer_.front();
     tx_buffer_.pop();
     if (tx_buffer_.empty()) {
       wait_ack_ = true;

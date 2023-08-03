@@ -43,13 +43,13 @@ const std::map<PrivilegeMode, uint64_t> kTvecReg = {
     {PrivilegeMode::kUser, csr::kCsrUtvec},
 };
 
-static uint32_t gHartID = 0;
+uint32_t hart_id = 0;
 
 CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
     : clock_(0),
       instret_(0),
       pc_(0),
-      hart_id_(gHartID++),
+      hart_id_(hart_id++),
       priv_mode_(PrivilegeMode::kMachine),
       mmu_(std::move(mmu)),
       dlb_(kDecodeCacheEntryNum) {
@@ -72,17 +72,15 @@ void CPU::Reset() {
   state_.Reset();
 }
 
-trap::Trap CPU::Load(const uint64_t addr, const uint64_t bytes,
-                     uint8_t* buffer) const {
+trap::Trap CPU::Load(uint64_t addr, uint64_t bytes, uint8_t* buffer) const {
   return mmu_->VirtualAddressLoad(addr, bytes, buffer);
 }
 
-trap::Trap CPU::Store(const uint64_t addr, const uint64_t bytes,
-                      const uint8_t* buffer) {
+trap::Trap CPU::Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer) {
   return mmu_->VirtualAddressStore(addr, bytes, buffer);
 }
 
-void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
+void CPU::HandleTrap(trap::Trap trap, uint64_t epc) {
   if (trap.type == trap::TrapType::kNone) {
     return;
   }
@@ -104,7 +102,7 @@ void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
     }
   }
 
-  const PrivilegeMode kNewPM =
+  const auto kNewPM =
       trap_to_s ? PrivilegeMode::kSupervisor : PrivilegeMode::kMachine;
 
   const uint64_t kCsrTvecAddr = kTvecReg.at(kNewPM);
@@ -140,14 +138,14 @@ void CPU::HandleTrap(const trap::Trap trap, const uint64_t epc) {
   priv_mode_ = kNewPM;
 }
 
-void CPU::HandleInterrupt(const uint64_t inst_addr) {
+void CPU::HandleInterrupt(uint64_t inst_addr) {
   const uint64_t kMip = state_.Read(csr::kCsrMip);
   const uint64_t kMie = state_.Read(csr::kCsrMie);
   const uint64_t kMsVal = state_.Read(csr::kCsrMstatus);
   const uint64_t kMidelegVal = state_.Read(csr::kCsrMideleg);
 
   const auto kCurPM = priv_mode_;
-  const auto* kMsDesc = reinterpret_cast<const csr::MstatusDesc*>(&kMsVal);
+  const auto kMsDesc = *reinterpret_cast<const csr::MstatusDesc*>(&kMsVal);
 
   const uint64_t kInterruptBits = kMip & kMie;
 
@@ -161,17 +159,17 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
 
   if (kCurPM == PrivilegeMode::kMachine) {
     const uint64_t kMmodeIntBits = kInterruptBits & (~kMidelegVal);
-    if (kMmodeIntBits && kMsDesc->mie) {
+    if (kMmodeIntBits && kMsDesc.mie) {
       final_interrupt.type = InterruptBitsToTrap(kMmodeIntBits);
     }
   } else {
     const trap::TrapType kInterruptType = InterruptBitsToTrap(kInterruptBits);
     if (TrapToMask(kInterruptType) & kMidelegVal) {
-      if (kMsDesc->sie || kCurPM < PrivilegeMode::kSupervisor) {
+      if (kMsDesc.sie || kCurPM < PrivilegeMode::kSupervisor) {
         final_interrupt.type = kInterruptType;
       }
     } else {
-      if (kMsDesc->mie || kCurPM < PrivilegeMode::kMachine) {
+      if (kMsDesc.mie || kCurPM < PrivilegeMode::kMachine) {
         final_interrupt.type = kInterruptType;
       }
     }
@@ -186,8 +184,7 @@ void CPU::HandleInterrupt(const uint64_t inst_addr) {
   }
 }
 
-trap::Trap CPU::Fetch(const uint64_t addr, const uint64_t bytes,
-                      uint8_t* buffer) {
+trap::Trap CPU::Fetch(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
   const uint64_t kMisaVal = state_.Read(csr::kCsrMisa);
   if (!libs::util::CheckPcAlign(addr, kMisaVal)) {
     return {
@@ -201,9 +198,9 @@ trap::Trap CPU::Fetch(const uint64_t addr, const uint64_t bytes,
 
 trap::Trap CPU::Decode(decode::DecodeResDesc* decode_res) {
   int32_t res = 0;
-  const uint32_t word = decode_res->word;
+  const uint32_t kWord = decode_res->word;
   // decode cache hit current instruction
-  if (dlb_.Get(word, &res)) {
+  if (dlb_.Get(kWord, &res)) {
     decode_res->token = decode::kInstTable[res].token;
     decode_res->index = res;
     return trap::kNoneTrap;
@@ -212,8 +209,8 @@ trap::Trap CPU::Decode(decode::DecodeResDesc* decode_res) {
   // decode cache miss, find the index in instruction table
   res = 0;
   for (const auto& inst : decode::kInstTable) {
-    if ((word & inst.mask) == inst.signature) {
-      dlb_.Set(word, res);
+    if ((kWord & inst.mask) == inst.signature) {
+      dlb_.Set(kWord, res);
       decode_res->token = decode::kInstTable[res].token;
       decode_res->index = res;
       return trap::kNoneTrap;
@@ -223,15 +220,15 @@ trap::Trap CPU::Decode(decode::DecodeResDesc* decode_res) {
 
   return {
       .type = trap::TrapType::kIllegalInstruction,
-      .val = word,
+      .val = kWord,
   };
 }
 
 trap::Trap CPU::TickOperate() {
   if (state_.GetWfi()) {
-    const uint64_t mie = state_.Read(csr::kCsrMie);
-    const uint64_t mip = state_.Read(csr::kCsrMip);
-    if (mie & mip) {
+    const uint64_t kMie = state_.Read(csr::kCsrMie);
+    const uint64_t kMip = state_.Read(csr::kCsrMip);
+    if (kMie & kMip) {
       state_.SetWfi(false);
     }
     return trap::kNoneTrap;
@@ -247,7 +244,7 @@ trap::Trap CPU::TickOperate() {
     return kFetchTrap;
   }
 
-  // TODO
+  // TODO(Wade): support C extension
   pc_ = kInstructionAddr + 4;
 
   decode::DecodeResDesc decode_res = {
@@ -296,19 +293,13 @@ void CPU::Tick(bool meip, bool seip, bool msip, bool mtip, bool update) {
 
 void CPU::Tick() { Tick(false, false, false, false, false); }
 
-void CPU::FlushTlb(const uint64_t vaddr, const uint64_t asid) {
+void CPU::FlushTlb(uint64_t vaddr, uint64_t asid) {
   mmu_->FlushTlb(vaddr, asid);
-}
-
-void CPU::Disassemble(const uint64_t pc, const uint32_t word,
-                      const int64_t index) const {
-  fmt::print("{:#018x} {:#010x} {}\n", pc, word,
-             decode::kInstTable[index].name);
 }
 
 void CPU::DumpRegs() const {
   // Application Binary Interface registers
-  constexpr char* abi[] = {
+  const char* abi[] = {
       "zero", "ra", "sp", "gp", "tp",  "t0",  "t1", "t2", "s0", "s1", "a0",
       "a1",   "a2", "a3", "a4", "a5",  "a6",  "a7", "s2", "s3", "s4", "s5",
       "s6",   "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6",
@@ -325,5 +316,7 @@ void CPU::DumpRegs() const {
     fmt::print("\n");
   }
 }
+
+uint64_t CPU::GetInstret() const { return instret_; }
 
 }  // namespace rv64_emulator::cpu

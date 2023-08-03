@@ -17,38 +17,38 @@ using AmoReservation = struct AmoReservation {
 };
 
 class Executor {
+ public:
+  void SetProcessor(CPU* cpu);
+  trap::Trap Exec(decode::DecodeResDesc desc);
+
  private:
   CPU* cpu_;
   AmoReservation reservation_;
 
-  trap::Trap RegTypeExec(const decode::DecodeResDesc desc);
-  trap::Trap ImmTypeExec(const decode::DecodeResDesc desc);
-  trap::Trap LuiTypeExec(const decode::DecodeResDesc desc);
-  trap::Trap BranchTypeExec(const decode::DecodeResDesc desc);
-  trap::Trap StoreTypeExec(const decode::DecodeResDesc desc);
-  trap::Trap LoadTypeExec(const decode::DecodeResDesc desc);
-  trap::Trap SystemTypeExec(const decode::DecodeResDesc desc);
-  trap::Trap AuipcTypeExec(const decode::DecodeResDesc desc);
-  trap::Trap JalTypeExec(const decode::DecodeResDesc desc);
-  trap::Trap JalrTypeExec(const decode::DecodeResDesc desc);
-  trap::Trap Imm32TypeExec(const decode::DecodeResDesc desc);
-  trap::Trap Rv32TypeExec(const decode::DecodeResDesc desc);
-  trap::Trap FenceTypeExec(const decode::DecodeResDesc desc);
-  trap::Trap CsrTypeExec(const decode::DecodeResDesc desc);
-  trap::Trap AmoTypeExec(const decode::DecodeResDesc desc);
+  trap::Trap RegTypeExec(decode::DecodeResDesc desc);
+  trap::Trap ImmTypeExec(decode::DecodeResDesc desc);
+  trap::Trap LuiTypeExec(decode::DecodeResDesc desc);
+  trap::Trap BranchTypeExec(decode::DecodeResDesc desc);
+  trap::Trap StoreTypeExec(decode::DecodeResDesc desc);
+  trap::Trap LoadTypeExec(decode::DecodeResDesc desc);
+  trap::Trap SystemTypeExec(decode::DecodeResDesc desc);
+  trap::Trap AuipcTypeExec(decode::DecodeResDesc desc);
+  trap::Trap JalTypeExec(decode::DecodeResDesc desc);
+  trap::Trap JalrTypeExec(decode::DecodeResDesc desc);
+  trap::Trap Imm32TypeExec(decode::DecodeResDesc desc);
+  trap::Trap Rv32TypeExec(decode::DecodeResDesc desc);
+  trap::Trap FenceTypeExec(decode::DecodeResDesc desc);
+  trap::Trap CsrTypeExec(decode::DecodeResDesc desc);
+  trap::Trap AmoTypeExec(decode::DecodeResDesc desc);
 
-  trap::Trap ECallExec(const decode::DecodeResDesc desc);
-  trap::Trap SfenceVmaExec(const decode::DecodeResDesc desc);
-  trap::Trap MRetExec(const decode::DecodeResDesc desc);
-  trap::Trap SRetExec(const decode::DecodeResDesc desc);
+  trap::Trap ECallExec(decode::DecodeResDesc desc);
+  trap::Trap SfenceVmaExec(decode::DecodeResDesc desc);
+  trap::Trap MRetExec(decode::DecodeResDesc desc);
+  trap::Trap SRetExec(decode::DecodeResDesc desc);
 
   // A Extensions
-  trap::Trap AmoLrExec(const decode::DecodeResDesc desc);
-  trap::Trap AmoScExec(const decode::DecodeResDesc desc);
-
- public:
-  void SetProcessor(CPU* cpu);
-  trap::Trap Exec(const decode::DecodeResDesc desc);
+  trap::Trap AmoLrExec(decode::DecodeResDesc desc);
+  trap::Trap AmoScExec(decode::DecodeResDesc desc);
 };
 }  // namespace executor
 }  // namespace rv64_emulator::cpu

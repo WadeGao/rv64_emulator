@@ -1,9 +1,11 @@
 
 #include "libs/utils.h"
 
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <string>
 #include <tuple>
 
 #include "cpu/cpu.h"
@@ -20,9 +22,9 @@ using cpu::CPU;
 namespace libs::util {
 
 void LoadElf(const ELFIO::elfio& reader, CPU* cpu) {
-  const std::string& kErrMsg = reader.validate();
-  if (!kErrMsg.empty()) {
-    fmt::print("Error occurs while loading elf: {}\n", kErrMsg);
+  std::string err_msg = reader.validate();
+  if (!err_msg.empty()) {
+    fmt::print("Error occurs while loading elf: {}\n", err_msg);
     exit(
         static_cast<int>(rv64_emulator::errorcode::ElfErrorCode::kInvalidFile));
   }
@@ -71,7 +73,7 @@ bool CheckSectionExist(const ELFIO::elfio& reader, const char* name,
   return false;
 }
 
-uint64_t TrapToMask(const TrapType t) {
+uint64_t TrapToMask(TrapType t) {
   using rv64_emulator::cpu::trap::kTrapToCauseTable;
 
   if (t == TrapType::kNone) {
@@ -82,9 +84,9 @@ uint64_t TrapToMask(const TrapType t) {
   return kIndex;
 }
 
-TrapType InterruptBitsToTrap(const uint64_t bits) {
+TrapType InterruptBitsToTrap(uint64_t bits) {
   // 中断优先级：MEI > MSI > MTI > SEI > SSI > STI
-  for (const auto t : {
+  for (auto t : {
            TrapType::kMachineExternalInterrupt,
            TrapType::kMachineSoftwareInterrupt,
            TrapType::kMachineTimerInterrupt,
@@ -100,11 +102,21 @@ TrapType InterruptBitsToTrap(const uint64_t bits) {
   return TrapType::kNone;
 }
 
-bool CheckPcAlign(const uint64_t pc, const uint64_t isa) {
+bool CheckPcAlign(uint64_t pc, uint64_t isa) {
   using rv64_emulator::cpu::csr::MisaDesc;
   const auto kMisaDesc = *reinterpret_cast<const MisaDesc*>(&isa);
   const uint64_t kAlignBytes = kMisaDesc.C ? 2 : 4;
   return (pc & (kAlignBytes - 1)) == 0;
+}
+
+float GetMips(decltype(std::chrono::high_resolution_clock::now()) start,
+              uint64_t insret_cnt) {
+  const auto kEnd = std::chrono::high_resolution_clock::now();
+  const auto kDurationUs =
+      std::chrono::duration_cast<std::chrono::microseconds>(kEnd - start);
+  const float kMips =
+      static_cast<float>(insret_cnt) / static_cast<float>(kDurationUs.count());
+  return kMips;
 }
 
 }  // namespace libs::util

@@ -78,16 +78,6 @@ class CpuTest : public testing::Test {
 constexpr uint64_t kMaxInstructions = 100000;
 constexpr uint64_t kArbitrarilyHandlerVector = 0x100000;
 
-static float GetMips(decltype(std::chrono::high_resolution_clock::now()) start,
-                     const uint64_t insret_cnt) {
-  const auto kEnd = std::chrono::high_resolution_clock::now();
-  const auto kDurationUs =
-      std::chrono::duration_cast<std::chrono::microseconds>(kEnd - start);
-  const float kMips =
-      static_cast<float>(insret_cnt) / static_cast<float>(kDurationUs.count());
-  return kMips;
-}
-
 TEST_F(CpuTest, HandleTrap) {
   // write ecall instruction
   const uint32_t kEcallWord = 0x00000073;
@@ -182,16 +172,16 @@ TEST_F(CpuTest, Wfi) {
 }
 
 TEST_F(CpuTest, OfficalTests) {
-  const char* kElfDir = "test/elf";
+  std::string_view elf_dir = "test/elf";
 
-  std::filesystem::path p(kElfDir);
-  ASSERT_TRUE(std::filesystem::exists(p)) << kElfDir << " not exists\n";
-  ASSERT_TRUE(std::filesystem::directory_entry(kElfDir).is_directory())
-      << kElfDir << " is not a directory\n";
+  std::filesystem::path p(elf_dir);
+  ASSERT_TRUE(std::filesystem::exists(p)) << elf_dir << " not exists\n";
+  ASSERT_TRUE(std::filesystem::directory_entry(elf_dir).is_directory())
+      << elf_dir << " is not a directory\n";
 
-  for (const auto& item : std::filesystem::directory_iterator(kElfDir)) {
+  for (const auto& item : std::filesystem::directory_iterator(elf_dir)) {
     const auto& kFileName = fmt::format(
-        "{}/{}", kElfDir, item.path().filename().filename().c_str());
+        "{}/{}", elf_dir, item.path().filename().filename().c_str());
 
     ELFIO::elfio reader;
     reader.load(kFileName);
@@ -226,7 +216,8 @@ TEST_F(CpuTest, OfficalTests) {
       ASSERT_TRUE(kSucc);
 
       if (val != 0) {
-        const float kMips = GetMips(start, cpu_->instret_ - kOriginInsrCnt);
+        const float kMips = rv64_emulator::libs::util::GetMips(
+            start, cpu_->instret_ - kOriginInsrCnt);
         EXPECT_EQ(val, 1) << fmt::format(
             fmt::fg(fmt::color::red),
             "Failed {} with .tohost section val = {}, MIPS = {:.2f}\n",
