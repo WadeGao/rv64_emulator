@@ -7,14 +7,12 @@
 #include "cpu/csr.h"
 #include "cpu/trap.h"
 #include "device/bus.h"
-#include "device/mmio.hpp"
 
 namespace rv64_emulator {
 
 using cpu::CPU;
 using cpu::csr::SatpDesc;
 using cpu::trap::Trap;
-using device::MmioDevice;
 using device::bus::Bus;
 
 namespace mmu {
@@ -81,49 +79,42 @@ using Sv39PhysicalAddress = struct Sv39PhysicalAddress {
 
 constexpr uint64_t kTlbSize = 32;
 
-class Sv39 : public MmioDevice {
+class Sv39 {
+ public:
+  explicit Sv39(std::shared_ptr<Bus>& bus);
+  Sv39TlbEntry* GetTlbEntry(SatpDesc satp, uint64_t vaddr);
+  bool Load(uint64_t addr, uint64_t bytes, uint8_t* buffer);
+  bool Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer);
+  void FlushTlb(uint64_t vaddr, uint64_t asid);
+  void Reset();
+
  private:
   uint64_t index_;
   Sv39TlbEntry tlb_[kTlbSize];
-
   std::shared_ptr<Bus> bus_;
 
-  Sv39TlbEntry* LookUpTlb(const SatpDesc satp, const uint64_t vaddr);
+  Sv39TlbEntry* LookUpTlb(SatpDesc satp, uint64_t vaddr);
 
-  bool PageTableWalk(const SatpDesc satp, const uint64_t vaddr,
-                     Sv39PageTableEntry* pte, uint64_t* page_size);
-
- public:
-  explicit Sv39(std::shared_ptr<Bus>& bus);
-
-  Sv39TlbEntry* GetTlbEntry(const SatpDesc satp, const uint64_t vaddr);
-
-  bool Load(const uint64_t addr, const uint64_t bytes,
-            uint8_t* buffer) override;
-  bool Store(const uint64_t addr, const uint64_t bytes,
-             const uint8_t* buffer) override;
-
-  void FlushTlb(const uint64_t vaddr, const uint64_t asid);
-  void Reset() override;
+  bool PageTableWalk(SatpDesc satp, uint64_t vaddr, Sv39PageTableEntry* pte,
+                     uint64_t* page_size);
 };
 
 class Mmu {
+ public:
+  explicit Mmu(std::unique_ptr<Sv39> sv39);
+  void SetProcessor(CPU* cpu);
+  void FlushTlb(uint64_t vaddr, uint64_t asid);
+  Trap VirtualFetch(uint64_t addr, uint64_t bytes, uint8_t* buffer);
+  Trap VirtualAddressLoad(uint64_t addr, uint64_t bytes, uint8_t* buffer);
+  Trap VirtualAddressStore(uint64_t addr, uint64_t bytes,
+                           const uint8_t* buffer);
+  void Reset();
+
  private:
   CPU* cpu_;
   std::unique_ptr<Sv39> sv39_;
 
   bool UsePhysAddr(SatpDesc satp, cpu::csr::MstatusDesc ms);
-
- public:
-  explicit Mmu(std::unique_ptr<Sv39> sv39);
-  void SetProcessor(CPU* cpu);
-  void FlushTlb(const uint64_t vaddr, const uint64_t asid);
-  Trap VirtualFetch(const uint64_t addr, const uint64_t bytes, uint8_t* buffer);
-  Trap VirtualAddressLoad(const uint64_t addr, const uint64_t bytes,
-                          uint8_t* buffer);
-  Trap VirtualAddressStore(const uint64_t addr, const uint64_t bytes,
-                           const uint8_t* buffer);
-  void Reset();
 };
 
 }  // namespace mmu

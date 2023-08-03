@@ -22,7 +22,7 @@ State::State() : wfi_(false), csr_(kCsrCapacity, 0) {
   mstatus_desc->uxl = static_cast<uint64_t>(RiscvMXL::kRv64);
 }
 
-uint64_t State::Read(const uint64_t addr) const {
+uint64_t State::Read(uint64_t addr) const {
   uint64_t res = 0;
 
   switch (addr) {
@@ -30,7 +30,6 @@ uint64_t State::Read(const uint64_t addr) const {
       auto* ss_desc = reinterpret_cast<SstatusDesc*>(&res);
       const auto* ms_desc =
           reinterpret_cast<const MstatusDesc*>(&csr_[kCsrMstatus]);
-
       ss_desc->sie = ms_desc->sie;
       ss_desc->spie = ms_desc->spie;
       ss_desc->ube = ms_desc->ube;
@@ -61,12 +60,11 @@ uint64_t State::Read(const uint64_t addr) const {
   return res;
 }
 
-void State::Write(const uint64_t addr, const uint64_t val) {
+void State::Write(uint64_t addr, uint64_t val) {
   switch (addr) {
     case kCsrSstatus: {
       const auto* val_desc = reinterpret_cast<const SstatusDesc*>(&val);
       auto* ss_desc = reinterpret_cast<SstatusDesc*>(&csr_[kCsrMstatus]);
-
       ss_desc->sie = val_desc->sie;
       ss_desc->spie = val_desc->spie;
       ss_desc->spp = val_desc->spp;
@@ -131,14 +129,13 @@ void State::Write(const uint64_t addr, const uint64_t val) {
 
 bool State::GetWfi() const { return wfi_; }
 
-void State::SetWfi(const bool wfi) { wfi_ = wfi; }
+void State::SetWfi(bool wfi) { wfi_ = wfi; }
 
 void State::Reset() {
   wfi_ = false;
 
   const uint64_t kOriginMisa = csr_[kCsrMisa];
   std::fill(csr_.begin(), csr_.end(), 0);
-
   csr_[kCsrMisa] = kOriginMisa;
 
   // set up Mstatus val

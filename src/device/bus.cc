@@ -12,7 +12,7 @@ void Bus::MountDevice(MmioDeviceNode node) {
 }
 
 std::list<MmioDeviceNode>::const_iterator Bus::GetDeviceByRangeImpl(
-    const uint64_t addr) const {
+    uint64_t addr) const {
   for (auto iter = device_.cbegin(); iter != device_.cend(); iter++) {
     if (iter->base <= addr && addr < iter->base + iter->size) {
       return iter;
@@ -21,7 +21,7 @@ std::list<MmioDeviceNode>::const_iterator Bus::GetDeviceByRangeImpl(
   return device_.cend();
 }
 
-std::list<MmioDeviceNode>::iterator Bus::GetDeviceByRange(const uint64_t addr) {
+std::list<MmioDeviceNode>::iterator Bus::GetDeviceByRange(uint64_t addr) {
   auto citer = GetDeviceByRangeImpl(addr);
   auto res = device_.begin();
   std::advance(res, std::distance<decltype(citer)>(res, citer));
@@ -33,7 +33,7 @@ std::list<MmioDeviceNode>::const_iterator Bus::GetDeviceByRange(
   return GetDeviceByRangeImpl(addr);
 }
 
-bool Bus::Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {
+bool Bus::Load(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
   const auto kDevNode = GetDeviceByRange(addr);
   if (kDevNode == device_.end()) {
     return false;
@@ -41,13 +41,12 @@ bool Bus::Load(const uint64_t addr, const uint64_t bytes, uint8_t* buffer) {
   return kDevNode->dev->Load(addr - kDevNode->base, bytes, buffer);
 }
 
-bool Bus::Store(const uint64_t addr, const uint64_t bytes,
-                const uint8_t* buffer) {
-  auto kDevNode = GetDeviceByRange(addr);
-  if (kDevNode == device_.end()) {
+bool Bus::Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer) {
+  auto dev_node = GetDeviceByRange(addr);
+  if (dev_node == device_.end()) {
     return false;
   }
-  return kDevNode->dev->Store(addr - kDevNode->base, bytes, buffer);
+  return dev_node->dev->Store(addr - dev_node->base, bytes, buffer);
 }
 
 void Bus::Reset() {

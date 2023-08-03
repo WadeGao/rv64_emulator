@@ -9,18 +9,6 @@ namespace rv64_emulator::libs {
 
 template <typename TKey = uint64_t, typename TVal = int64_t>
 class LRUCache {
- private:
-  uint64_t capacity_;
-
-  uint64_t cur_size_{0};
-  uint64_t hit_count_{0};
-  uint64_t miss_count_{0};
-
-  std::list<std::pair<TKey, TVal>> kv_node_;
-
-  std::unordered_map<TKey, typename std::list<std::pair<TKey, TVal>>::iterator>
-      cache_;
-
  public:
   explicit LRUCache(const uint64_t capacity) : capacity_(capacity) {}
 
@@ -73,6 +61,17 @@ class LRUCache {
     kv_node_.clear();
     cache_.clear();
   }
+
+ private:
+  uint64_t capacity_{0};
+  uint64_t cur_size_{0};
+  uint64_t hit_count_{0};
+  uint64_t miss_count_{0};
+
+  std::list<std::pair<TKey, TVal>> kv_node_;
+
+  std::unordered_map<TKey, typename std::list<std::pair<TKey, TVal>>::iterator>
+      cache_;
 };
 
 }  // namespace rv64_emulator::libs

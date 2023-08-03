@@ -6,9 +6,7 @@
 #include "conf.h"
 #include "device/mmio.hpp"
 
-namespace rv64_emulator {
-
-namespace device::plic {
+namespace rv64_emulator::device::plic {
 
 constexpr uint64_t kSourcePriorityBase = 0;
 
@@ -37,22 +35,19 @@ using PlicContext = struct PlicContext {
 };
 
 class Plic : public MmioDevice {
+ public:
+  Plic(uint64_t cores, bool is_s_mode, uint64_t device_num);
+  void UpdateExt(uint32_t src_id, bool fired);
+  bool GetInterrupt(uint64_t ctx_id);
+  bool Load(uint64_t addr, uint64_t bytes, uint8_t* buffer) override;
+  bool Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer) override;
+  void Reset() override;
+
  private:
   std::vector<PlicContext> contexts_;
   uint64_t dev_num_;
   uint32_t priority_[kPlicMaxDevices] = {0};
   uint32_t pending_[kLenGroupByWord] = {0};
-
- public:
-  Plic(const uint64_t cores, bool is_s_mode, uint64_t device_num);
-  void UpdateExt(const uint32_t src_id, bool fired);
-  bool GetInterrupt(const uint64_t ctx_id);
-  bool Load(const uint64_t addr, const uint64_t bytes,
-            uint8_t* buffer) override;
-  bool Store(const uint64_t addr, const uint64_t bytes,
-             const uint8_t* buffer) override;
-  void Reset() override;
 };
 
-}  // namespace device::plic
-}  // namespace rv64_emulator
+}  // namespace rv64_emulator::device::plic

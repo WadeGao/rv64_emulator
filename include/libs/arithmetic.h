@@ -9,7 +9,7 @@ template <typename T>
 std::enable_if_t<(std::is_unsigned_v<T> && sizeof(T) > sizeof(uint8_t) &&
                   sizeof(T) <= sizeof(uint64_t)),
                  T>
-PortableMulUnsignedHi(const T a, const T b) {
+PortableMulUnsignedHi(T a, T b) {
   using type = std::conditional_t<
       (std::is_same_v<T, uint64_t>), uint32_t,
       std::conditional_t<(std::is_same_v<T, uint32_t>), uint16_t, uint8_t>>;
@@ -36,6 +36,6 @@ PortableMulUnsignedHi(const T a, const T b) {
   return kRes;
 }
 
-uint64_t MulUint64Hi(uint64_t a, uint64_t b);
+uint64_t __attribute__((always_inline)) MulUint64Hi(uint64_t a, uint64_t b);
 
 }  // namespace rv64_emulator::libs::arithmetic
