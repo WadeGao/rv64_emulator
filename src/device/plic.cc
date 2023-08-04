@@ -33,17 +33,17 @@ bool Plic::GetInterrupt(uint64_t ctx_id) {
     const uint64_t kOffset = i % kWordBits;
     const uint32_t kMask = 1U << kOffset;
 
-    if ((priority_[i] >= contexts_.at(ctx_id).threshold) &&
+    if ((priority_[i] >= contexts_[ctx_id].threshold) &&
         (pending_[kIndex] & kMask) &&
-        (contexts_.at(ctx_id).enable[kIndex] & kMask) &&
-        !(contexts_.at(ctx_id).claimed_[kIndex] & kMask)) {
+        (contexts_[ctx_id].enable[kIndex] & kMask) &&
+        !(contexts_[ctx_id].claimed_[kIndex] & kMask)) {
       if (max_priority < priority_[i]) {
         max_priority = priority_[i];
         best_interrupt = i;
       }
     }
   }
-  contexts_.at(ctx_id).claim = best_interrupt;
+  contexts_[ctx_id].claim = best_interrupt;
   return best_interrupt != 0;
 }
 

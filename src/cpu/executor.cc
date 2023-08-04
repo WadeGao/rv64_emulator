@@ -53,21 +53,29 @@ namespace rv64_emulator::cpu::executor {
 using rv64_emulator::cpu::decode::OpCode;
 using rv64_emulator::libs::arithmetic::MulUint64Hi;
 
-const std::unordered_map<decode::InstToken, uint64_t> kAccessMemBytes{
-    {decode::InstToken::LB, sizeof(int8_t)},
-    {decode::InstToken::LH, sizeof(int16_t)},
-    {decode::InstToken::LW, sizeof(int32_t)},
-    {decode::InstToken::LD, sizeof(int64_t)},
-    {decode::InstToken::LBU, sizeof(uint8_t)},
-    {decode::InstToken::LHU, sizeof(uint16_t)},
-    {decode::InstToken::LWU, sizeof(uint32_t)},
-
-    {decode::InstToken::SB, sizeof(int8_t)},
-    {decode::InstToken::SH, sizeof(int16_t)},
-    {decode::InstToken::SW, sizeof(int32_t)},
-    {decode::InstToken::SD, sizeof(int64_t)},
+constexpr uint8_t kAccessMemBytes[] = {
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,  // belows are invalid
+    [uint64_t(decode::InstToken::LB)] = sizeof(int8_t),
+    [uint64_t(decode::InstToken::LH)] = sizeof(int16_t),
+    [uint64_t(decode::InstToken::LW)] = sizeof(int32_t),
+    [uint64_t(decode::InstToken::LBU)] = sizeof(uint8_t),
+    [uint64_t(decode::InstToken::LHU)] = sizeof(uint16_t),
+    [uint64_t(decode::InstToken::SB)] = sizeof(int8_t),
+    [uint64_t(decode::InstToken::SH)] = sizeof(int16_t),
+    [uint64_t(decode::InstToken::SW)] = sizeof(int32_t),
+    [uint64_t(decode::InstToken::LWU)] = sizeof(uint32_t),
+    [uint64_t(decode::InstToken::LD)] = sizeof(int64_t),
+    [uint64_t(decode::InstToken::SD)] = sizeof(int64_t),
 };
-
 const std::unordered_set<uint64_t> kAllowedCsrs = {
     csr::kCsrMVendorId,  csr::kCsrMArchId,  csr::kCsrMcause,
     csr::kCsrMVendorId,  csr::kCsrMCycle,   csr::kCsrMedeleg,
@@ -414,7 +422,7 @@ trap::Trap Executor::LoadTypeExec(decode::DecodeResDesc desc) {
   const auto kImmDesc = *reinterpret_cast<const decode::ITypeDesc*>(&desc.word);
   const uint64_t kTargetAddr =
       (int64_t)cpu_->reg_file_.xregs[kImmDesc.rs1] + kImmDesc.imm;
-  const uint64_t kBytes = kAccessMemBytes.at(desc.token);
+  const uint64_t kBytes = kAccessMemBytes[static_cast<uint64_t>(desc.token)];
 
   uint64_t data = 0;
   const auto kLoadTrap =
@@ -455,7 +463,7 @@ trap::Trap Executor::StoreTypeExec(decode::DecodeResDesc desc) {
   const int64_t kRs1Val = (int64_t)cpu_->reg_file_.xregs[kSDesc.rs1];
   const uint64_t kU64Rs2Val = cpu_->reg_file_.xregs[kSDesc.rs2];
   const uint64_t kTargetAddr = kRs1Val + GetImm(kSDesc);
-  const uint64_t kBytes = kAccessMemBytes.at(desc.token);
+  const uint64_t kBytes = kAccessMemBytes[static_cast<uint64_t>(desc.token)];
 
   const auto kStoreTrap = cpu_->Store(
       kTargetAddr, kBytes, reinterpret_cast<const uint8_t*>(&kU64Rs2Val));
@@ -470,7 +478,7 @@ trap::Trap Executor::CsrTypeExec(decode::DecodeResDesc desc) {
   const auto kCsrDesc =
       *reinterpret_cast<const decode::CsrTypeDesc*>(&desc.word);
 
-  if (kAllowedCsrs.find(kCsrDesc.imm) == kAllowedCsrs.end()) {
+  if (0 == kAllowedCsrs.count(kCsrDesc.imm)) {
     return ILL_TRAP(desc.word);
   }
 

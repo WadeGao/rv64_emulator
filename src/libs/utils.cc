@@ -80,20 +80,21 @@ uint64_t TrapToMask(TrapType t) {
     return 0;
   }
 
-  const uint64_t kIndex = 1 << kTrapToCauseTable.at(t);
+  const uint64_t kIndex = 1 << kTrapToCauseTable[static_cast<uint64_t>(t)];
   return kIndex;
 }
 
 TrapType InterruptBitsToTrap(uint64_t bits) {
   // 中断优先级：MEI > MSI > MTI > SEI > SSI > STI
-  for (auto t : {
-           TrapType::kMachineExternalInterrupt,
-           TrapType::kMachineSoftwareInterrupt,
-           TrapType::kMachineTimerInterrupt,
-           TrapType::kSupervisorExternalInterrupt,
-           TrapType::kSupervisorSoftwareInterrupt,
-           TrapType::kSupervisorTimerInterrupt,
-       }) {
+  constexpr TrapType kRankedIrqs[] = {
+      TrapType::kMachineExternalInterrupt,
+      TrapType::kMachineSoftwareInterrupt,
+      TrapType::kMachineTimerInterrupt,
+      TrapType::kSupervisorExternalInterrupt,
+      TrapType::kSupervisorSoftwareInterrupt,
+      TrapType::kSupervisorTimerInterrupt,
+  };
+  for (auto t : kRankedIrqs) {
     if (TrapToMask(t) & bits) {
       return t;
     }

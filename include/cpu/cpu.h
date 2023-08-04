@@ -10,7 +10,6 @@
 #include "cpu/decode.h"
 #include "cpu/executor.h"
 #include "cpu/trap.h"
-#include "libs/lru.hpp"
 
 namespace rv64_emulator {
 
@@ -107,9 +106,6 @@ class CPU {
 
   std::unique_ptr<executor::Executor> executor_;
   std::unique_ptr<mmu::Mmu> mmu_;
-
-  // decode lookaside buffer
-  libs::LRUCache<uint32_t, int32_t> dlb_;
 
   trap::Trap TickOperate();
   void HandleTrap(trap::Trap trap, uint64_t epc);
