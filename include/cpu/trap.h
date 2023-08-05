@@ -1,7 +1,6 @@
 #pragma once
 
-#include <cstdint>
-#include <map>
+#include <cstdint> 
 
 namespace rv64_emulator::cpu::trap {
 
@@ -40,31 +39,31 @@ enum class TrapType {
   kNone
 };
 
-const std::map<TrapType, uint64_t> kTrapToCauseTable = {
-    {TrapType::kInstructionAddressMisaligned, 0},
-    {TrapType::kInstructionAccessFault, 1},
-    {TrapType::kIllegalInstruction, 2},
-    {TrapType::kBreakpoint, 3},
-    {TrapType::kLoadAddressMisaligned, 4},
-    {TrapType::kLoadAccessFault, 5},
-    {TrapType::kStoreAddressMisaligned, 6},
-    {TrapType::kStoreAccessFault, 7},
-    {TrapType::kEnvironmentCallFromUMode, 8},
-    {TrapType::kEnvironmentCallFromSMode, 9},
-    {TrapType::kEnvironmentCallFromMMode, 11},
-    {TrapType::kInstructionPageFault, 12},
-    {TrapType::kLoadPageFault, 13},
-    {TrapType::kStorePageFault, 15},
+constexpr uint64_t kTrapToCauseTable[] = {
+    [uint64_t(TrapType::kInstructionAddressMisaligned)] = 0,
+    [uint64_t(TrapType::kInstructionAccessFault)] = 1,
+    [uint64_t(TrapType::kIllegalInstruction)] = 2,
+    [uint64_t(TrapType::kBreakpoint)] = 3,
+    [uint64_t(TrapType::kLoadAddressMisaligned)] = 4,
+    [uint64_t(TrapType::kLoadAccessFault)] = 5,
+    [uint64_t(TrapType::kStoreAddressMisaligned)] = 6,
+    [uint64_t(TrapType::kStoreAccessFault)] = 7,
+    [uint64_t(TrapType::kEnvironmentCallFromUMode)] = 8,
+    [uint64_t(TrapType::kEnvironmentCallFromSMode)] = 9,
+    [uint64_t(TrapType::kEnvironmentCallFromMMode)] = 11,
+    [uint64_t(TrapType::kInstructionPageFault)] = 12,
+    [uint64_t(TrapType::kLoadPageFault)] = 13,
+    [uint64_t(TrapType::kStorePageFault)] = 15,
     /* ----------- belows are interrupts ----------- */
-    {TrapType::kUserSoftwareInterrupt, 0},
-    {TrapType::kSupervisorSoftwareInterrupt, 1},
-    {TrapType::kMachineSoftwareInterrupt, 3},
-    {TrapType::kUserTimerInterrupt, 4},
-    {TrapType::kSupervisorTimerInterrupt, 5},
-    {TrapType::kMachineTimerInterrupt, 7},
-    {TrapType::kUserExternalInterrupt, 8},
-    {TrapType::kSupervisorExternalInterrupt, 9},
-    {TrapType::kMachineExternalInterrupt, 11},
+    [uint64_t(TrapType::kUserSoftwareInterrupt)] = 0,
+    [uint64_t(TrapType::kSupervisorSoftwareInterrupt)] = 1,
+    [uint64_t(TrapType::kMachineSoftwareInterrupt)] = 3,
+    [uint64_t(TrapType::kUserTimerInterrupt)] = 4,
+    [uint64_t(TrapType::kSupervisorTimerInterrupt)] = 5,
+    [uint64_t(TrapType::kMachineTimerInterrupt)] = 7,
+    [uint64_t(TrapType::kUserExternalInterrupt)] = 8,
+    [uint64_t(TrapType::kSupervisorExternalInterrupt)] = 9,
+    [uint64_t(TrapType::kMachineExternalInterrupt)] = 11,
 };
 
 using Trap = struct Trap {

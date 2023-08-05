@@ -1,7 +1,6 @@
 #include "cpu/cpu.h"
 
 #include <cstdint>
-#include <map>
 #include <memory>
 #include <tuple>
 
@@ -13,34 +12,37 @@
 #include "fmt/core.h"
 #include "fmt/format.h"
 #include "libs/arithmetic.h"
-#include "libs/lru.hpp"
 #include "libs/utils.h"
 #include "mmu.h"
 
 namespace rv64_emulator::cpu {
 
-const std::map<PrivilegeMode, uint64_t> kCauseReg = {
-    {PrivilegeMode::kMachine, csr::kCsrMcause},
-    {PrivilegeMode::kSupervisor, csr::kCsrScause},
-    {PrivilegeMode::kUser, csr::kCsrUcause},
+constexpr uint64_t kCauseReg[] = {
+    [uint64_t(PrivilegeMode::kUser)] = csr::kCsrUcause,
+    [uint64_t(PrivilegeMode::kSupervisor)] = csr::kCsrScause,
+    [uint64_t(PrivilegeMode::kReserved)] = UINT64_MAX,
+    [uint64_t(PrivilegeMode::kMachine)] = csr::kCsrMcause,
 };
 
-const std::map<PrivilegeMode, uint64_t> kEpcReg = {
-    {PrivilegeMode::kMachine, csr::kCsrMepc},
-    {PrivilegeMode::kSupervisor, csr::kCsrSepc},
-    {PrivilegeMode::kUser, csr::kCsrUepc},
+constexpr uint64_t kEpcReg[] = {
+    [uint64_t(PrivilegeMode::kUser)] = csr::kCsrUepc,
+    [uint64_t(PrivilegeMode::kSupervisor)] = csr::kCsrSepc,
+    [uint64_t(PrivilegeMode::kReserved)] = UINT64_MAX,
+    [uint64_t(PrivilegeMode::kMachine)] = csr::kCsrMepc,
 };
 
-const std::map<PrivilegeMode, uint64_t> kTvalReg = {
-    {PrivilegeMode::kMachine, csr::kCsrMtval},
-    {PrivilegeMode::kSupervisor, csr::kCsrStval},
-    {PrivilegeMode::kUser, csr::kCsrUtval},
+constexpr uint64_t kTvalReg[] = {
+    [uint64_t(PrivilegeMode::kUser)] = csr::kCsrUtval,
+    [uint64_t(PrivilegeMode::kSupervisor)] = csr::kCsrStval,
+    [uint64_t(PrivilegeMode::kReserved)] = UINT64_MAX,
+    [uint64_t(PrivilegeMode::kMachine)] = csr::kCsrMtval,
 };
 
-const std::map<PrivilegeMode, uint64_t> kTvecReg = {
-    {PrivilegeMode::kMachine, csr::kCsrMtvec},
-    {PrivilegeMode::kSupervisor, csr::kCsrStvec},
-    {PrivilegeMode::kUser, csr::kCsrUtvec},
+constexpr uint64_t kTvecReg[] = {
+    [uint64_t(PrivilegeMode::kUser)] = csr::kCsrUtvec,
+    [uint64_t(PrivilegeMode::kSupervisor)] = csr::kCsrStvec,
+    [uint64_t(PrivilegeMode::kReserved)] = UINT64_MAX,
+    [uint64_t(PrivilegeMode::kMachine)] = csr::kCsrMtvec,
 };
 
 uint32_t hart_id = 0;
@@ -51,8 +53,7 @@ CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
       pc_(0),
       hart_id_(hart_id++),
       priv_mode_(PrivilegeMode::kMachine),
-      mmu_(std::move(mmu)),
-      dlb_(kDecodeCacheEntryNum) {
+      mmu_(std::move(mmu)) {
   reg_file_.xregs[10] = hart_id_;
   executor_ = std::make_unique<executor::Executor>();
   executor_->SetProcessor(this);
@@ -68,7 +69,7 @@ void CPU::Reset() {
   reg_file_.Reset();
 
   mmu_->Reset();
-  dlb_.Reset();
+  // dlb_.Reset();
   state_.Reset();
 }
 
@@ -88,7 +89,7 @@ void CPU::HandleTrap(trap::Trap trap, uint64_t epc) {
   const PrivilegeMode kOriginPM = priv_mode_;
 
   const csr::CauseDesc kCauseBits = {
-      .cause = trap::kTrapToCauseTable.at(trap.type),
+      .cause = trap::kTrapToCauseTable[static_cast<uint64_t>(trap.type)],
       .interrupt = trap.type >= trap::TrapType::kUserSoftwareInterrupt,
   };
 
@@ -105,10 +106,10 @@ void CPU::HandleTrap(trap::Trap trap, uint64_t epc) {
   const auto kNewPM =
       trap_to_s ? PrivilegeMode::kSupervisor : PrivilegeMode::kMachine;
 
-  const uint64_t kCsrTvecAddr = kTvecReg.at(kNewPM);
-  const uint64_t kCsrEpcAddr = kEpcReg.at(kNewPM);
-  const uint64_t kCsrCauseAddr = kCauseReg.at(kNewPM);
-  const uint64_t kCstTvalAddr = kTvalReg.at(kNewPM);
+  const uint64_t kCsrTvecAddr = kTvecReg[static_cast<uint64_t>(kNewPM)];
+  const uint64_t kCsrEpcAddr = kEpcReg[static_cast<uint64_t>(kNewPM)];
+  const uint64_t kCsrCauseAddr = kCauseReg[static_cast<uint64_t>(kNewPM)];
+  const uint64_t kCstTvalAddr = kTvalReg[static_cast<uint64_t>(kNewPM)];
   const uint64_t kCsrStatusAddr =
       trap_to_s ? csr::kCsrSstatus : csr::kCsrMstatus;
 
@@ -199,18 +200,9 @@ trap::Trap CPU::Fetch(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
 trap::Trap CPU::Decode(decode::DecodeResDesc* decode_res) {
   int32_t res = 0;
   const uint32_t kWord = decode_res->word;
-  // decode cache hit current instruction
-  if (dlb_.Get(kWord, &res)) {
-    decode_res->token = decode::kInstTable[res].token;
-    decode_res->index = res;
-    return trap::kNoneTrap;
-  }
 
-  // decode cache miss, find the index in instruction table
-  res = 0;
   for (const auto& inst : decode::kInstTable) {
     if ((kWord & inst.mask) == inst.signature) {
-      dlb_.Set(kWord, res);
       decode_res->token = decode::kInstTable[res].token;
       decode_res->index = res;
       return trap::kNoneTrap;

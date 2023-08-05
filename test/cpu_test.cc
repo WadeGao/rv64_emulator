@@ -91,8 +91,8 @@ TEST_F(CpuTest, HandleTrap) {
   ASSERT_EQ(kArbitrarilyHandlerVector, cpu_->pc_);
 
   const uint64_t kVal = cpu_->state_.Read(rv64_emulator::cpu::csr::kCsrMcause);
-  ASSERT_EQ(rv64_emulator::cpu::trap::kTrapToCauseTable.at(
-                rv64_emulator::cpu::trap::TrapType::kEnvironmentCallFromMMode),
+  ASSERT_EQ(rv64_emulator::cpu::trap::kTrapToCauseTable[static_cast<uint64_t>(
+                rv64_emulator::cpu::trap::TrapType::kEnvironmentCallFromMMode)],
             kVal);
 }
 
@@ -132,7 +132,9 @@ TEST_F(CpuTest, HandleInterrupt) {
     ASSERT_EQ(kArbitrarilyHandlerVector, cpu_->pc_);
 
     const rv64_emulator::cpu::csr::CauseDesc kCause = {
-        .cause = rv64_emulator::cpu::trap::kTrapToCauseTable.at(t),
+        .cause =
+            rv64_emulator::cpu::trap::kTrapToCauseTable[static_cast<uint64_t>(
+                t)],
         .interrupt = static_cast<uint64_t>(
             t >= rv64_emulator::cpu::trap::TrapType::kUserSoftwareInterrupt),
     };

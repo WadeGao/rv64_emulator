@@ -37,11 +37,14 @@ using cpu::PrivilegeMode;
   }
 
 uint64_t MapVirtualAddress(const Sv39TlbEntry* entry, uint64_t vaddr) {
-  const uint64_t kOffsetBits = entry->page_size == 1   ? 12
-                               : entry->page_size == 2 ? 21
-                                                       : 30;
-  const uint64_t kPhysicalAddr = entry->ppn + vaddr % (1 << kOffsetBits);
-  return kPhysicalAddr;
+  constexpr uint64_t kOffsetBits[4] = {
+      [0] = 0,  // invalid
+      [1] = 12,
+      [2] = 21,
+      [3] = 30,
+  };
+  const uint64_t kBits = kOffsetBits[entry->page_size];
+  return entry->ppn + vaddr % (1 << kBits);
 }
 
 uint64_t GetPpnByPageTableEntry(const Sv39PageTableEntry* entry) {
@@ -61,6 +64,13 @@ uint64_t GetTlbTag(uint64_t vaddr, uint64_t page_size) {
 }
 
 uint64_t GetTagMask(uint64_t page_size) {
+  // constexpr uint64_t kMasks[4] = {
+  //     [0] = 0xffffffffffffffff,  // invalid
+  //     [1] = 0xfffffffffffff000,
+  //     [2] = 0xffffffffffe00000,
+  //     [3] = 0xffffffffc0000000,
+  // };
+  // return kMasks[page_size];
   const uint64_t kTagMask = 0xfffffffffffffff8 << (page_size * 9);
   return kTagMask;
 }
