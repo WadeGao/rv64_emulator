@@ -74,11 +74,11 @@ void CPU::Reset() {
 }
 
 trap::Trap CPU::Load(uint64_t addr, uint64_t bytes, uint8_t* buffer) const {
-  return mmu_->VirtualAddressLoad(addr, bytes, buffer);
+  return mmu_->Load(addr, bytes, buffer);
 }
 
 trap::Trap CPU::Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer) {
-  return mmu_->VirtualAddressStore(addr, bytes, buffer);
+  return mmu_->Store(addr, bytes, buffer);
 }
 
 void CPU::HandleTrap(trap::Trap trap, uint64_t epc) {
@@ -194,7 +194,7 @@ trap::Trap CPU::Fetch(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
     };
   }
 
-  return mmu_->VirtualFetch(addr, bytes, buffer);
+  return mmu_->Fetch(addr, bytes, buffer);
 }
 
 trap::Trap CPU::Decode(decode::DecodeResDesc* decode_res) {

@@ -60,19 +60,13 @@ uint64_t GetPpnByPageTableEntry(const Sv39PageTableEntry* entry) {
 }
 
 uint64_t GetTlbTag(uint64_t vaddr, uint64_t page_size) {
-  return vaddr - vaddr % page_size;
-}
-
-uint64_t GetTagMask(uint64_t page_size) {
-  // constexpr uint64_t kMasks[4] = {
-  //     [0] = 0xffffffffffffffff,  // invalid
-  //     [1] = 0xfffffffffffff000,
-  //     [2] = 0xffffffffffe00000,
-  //     [3] = 0xffffffffc0000000,
-  // };
-  // return kMasks[page_size];
-  const uint64_t kTagMask = 0xfffffffffffffff8 << (page_size * 9);
-  return kTagMask;
+  static constexpr uint64_t kMasks[4] = {
+      [0] = 0xffffffffffffffff,  // invalid
+      [1] = 0xfffffffffffff000,
+      [2] = 0xffffffffffe00000,
+      [3] = 0xffffffffc0000000,
+  };
+  return vaddr & kMasks[page_size];
 }
 
 Sv39::Sv39(std::shared_ptr<Bus>& bus) : index_(0), bus_(bus) {
@@ -86,10 +80,7 @@ Sv39TlbEntry* Sv39::LookUpTlb(SatpDesc satp, uint64_t vaddr) {
     Sv39TlbEntry* entry = tlb_ + i;
     if (entry->asid == satp.asid || entry->G) {
       if (entry->page_size > 0) {
-        // clear (huge) page offset field bits:
-        const uint64_t kTagMask = GetTagMask(entry->page_size);
-        const uint64_t kTag = vaddr & kTagMask;
-        if (kTag == entry->tag) {
+        if (GetTlbTag(vaddr, entry->page_size) == entry->tag) {
           res = entry;
           break;
         }
@@ -147,7 +138,7 @@ bool Sv39::PageTableWalk(SatpDesc satp, uint64_t vaddr, Sv39PageTableEntry* pte,
       }
 
       *pte = sv39_pte;
-      *page_size = (1 << 12) << (9 * i);
+      *page_size = i + 1;
       return true;
     }
   }
@@ -177,10 +168,6 @@ Sv39TlbEntry* Sv39::GetTlbEntry(SatpDesc satp, uint64_t vaddr) {
     return nullptr;
   }
 
-  const uint64_t kTlbPageSizeField = (out_size == (1 << 12))   ? 1
-                                     : (out_size == (1 << 21)) ? 2
-                                                               : 3;
-
   tlb_[index_] = {
       .ppn = GetPpnByPageTableEntry(&pte),
       .tag = GetTlbTag(vaddr, out_size),
@@ -192,7 +179,7 @@ Sv39TlbEntry* Sv39::GetTlbEntry(SatpDesc satp, uint64_t vaddr) {
       .G = pte.G,
       .A = pte.A,
       .D = pte.D,
-      .page_size = kTlbPageSizeField,
+      .page_size = out_size,
   };
 
   tlb_entry = tlb_ + index_;
@@ -216,8 +203,7 @@ void Sv39::FlushTlb(uint64_t vaddr, uint64_t asid) {
         entry->page_size = 0;
       } else {
         if (entry->page_size > 0) {
-          const uint64_t kTagMask = GetTagMask(entry->page_size);
-          if ((entry->tag & kTagMask) == (vaddr & kTagMask)) {
+          if (entry->tag == GetTlbTag(vaddr, entry->page_size)) {
             entry->page_size = 0;
           }
         }
@@ -247,14 +233,14 @@ void Mmu::FlushTlb(uint64_t vaddr, uint64_t asid) {
   sv39_->FlushTlb(vaddr, asid);
 }
 
-Trap Mmu::VirtualFetch(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
+Trap Mmu::Fetch(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
   if (bytes == 4 && addr % 4 == 2) {
-    const Trap kTrap1 = VirtualFetch(addr, 2, buffer);
+    const Trap kTrap1 = Fetch(addr, 2, buffer);
     if (kTrap1.type != cpu::trap::TrapType::kNone) {
       return kTrap1;
     }
 
-    const Trap kTrap2 = VirtualFetch(addr + 2, 2, buffer + 2);
+    const Trap kTrap2 = Fetch(addr + 2, 2, buffer + 2);
     if (kTrap2.type != cpu::trap::TrapType::kNone) {
       return MAKE_TRAP(kTrap2.type, addr);
     }
@@ -293,7 +279,7 @@ Trap Mmu::VirtualFetch(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
   return kSucc ? cpu::trap::kNoneTrap : kInstructionAccessTrap;
 }
 
-Trap Mmu::VirtualAddressLoad(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
+Trap Mmu::Load(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
   const uint64_t kSatpVal = cpu_->state_.Read(cpu::csr::kCsrSatp);
   const SatpDesc kSatpDesc = *reinterpret_cast<const SatpDesc*>(&kSatpVal);
 
@@ -322,8 +308,7 @@ Trap Mmu::VirtualAddressLoad(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
   return kSucc ? cpu::trap::kNoneTrap : kLoadAccessTrap;
 }
 
-Trap Mmu::VirtualAddressStore(uint64_t addr, uint64_t bytes,
-                              const uint8_t* buffer) {
+Trap Mmu::Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer) {
   const uint64_t kSatpVal = cpu_->state_.Read(cpu::csr::kCsrSatp);
   const SatpDesc kSatpDesc = *reinterpret_cast<const SatpDesc*>(&kSatpVal);
 
