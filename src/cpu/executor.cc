@@ -76,6 +76,7 @@ constexpr uint8_t kAccessMemBytes[] = {
     [uint64_t(decode::InstToken::LD)] = sizeof(int64_t),
     [uint64_t(decode::InstToken::SD)] = sizeof(int64_t),
 };
+
 const std::unordered_set<uint64_t> kAllowedCsrs = {
     csr::kCsrMVendorId,  csr::kCsrMArchId,  csr::kCsrMcause,
     csr::kCsrMVendorId,  csr::kCsrMCycle,   csr::kCsrMedeleg,

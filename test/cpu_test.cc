@@ -10,6 +10,7 @@
 
 #include "conf.h"
 #include "cpu/csr.h"
+#include "cpu/mmu.h"
 #include "cpu/trap.h"
 #include "device/bus.h"
 #include "device/clint.h"
@@ -21,7 +22,6 @@
 #include "fmt/core.h"
 #include "gtest/gtest.h"
 #include "libs/utils.h"
-#include "mmu.h"
 
 class CpuTest : public testing::Test {
  protected:

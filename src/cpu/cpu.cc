@@ -8,12 +8,12 @@
 #include "cpu/csr.h"
 #include "cpu/decode.h"
 #include "cpu/executor.h"
+#include "cpu/mmu.h"
 #include "cpu/trap.h"
 #include "fmt/core.h"
 #include "fmt/format.h"
 #include "libs/arithmetic.h"
 #include "libs/utils.h"
-#include "mmu.h"
 
 namespace rv64_emulator::cpu {
 
