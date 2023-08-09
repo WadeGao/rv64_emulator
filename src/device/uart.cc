@@ -20,11 +20,11 @@ constexpr uint32_t kControlRstRx = 2;
 Uart::Uart() : wait_ack_(false) { reg_.status = kTxFifoEmpty; }
 
 bool Uart::Load(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
-  std::unique_lock<std::mutex> lock(rx_lock_);
   if (addr + bytes > sizeof(reg_)) {
     return false;
   }
 
+  std::lock_guard<std::mutex> lock(rx_lock_);
   if (!rx_buffer_.empty()) {
     reg_.status |= kRxFifoValidData;
     reg_.rx_fifo = rx_buffer_.front();
@@ -45,9 +45,6 @@ bool Uart::Load(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
 }
 
 bool Uart::Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer) {
-  std::unique_lock<std::mutex> lock_rx(rx_lock_);
-  std::unique_lock<std::mutex> lock_tx(tx_lock_);
-
   if (addr + bytes > sizeof(reg_)) {
     return false;
   }
@@ -56,6 +53,7 @@ bool Uart::Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer) {
   constexpr auto kTxFifoBias = offsetof(struct UartReg, tx_fifo);
   constexpr auto kControlBias = offsetof(struct UartReg, control);
 
+  std::lock_guard<std::mutex> lock_tx(tx_lock_);
   if (addr <= kTxFifoBias && kTxFifoBias <= addr + bytes) {
     tx_buffer_.push(reg_.tx_fifo & 0xff);
   }
@@ -67,6 +65,7 @@ bool Uart::Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer) {
       }
     }
 
+    std::lock_guard<std::mutex> lock_rx(rx_lock_);
     if (reg_.control & kControlRstRx) {
       while (!rx_buffer_.empty()) {
         rx_buffer_.pop();
@@ -89,12 +88,12 @@ void Uart::Reset() {
 }
 
 void Uart::Putc(char ch) {
-  std::unique_lock<std::mutex> lock(rx_lock_);
+  std::lock_guard<std::mutex> lock(rx_lock_);
   rx_buffer_.push(ch);
 }
 
 char Uart::Getc() {
-  std::unique_lock<std::mutex> lock(tx_lock_);
+  std::lock_guard<std::mutex> lock(tx_lock_);
   if (!tx_buffer_.empty()) {
     char res = tx_buffer_.front();
     tx_buffer_.pop();
@@ -107,12 +106,12 @@ char Uart::Getc() {
 }
 
 bool Uart::TxBufferNotEmpty() {
-  std::unique_lock<std::mutex> lock(tx_lock_);
+  std::lock_guard<std::mutex> lock(tx_lock_);
   return !tx_buffer_.empty();
 }
 
 bool Uart::Irq() {
-  std::unique_lock<std::mutex> lock(rx_lock_);
+  std::lock_guard<std::mutex> lock(rx_lock_);
   return !rx_buffer_.empty() || wait_ack_;
 }
 

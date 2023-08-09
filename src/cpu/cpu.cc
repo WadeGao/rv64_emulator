@@ -8,12 +8,12 @@
 #include "cpu/csr.h"
 #include "cpu/decode.h"
 #include "cpu/executor.h"
+#include "cpu/mmu.h"
 #include "cpu/trap.h"
 #include "fmt/core.h"
 #include "fmt/format.h"
 #include "libs/arithmetic.h"
 #include "libs/utils.h"
-#include "mmu.h"
 
 namespace rv64_emulator::cpu {
 
@@ -74,11 +74,11 @@ void CPU::Reset() {
 }
 
 trap::Trap CPU::Load(uint64_t addr, uint64_t bytes, uint8_t* buffer) const {
-  return mmu_->VirtualAddressLoad(addr, bytes, buffer);
+  return mmu_->Load(addr, bytes, buffer);
 }
 
 trap::Trap CPU::Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer) {
-  return mmu_->VirtualAddressStore(addr, bytes, buffer);
+  return mmu_->Store(addr, bytes, buffer);
 }
 
 void CPU::HandleTrap(trap::Trap trap, uint64_t epc) {
@@ -194,26 +194,7 @@ trap::Trap CPU::Fetch(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
     };
   }
 
-  return mmu_->VirtualFetch(addr, bytes, buffer);
-}
-
-trap::Trap CPU::Decode(decode::DecodeResDesc* decode_res) {
-  int32_t res = 0;
-  const uint32_t kWord = decode_res->word;
-
-  for (const auto& inst : decode::kInstTable) {
-    if ((kWord & inst.mask) == inst.signature) {
-      decode_res->token = decode::kInstTable[res].token;
-      decode_res->index = res;
-      return trap::kNoneTrap;
-    }
-    res++;
-  }
-
-  return {
-      .type = trap::TrapType::kIllegalInstruction,
-      .val = kWord,
-  };
+  return mmu_->Fetch(addr, bytes, buffer);
 }
 
 trap::Trap CPU::TickOperate() {
@@ -226,36 +207,24 @@ trap::Trap CPU::TickOperate() {
     return trap::kNoneTrap;
   }
 
-  const uint64_t kInstructionAddr = pc_;
-
+  // fetch stage
   uint32_t word = 0;
-
-  const trap::Trap kFetchTrap = Fetch(kInstructionAddr, sizeof(uint32_t),
-                                      reinterpret_cast<uint8_t*>(&word));
+  const trap::Trap kFetchTrap =
+      Fetch(pc_, sizeof(uint32_t), reinterpret_cast<uint8_t*>(&word));
   if (kFetchTrap.type != trap::TrapType::kNone) {
     return kFetchTrap;
   }
 
-  // TODO(Wade): support C extension
-  pc_ = kInstructionAddr + 4;
-
-  decode::DecodeResDesc decode_res = {
-      .opcode = static_cast<decode::OpCode>(
-          reinterpret_cast<const decode::RTypeDesc*>(&word)->opcode),
-      .token = decode::InstToken::UNKNOWN,
-      .index = -1,
-      .word = word,
-      .addr = kInstructionAddr,
-  };
-  const trap::Trap kDecodeTrap = Decode(&decode_res);
-  if (kDecodeTrap.type != trap::TrapType::kNone) {
-    return kDecodeTrap;
+  // decode stage
+  auto info = decode::DecodeInfo(word, pc_);
+  pc_ += info.size;
+  if (info.token == decode::InstToken::UNKNOWN) {
+    return {.type = trap::TrapType::kIllegalInstruction, .val = word};
   }
 
-  const trap::Trap kExecTrap = executor_->Exec(decode_res);
-
+  // execute stage
+  const trap::Trap kExecTrap = executor_->Exec(info);
   reg_file_.xregs[0] = 0;
-
   return kExecTrap;
 }
 

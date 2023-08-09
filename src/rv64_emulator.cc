@@ -10,6 +10,7 @@
 
 #include "conf.h"
 #include "cpu/cpu.h"
+#include "cpu/mmu.h"
 #include "device/bus.h"
 #include "device/clint.h"
 #include "device/dram.h"
@@ -18,7 +19,6 @@
 #include "device/uart.h"
 #include "fmt/core.h"
 #include "libs/utils.h"
-#include "mmu.h"
 
 bool delay_cr = false;
 bool send_ctrl_c = false;
@@ -63,9 +63,9 @@ int main(int argc, char* argv[]) {
 
   auto dram =
       std::make_unique<rv64_emulator::device::dram::DRAM>(kDramSize, argv[1]);
+  auto uart = std::make_unique<rv64_emulator::device::uart::Uart>();
   auto clint = std::make_unique<rv64_emulator::device::clint::Clint>(1);
   auto plic = std::make_unique<rv64_emulator::device::plic::Plic>(1, true, 2);
-  auto uart = std::make_unique<rv64_emulator::device::uart::Uart>();
 
   auto raw_clint = clint.get();
   auto raw_uart = uart.get();
@@ -78,6 +78,11 @@ int main(int argc, char* argv[]) {
       .dev = std::move(dram),
   });
   bus->MountDevice({
+      .base = kUartBase,
+      .size = kUartAddrSpaceRange,
+      .dev = std::move(uart),
+  });
+  bus->MountDevice({
       .base = kClintBase,
       .size = kClintAddrSpaceRange,
       .dev = std::move(clint),
@@ -86,11 +91,6 @@ int main(int argc, char* argv[]) {
       .base = kPlicBase,
       .size = kPlicAddrSpaceRange,
       .dev = std::move(plic),
-  });
-  bus->MountDevice({
-      .base = kUartBase,
-      .size = kUartAddrSpaceRange,
-      .dev = std::move(uart),
   });
 
   std::thread uart_input_thread(UartInput, raw_uart);

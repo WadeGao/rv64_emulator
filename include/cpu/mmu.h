@@ -104,10 +104,9 @@ class Mmu {
   explicit Mmu(std::unique_ptr<Sv39> sv39);
   void SetProcessor(CPU* cpu);
   void FlushTlb(uint64_t vaddr, uint64_t asid);
-  Trap VirtualFetch(uint64_t addr, uint64_t bytes, uint8_t* buffer);
-  Trap VirtualAddressLoad(uint64_t addr, uint64_t bytes, uint8_t* buffer);
-  Trap VirtualAddressStore(uint64_t addr, uint64_t bytes,
-                           const uint8_t* buffer);
+  Trap Fetch(uint64_t addr, uint64_t bytes, uint8_t* buffer);
+  Trap Load(uint64_t addr, uint64_t bytes, uint8_t* buffer);
+  Trap Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer);
   void Reset();
 
  private:

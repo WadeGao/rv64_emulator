@@ -4,7 +4,7 @@
 
 namespace rv64_emulator::cpu::decode {
 
-enum class OpCode : uint32_t {
+enum class OpCode : uint8_t {
   kUndef = 0b0000000,
   kReg = 0b0110011,
   kImm = 0b0010011,
@@ -124,14 +124,6 @@ enum class InstToken {
   AMOMINU_W,
   AMOMAXU_D,
   AMOMAXU_W,
-};
-
-using DecodeResDesc = struct DecodeResDesc {
-  OpCode opcode;    // instruction opcode
-  InstToken token;  // instruction token
-  int32_t index;    // instruction index in decode::kInstTable
-  uint32_t word;    // instruction word
-  uint64_t addr;    // instruction addr
 };
 
 using InstDesc = struct InstDesc {
@@ -922,6 +914,21 @@ using AmoTypeDesc = struct AmoTypeDesc {
   uint32_t release : 1;
   uint32_t acquire : 1;
   uint32_t funct5 : 5;
+};
+
+struct DecodeInfo {
+  uint32_t word;  // instruction word
+  uint64_t pc;    // instruction addr
+  uint8_t size;   // instruction size
+  OpCode op;
+  uint8_t rd;
+  uint8_t rs1;
+  uint8_t rs2;
+  uint8_t mem_size;
+  int32_t imm;
+  InstToken token;
+
+  DecodeInfo(uint32_t inst_word, uint64_t addr);
 };
 
 uint8_t GetShamt(ITypeDesc desc, bool is_rv32 /* = false */);

@@ -92,7 +92,6 @@ class CPU {
   trap::Trap Load(uint64_t addr, uint64_t bytes, uint8_t* buffer) const;
   trap::Trap Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer);
   trap::Trap Fetch(uint64_t addr, uint64_t bytes, uint8_t* buffer);
-  trap::Trap Decode(decode::DecodeResDesc* res);
   void Tick(bool meip, bool seip, bool msip, bool mtip, bool update);
   void Tick();
   void FlushTlb(uint64_t vaddr, uint64_t asid);
