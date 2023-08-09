@@ -197,25 +197,6 @@ trap::Trap CPU::Fetch(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
   return mmu_->Fetch(addr, bytes, buffer);
 }
 
-trap::Trap CPU::Decode(decode::DecodeResDesc* decode_res) {
-  int32_t res = 0;
-  const uint32_t kWord = decode_res->word;
-
-  for (const auto& inst : decode::kInstTable) {
-    if ((kWord & inst.mask) == inst.signature) {
-      decode_res->token = decode::kInstTable[res].token;
-      decode_res->index = res;
-      return trap::kNoneTrap;
-    }
-    res++;
-  }
-
-  return {
-      .type = trap::TrapType::kIllegalInstruction,
-      .val = kWord,
-  };
-}
-
 trap::Trap CPU::TickOperate() {
   if (state_.GetWfi()) {
     const uint64_t kMie = state_.Read(csr::kCsrMie);
@@ -226,36 +207,24 @@ trap::Trap CPU::TickOperate() {
     return trap::kNoneTrap;
   }
 
-  const uint64_t kInstructionAddr = pc_;
-
+  // fetch stage
   uint32_t word = 0;
-
-  const trap::Trap kFetchTrap = Fetch(kInstructionAddr, sizeof(uint32_t),
-                                      reinterpret_cast<uint8_t*>(&word));
+  const trap::Trap kFetchTrap =
+      Fetch(pc_, sizeof(uint32_t), reinterpret_cast<uint8_t*>(&word));
   if (kFetchTrap.type != trap::TrapType::kNone) {
     return kFetchTrap;
   }
 
-  // TODO(Wade): support C extension
-  pc_ = kInstructionAddr + 4;
-
-  decode::DecodeResDesc decode_res = {
-      .opcode = static_cast<decode::OpCode>(
-          reinterpret_cast<const decode::RTypeDesc*>(&word)->opcode),
-      .token = decode::InstToken::UNKNOWN,
-      .index = -1,
-      .word = word,
-      .addr = kInstructionAddr,
-  };
-  const trap::Trap kDecodeTrap = Decode(&decode_res);
-  if (kDecodeTrap.type != trap::TrapType::kNone) {
-    return kDecodeTrap;
+  // decode stage
+  auto info = decode::DecodeInfo(word, pc_);
+  pc_ += info.size;
+  if (info.token == decode::InstToken::UNKNOWN) {
+    return {.type = trap::TrapType::kIllegalInstruction, .val = word};
   }
 
-  const trap::Trap kExecTrap = executor_->Exec(decode_res);
-
+  // execute stage
+  const trap::Trap kExecTrap = executor_->Exec(info);
   reg_file_.xregs[0] = 0;
-
   return kExecTrap;
 }
 
