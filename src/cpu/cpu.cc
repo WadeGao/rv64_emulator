@@ -10,8 +10,6 @@
 #include "cpu/executor.h"
 #include "cpu/mmu.h"
 #include "cpu/trap.h"
-#include "fmt/core.h"
-#include "fmt/format.h"
 #include "libs/arithmetic.h"
 #include "libs/utils.h"
 
@@ -256,26 +254,6 @@ void CPU::Tick() { Tick(false, false, false, false, false); }
 
 void CPU::FlushTlb(uint64_t vaddr, uint64_t asid) {
   mmu_->FlushTlb(vaddr, asid);
-}
-
-void CPU::DumpRegs() const {
-  // Application Binary Interface registers
-  const char* abi[] = {
-      "zero", "ra", "sp", "gp", "tp",  "t0",  "t1", "t2", "s0", "s1", "a0",
-      "a1",   "a2", "a3", "a4", "a5",  "a6",  "a7", "s2", "s3", "s4", "s5",
-      "s6",   "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6",
-  };
-
-  constexpr int kBiasTable[4] = {0, 8, 16, 24};
-
-  for (int i = 0; i < 8; i++) {
-    for (const auto kBias : kBiasTable) {
-      const int kIndex = i + kBias;
-      fmt::print("{:>28}", fmt::format("{}: {:#018x}", abi[kIndex],
-                                       reg_file_.xregs[kIndex]));
-    }
-    fmt::print("\n");
-  }
 }
 
 uint64_t CPU::GetInstret() const { return instret_; }

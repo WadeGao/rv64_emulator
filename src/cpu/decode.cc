@@ -16,7 +16,7 @@ constexpr uint8_t kAccessMemBytes[] = {
     0,
     0,
     0,
-    0,  // belows are invalid
+    0,  // aboves are invalid
     [uint64_t(decode::InstToken::LB)] = sizeof(int8_t),
     [uint64_t(decode::InstToken::LH)] = sizeof(int16_t),
     [uint64_t(decode::InstToken::LW)] = sizeof(int32_t),

@@ -208,9 +208,6 @@ TEST_F(CpuTest, OfficalTests) {
     while (true) {
       cpu_->Tick(false, false, raw_clint_->MachineSoftwareIrq(0),
                  raw_clint_->MachineTimerIrq(0), true);
-#ifdef DEBUG
-      cpu_->DumpRegs();
-#endif
       uint8_t val = UINT8_MAX;
 
       const bool kSucc =
