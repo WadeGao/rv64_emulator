@@ -208,35 +208,75 @@ void JitEmitter::SelectA64RegInstruction(const asmjit::arm::Gp& rd,
     case InstToken::MULH:
       as_->smulh(rd, rs1, rs2);
       break;
-    case InstToken::MULHSU:
-      break;
+    case InstToken::MULHSU: {
+      asmjit::Label unsigned_rs1 = as_->newLabel();
+      asmjit::Label zero = as_->newLabel();
+      asmjit::Label signed_rs1 = as_->newLabel();
+      asmjit::Label end = as_->newLabel();
+
+      as_->cbz(rs1, zero);
+      as_->cbz(rs2, zero);
+      as_->tbnz(rs1, 63, signed_rs1);
+
+      as_->bind(unsigned_rs1);
+      as_->umulh(rd, rs1, rs2);
+      as_->b(end);
+
+      as_->bind(signed_rs1);
+      as_->neg(rd, rs1);
+      as_->umulh(rd, rd, rs2);
+      as_->mvn(rd, rd);
+      as_->b(end);
+
+      as_->bind(zero);
+      as_->mov(rd, 0);
+
+      as_->bind(end);
+    } break;
     case InstToken::MULHU:
       as_->umulh(rd, rs1, rs2);
       break;
-    case InstToken::DIV:
-      break;
+    case InstToken::DIV: {
+      asmjit::Label zero_divisor = as_->newLabel();
+      asmjit::Label end = as_->newLabel();
+      as_->cbz(rs2, zero_divisor);
+      as_->sdiv(rd, rs1, rs2);
+      as_->b(end);
+      as_->bind(zero_divisor);
+      as_->mov(rd, UINT64_MAX);
+      as_->bind(end);
+    } break;
     case InstToken::DIVU: {
       asmjit::Label overflow = as_->newLabel();
-      asmjit::Label normal = as_->newLabel();
+      asmjit::Label end = as_->newLabel();
       as_->cbz(rs2, overflow);
       as_->udiv(rd, rs1, rs2);
-      as_->b(normal);
+      as_->b(end);
       as_->bind(overflow);
       as_->mov(rd, UINT64_MAX);
-      as_->bind(normal);
+      as_->bind(end);
     } break;
-    case InstToken::REM:
-      break;
+    case InstToken::REM: {
+      asmjit::Label zero_divisor = as_->newLabel();
+      asmjit::Label end = as_->newLabel();
+      as_->cbz(rs2, zero_divisor);
+      as_->sdiv(rd, rs1, rs2);
+      as_->msub(rd, rd, rs2, rs1);
+      as_->b(end);
+      as_->bind(zero_divisor);
+      as_->mov(rd, rs1);
+      as_->bind(end);
+    } break;
     case InstToken::REMU: {
       asmjit::Label overflow = as_->newLabel();
-      asmjit::Label normal = as_->newLabel();
+      asmjit::Label end = as_->newLabel();
       as_->cbz(rs2, overflow);
       as_->udiv(rd, rs1, rs2);
       as_->msub(rd, rd, rs2, rs1);
-      as_->b(normal);
+      as_->b(end);
       as_->bind(overflow);
       as_->mov(rd, rs1);
-      as_->bind(normal);
+      as_->bind(end);
     } break;
     default:
       break;

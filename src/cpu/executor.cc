@@ -118,10 +118,15 @@ trap::Trap Executor::RegTypeExec(decode::DecodeInfo info) {
       val = kNegativeRes ? (~kRes + (kRs1Val * kRs2Val == 0)) : kRes;
     } break;
     case decode::InstToken::MULHSU: {
-      const bool kNegativeRes = kRs1Val < 0;
-      const uint64_t kAbsRs1Val = std::abs(kRs1Val);
-      const uint64_t kRes = MulUint64Hi(kAbsRs1Val, kU64Rs2Val);
-      val = kNegativeRes ? (~kRes + (kRs1Val * kU64Rs2Val == 0)) : kRes;
+      if (kRs1Val == 0 || kU64Rs2Val == 0) {
+        val = 0;
+      } else if (kRs1Val < 0) {
+        const uint64_t kAbsRs1Val = std::abs(kRs1Val);
+        const uint64_t kRes = MulUint64Hi(kAbsRs1Val, kRs2Val);
+        val = (~kRes);
+      } else {
+        val = MulUint64Hi(kRs1Val, kRs2Val);
+      }
     } break;
     case decode::InstToken::MULHU:
       val = MulUint64Hi(kU64Rs1Val, kU64Rs2Val);

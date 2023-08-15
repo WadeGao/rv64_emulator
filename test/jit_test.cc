@@ -1,5 +1,6 @@
 #include "jit/jit.hh"
 
+#include <cstdint>
 #include <memory>
 
 #include "conf.h"
@@ -12,6 +13,7 @@
 #include "gtest/gtest.h"
 
 using rv64_emulator::cpu::decode::InstToken;
+using rv64_emulator::cpu::decode::OpCode;
 
 class JitTest : public testing::Test {
  protected:
@@ -54,38 +56,30 @@ class JitTest : public testing::Test {
 TEST_F(JitTest, Emit) {
   rv64_emulator::cpu::decode::DecodeInfo info(0, 0);
 
-  info.op = rv64_emulator::cpu::decode::OpCode::kReg;
-  info.rd = 3;
-  info.rs1 = 3;
-  info.rs2 = 4;
-  info.token = InstToken::ADD;
+  info.op = OpCode::kReg;
+  info.token = InstToken::MULHSU;
+  info.rd = 1;
+  info.rs1 = 2;
+  info.rs2 = 3;
+  cpu_->reg_file_.xregs[2] = 0;
+  cpu_->reg_file_.xregs[3] = 100;
 
   jit_->EmitProlog();
-  jit_->Emit(info);  // x3 = 7
+  jit_->Emit(info);
 
-  info.rd = 10;
-  info.rs1 = 11;
-  info.rs2 = 24;
-  jit_->Emit(info);  // x10 = 35
+  info.rd = 4;
+  info.rs1 = 5;
+  info.rs2 = 6;
+  cpu_->reg_file_.xregs[5] = -5;
+  cpu_->reg_file_.xregs[6] = 10;
+  jit_->Emit(info);
 
-  info.token = InstToken::SLT;
-  info.rd = 20;
-  info.rs1 = 21;
-  info.rs2 = 22;
-  jit_->Emit(info);  // x20 = 1
-
-  // info.token = InstToken::DIVU;
-  // jit_->Emit(info);
-  info.token = InstToken::REMU;
-  info.rd = 1;
-  info.rs1 = 13;
-  info.rs2 = 5;
-  jit_->Emit(info);  // x1 = 3
-
-  info.rd = 2;
-  info.rs1 = 28;
-  info.rs2 = 10;     // x10 = 35
-  jit_->Emit(info);  // x2 = 8
+  info.rd = 7;
+  info.rs1 = 8;
+  info.rs2 = 9;
+  cpu_->reg_file_.xregs[8] = 5;
+  cpu_->reg_file_.xregs[9] = -10;
+  jit_->Emit(info);
 
   jit_->EmitEpilog();
 
@@ -98,9 +92,7 @@ TEST_F(JitTest, Emit) {
     fmt::print("x{}: {}\n", i, cpu_->reg_file_.xregs[i]);
   }
 
-  ASSERT_EQ(cpu_->reg_file_.xregs[3], 3 + 4);
-  ASSERT_EQ(cpu_->reg_file_.xregs[10], 11 + 24);
-  ASSERT_EQ(cpu_->reg_file_.xregs[20], 1);
-  ASSERT_EQ(cpu_->reg_file_.xregs[1], 3);
-  ASSERT_EQ(cpu_->reg_file_.xregs[2], 28);
+  ASSERT_EQ(cpu_->reg_file_.xregs[1], 0);
+  ASSERT_EQ(cpu_->reg_file_.xregs[4], UINT64_MAX);
+  ASSERT_EQ(cpu_->reg_file_.xregs[7], 4);
 }
