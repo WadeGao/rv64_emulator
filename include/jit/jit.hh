@@ -29,6 +29,9 @@ class JitEmitter {
   cpu::CPU* cpu_;
   void EmitMov(uint32_t rv_rd, uint32_t rv_rs);
   bool EmitReg(cpu::decode::DecodeInfo& info);
+  bool EmitLui(cpu::decode::DecodeInfo& info);
+  bool EmitAuipc(cpu::decode::DecodeInfo& info);
+  bool EmitImm(cpu::decode::DecodeInfo& info);
 
   /**
    * @brief emit corresponding a64 reg instruction by token
@@ -41,6 +44,10 @@ class JitEmitter {
   void SelectA64RegInstruction(const asmjit::arm::Gp& rd,
                                const asmjit::arm::Gp& rs1,
                                const asmjit::arm::Gp& rs2,
+                               cpu::decode::InstToken token);
+
+  void SelectA64ImmInstruction(const asmjit::arm::Gp& rd,
+                               const asmjit::arm::Gp& rs1, int32_t imm,
                                cpu::decode::InstToken token);
 };
 

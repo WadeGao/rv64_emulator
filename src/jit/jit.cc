@@ -283,6 +283,54 @@ void JitEmitter::SelectA64RegInstruction(const asmjit::arm::Gp& rd,
   }
 }
 
+void JitEmitter::SelectA64ImmInstruction(const asmjit::arm::Gp& rd,
+                                         const asmjit::arm::Gp& rs1,
+                                         int32_t imm,
+                                         cpu::decode::InstToken token) {
+  switch (token) {
+    case InstToken::ADDI:
+      as_->mov(rd, imm);
+      as_->add(rd, rs1, rd);
+      break;
+    case InstToken::SLTI:
+      as_->mov(rd, imm);
+      as_->cmp(rs1, rd);
+      as_->cset(rd, asmjit::arm::CondCode::kLT);
+      break;
+    case InstToken::SLTIU:
+      as_->mov(rd, imm);
+      as_->cmp(rs1, rd);
+      as_->cset(rd, asmjit::arm::CondCode::kLO);
+      break;
+    case InstToken::XORI:
+      as_->mov(rd, imm);
+      as_->eor(rd, rs1, rd);
+      break;
+    case InstToken::ORI:
+      as_->mov(rd, imm);
+      as_->orr(rd, rs1, rd);
+      break;
+    case InstToken::ANDI:
+      as_->mov(rd, imm);
+      as_->and_(rd, rs1, rd);
+      break;
+    case InstToken::SLLI:
+      as_->mov(rd, imm);
+      as_->lsl(rd, rs1, rd);
+      break;
+    case InstToken::SRLI:
+      as_->mov(rd, imm);
+      as_->lsr(rd, rs1, rd);
+      break;
+    case InstToken::SRAI:
+      as_->mov(rd, imm);
+      as_->asr(rd, rs1, rd);
+      break;
+    default:
+      break;
+  }
+}
+
 bool JitEmitter::EmitReg(cpu::decode::DecodeInfo& info) {
   if (info.rd == 0) {
     // nop
@@ -356,11 +404,125 @@ bool JitEmitter::EmitReg(cpu::decode::DecodeInfo& info) {
   return true;
 }
 
+bool JitEmitter::EmitLui(cpu::decode::DecodeInfo& info) {
+  if (info.rd == 0) {
+    // nop
+    return true;
+  }
+
+  int32_t a64_rd = A64Reg(info.rd);
+  if (a64_rd >= 0) {
+    as_->mov(asmjit::arm::GpX(a64_rd), info.imm);
+    return true;
+  }
+
+  // +────────+  <- old sp
+  // | padding|
+  // +────────+
+  // |   x0   |
+  // +────────+  <- new sp
+
+  // alloc stack space
+  as_->sub(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 16);
+
+  // save old x0
+  as_->str(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp));
+
+  // overwrite x0 and save into risc-v rd
+  as_->mov(asmjit::a64::regs::x0, info.imm);
+  as_->str(asmjit::a64::regs::x0, XRegToMem(info.rd));
+
+  // restore x0
+  as_->ldr(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp));
+
+  // free stack space
+  as_->add(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 16);
+
+  return true;
+}
+
+bool JitEmitter::EmitAuipc(cpu::decode::DecodeInfo& info) {
+  cpu::decode::DecodeInfo copy = info;
+  copy.imm += copy.pc;
+  return EmitLui(copy);
+}
+
+bool JitEmitter::EmitImm(cpu::decode::DecodeInfo& info) {
+  if (info.rd == 0) {
+    // nop
+    return true;
+  }
+
+  int32_t a64_rd = A64Reg(info.rd);
+  int32_t a64_rs1 = A64Reg(info.rs1);
+
+  // all in arm64 reg
+  if (a64_rd >= 0 && a64_rs1 >= 0) {
+    SelectA64ImmInstruction(asmjit::arm::GpX(a64_rd), asmjit::arm::GpX(a64_rs1),
+                            info.imm, info.token);
+    return true;
+  }
+
+  // +────────+  <- old sp
+  // |   x1   |
+  // +────────+
+  // |   x0   |
+  // +────────+  <- new sp
+
+  // alloc stack space
+  as_->sub(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 16);
+
+  if (a64_rs1 < 0) {
+    as_->str(asmjit::a64::regs::x1, asmjit::arm::ptr(asmjit::a64::regs::sp, 8));
+    as_->ldr(asmjit::a64::regs::x1, XRegToMem(info.rs1));
+  }
+
+  if (a64_rd < 0) {
+    as_->str(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp));
+
+    SelectA64ImmInstruction(
+        asmjit::a64::regs::x0,
+        a64_rs1 < 0 ? asmjit::a64::regs::x1 : asmjit::arm::GpX(a64_rs1),
+        info.imm, info.token);
+    as_->str(asmjit::a64::regs::x0, XRegToMem(info.rd));
+
+    as_->ldr(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp));
+  } else {
+    SelectA64ImmInstruction(
+        asmjit::arm::GpX(a64_rd),
+        a64_rs1 < 0 ? asmjit::a64::regs::x1 : asmjit::arm::GpX(a64_rs1),
+        info.imm, info.token);
+  }
+
+  if (a64_rs1 < 0) {
+    as_->ldr(asmjit::a64::regs::x1, asmjit::arm::ptr(asmjit::a64::regs::sp, 8));
+  }
+
+  // free stack space
+  as_->add(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 16);
+
+  return true;
+}
+
 bool JitEmitter::Emit(cpu::decode::DecodeInfo& info) {
+  if (info.op == cpu::decode::OpCode::kUndef ||
+      info.token == InstToken::UNKNOWN) {
+    return false;
+  }
+
   bool ret = false;
   switch (info.op) {
     case cpu::decode::OpCode::kReg:
       ret = EmitReg(info);
+      break;
+    case cpu::decode::OpCode::kLui:
+      ret = EmitLui(info);
+      break;
+    case cpu::decode::OpCode::kAuipc:
+      ret = EmitAuipc(info);
+      break;
+    case cpu::decode::OpCode::kImm:
+      ret = EmitImm(info);
       break;
     default:
       break;
