@@ -32,6 +32,7 @@ class JitEmitter {
   bool EmitLui(cpu::decode::DecodeInfo& info);
   bool EmitAuipc(cpu::decode::DecodeInfo& info);
   bool EmitImm(cpu::decode::DecodeInfo& info);
+  bool EmitReg32(cpu::decode::DecodeInfo& info);
 
   /**
    * @brief emit corresponding a64 reg instruction by token
@@ -41,14 +42,19 @@ class JitEmitter {
    * @param rs2
    * @param token
    */
-  void SelectA64RegInstruction(const asmjit::arm::Gp& rd,
-                               const asmjit::arm::Gp& rs1,
-                               const asmjit::arm::Gp& rs2,
+  void SelectA64RegInstruction(const asmjit::arm::GpX& rd,
+                               const asmjit::arm::GpX& rs1,
+                               const asmjit::arm::GpX& rs2,
                                cpu::decode::InstToken token);
 
-  void SelectA64ImmInstruction(const asmjit::arm::Gp& rd,
-                               const asmjit::arm::Gp& rs1, int32_t imm,
+  void SelectA64ImmInstruction(const asmjit::arm::GpX& rd,
+                               const asmjit::arm::GpX& rs1, int32_t imm,
                                cpu::decode::InstToken token);
+
+  void SelectA64Reg32Instruction(const asmjit::arm::GpW& wd,
+                                 const asmjit::arm::GpW& ws1,
+                                 const asmjit::arm::GpW& ws2,
+                                 cpu::decode::InstToken token);
 };
 
 }  // namespace rv64_emulator::jit

@@ -165,9 +165,9 @@ void JitEmitter::EmitMov(uint32_t rv_rd, uint32_t rv_rs) {
   }
 }
 
-void JitEmitter::SelectA64RegInstruction(const asmjit::arm::Gp& rd,
-                                         const asmjit::arm::Gp& rs1,
-                                         const asmjit::arm::Gp& rs2,
+void JitEmitter::SelectA64RegInstruction(const asmjit::arm::GpX& rd,
+                                         const asmjit::arm::GpX& rs1,
+                                         const asmjit::arm::GpX& rs2,
                                          cpu::decode::InstToken token) {
   switch (token) {
     case InstToken::ADD:
@@ -283,8 +283,8 @@ void JitEmitter::SelectA64RegInstruction(const asmjit::arm::Gp& rd,
   }
 }
 
-void JitEmitter::SelectA64ImmInstruction(const asmjit::arm::Gp& rd,
-                                         const asmjit::arm::Gp& rs1,
+void JitEmitter::SelectA64ImmInstruction(const asmjit::arm::GpX& rd,
+                                         const asmjit::arm::GpX& rs1,
                                          int32_t imm,
                                          cpu::decode::InstToken token) {
   switch (token) {
@@ -394,6 +394,176 @@ bool JitEmitter::EmitReg(cpu::decode::DecodeInfo& info) {
     as_->ldr(asmjit::a64::regs::x1, asmjit::arm::ptr(asmjit::a64::regs::sp, 8));
   }
   if (a64_rs2 < 0) {
+    as_->ldr(asmjit::a64::regs::x2,
+             asmjit::arm::ptr(asmjit::a64::regs::sp, 16));
+  }
+
+  // free stack space
+  as_->add(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 32);
+
+  return true;
+}
+
+void JitEmitter::SelectA64Reg32Instruction(const asmjit::arm::GpW& wd,
+                                           const asmjit::arm::GpW& ws1,
+                                           const asmjit::arm::GpW& ws2,
+                                           cpu::decode::InstToken token) {
+  switch (token) {
+    case InstToken::ADDW:
+      as_->add(wd, ws1, ws2);
+      as_->sxtw(asmjit::arm::GpX(wd.id()), wd);
+      break;
+    case InstToken::SUBW:
+      as_->sub(wd, ws1, ws2);
+      as_->sxtw(asmjit::arm::GpX(wd.id()), wd);
+      break;
+    case InstToken::SLLW:
+      as_->lsl(wd, ws1, ws2);
+      as_->sxtw(asmjit::arm::GpX(wd.id()), wd);
+      break;
+    case InstToken::SRLW:
+      as_->lsr(wd, ws1, ws2);
+      as_->sxtw(asmjit::arm::GpX(wd.id()), wd);
+      break;
+    case InstToken::SRAW:
+      as_->asr(wd, ws1, ws2);
+      as_->sxtw(asmjit::arm::GpX(wd.id()), wd);
+      break;
+    case InstToken::MULW:
+      as_->mul(wd, ws1, ws2);
+      as_->sxtw(asmjit::arm::GpX(wd.id()), wd);
+      break;
+    case InstToken::DIVW: {
+      asmjit::Label zero_divsor = as_->newLabel();
+      asmjit::Label end = as_->newLabel();
+
+      as_->cbz(ws2, zero_divsor);
+
+      as_->sdiv(wd, ws1, ws2);
+      as_->b(end);
+
+      as_->bind(zero_divsor);
+      as_->mov(wd, UINT32_MAX);
+
+      as_->bind(end);
+      as_->sxtw(asmjit::arm::GpX(wd.id()), wd);
+    } break;
+    case InstToken::DIVUW: {
+      asmjit::Label zero_divsor = as_->newLabel();
+      asmjit::Label end = as_->newLabel();
+
+      as_->cbz(ws2, zero_divsor);
+
+      as_->udiv(wd, ws1, ws2);
+      as_->b(end);
+
+      as_->bind(zero_divsor);
+      as_->mov(wd, UINT32_MAX);
+
+      as_->bind(end);
+      as_->sxtw(asmjit::arm::GpX(wd.id()), wd);
+    } break;
+    case InstToken::REMW: {
+      asmjit::Label zero_divisor = as_->newLabel();
+      asmjit::Label end = as_->newLabel();
+
+      as_->cbz(ws2, zero_divisor);
+
+      as_->sdiv(wd, ws1, ws2);
+      as_->msub(wd, wd, ws2, ws1);
+      as_->b(end);
+
+      as_->bind(zero_divisor);
+      as_->mov(wd, ws1);
+
+      as_->bind(end);
+      as_->sxtw(asmjit::arm::GpX(wd.id()), wd);
+    } break;
+    case InstToken::REMUW: {
+      asmjit::Label overflow = as_->newLabel();
+      asmjit::Label end = as_->newLabel();
+
+      as_->cbz(ws2, overflow);
+
+      as_->udiv(wd, ws1, ws2);
+      as_->msub(wd, wd, ws2, ws1);
+      as_->b(end);
+
+      as_->bind(overflow);
+      as_->mov(wd, ws1);
+
+      as_->bind(end);
+      as_->sxtw(asmjit::arm::GpX(wd.id()), wd);
+    } break;
+    default:
+      break;
+  }
+}
+
+bool JitEmitter::EmitReg32(cpu::decode::DecodeInfo& info) {
+  if (info.rd == 0) {
+    // nop
+    return true;
+  }
+
+  int32_t a64_wd = A64Reg(info.rd);
+  int32_t a64_ws1 = A64Reg(info.rs1);
+  int32_t a64_ws2 = A64Reg(info.rs2);
+
+  // all in arm64 reg
+  if (a64_wd >= 0 && a64_ws1 >= 0 && a64_ws2 >= 0) {
+    SelectA64Reg32Instruction(asmjit::arm::GpW(a64_wd),
+                              asmjit::arm::GpW(a64_ws1),
+                              asmjit::arm::GpW(a64_ws2), info.token);
+    return true;
+  }
+
+  // +────────+  <- old sp
+  // | padding|
+  // +────────+
+  // |   w2   |
+  // +────────+
+  // |   w1   |
+  // +────────+
+  // |   w0   |
+  // +────────+  <- new sp
+
+  // alloc stack space
+  as_->sub(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 32);
+
+  if (a64_ws2 < 0) {
+    as_->str(asmjit::a64::regs::x2,
+             asmjit::arm::ptr(asmjit::a64::regs::sp, 16));
+    as_->ldr(asmjit::a64::regs::x2, XRegToMem(info.rs2));
+  }
+  if (a64_ws1 < 0) {
+    as_->str(asmjit::a64::regs::x1, asmjit::arm::ptr(asmjit::a64::regs::sp, 8));
+    as_->ldr(asmjit::a64::regs::x1, XRegToMem(info.rs1));
+  }
+
+  if (a64_wd < 0) {
+    as_->str(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp));
+
+    SelectA64Reg32Instruction(
+        asmjit::a64::regs::w0,
+        a64_ws1 < 0 ? asmjit::a64::regs::w1 : asmjit::arm::GpW(a64_ws1),
+        a64_ws2 < 0 ? asmjit::a64::regs::w2 : asmjit::arm::GpW(a64_ws2),
+        info.token);
+    as_->str(asmjit::a64::regs::x0, XRegToMem(info.rd));
+
+    as_->ldr(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp));
+  } else {
+    SelectA64Reg32Instruction(
+        asmjit::arm::GpW(a64_wd),
+        a64_ws1 < 0 ? asmjit::a64::regs::w1 : asmjit::arm::GpW(a64_ws1),
+        a64_ws2 < 0 ? asmjit::a64::regs::w2 : asmjit::arm::GpW(a64_ws2),
+        info.token);
+  }
+
+  if (a64_ws1 < 0) {
+    as_->ldr(asmjit::a64::regs::x1, asmjit::arm::ptr(asmjit::a64::regs::sp, 8));
+  }
+  if (a64_ws2 < 0) {
     as_->ldr(asmjit::a64::regs::x2,
              asmjit::arm::ptr(asmjit::a64::regs::sp, 16));
   }
@@ -523,6 +693,9 @@ bool JitEmitter::Emit(cpu::decode::DecodeInfo& info) {
       break;
     case cpu::decode::OpCode::kImm:
       ret = EmitImm(info);
+      break;
+    case cpu::decode::OpCode::kRv32:
+      ret = EmitReg32(info);
       break;
     default:
       break;

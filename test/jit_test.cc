@@ -89,6 +89,30 @@ TEST_F(JitTest, Emit) {
   info.imm = -111;
   jit_->Emit(info);
 
+  info.op = OpCode::kReg;
+  info.token = InstToken::SUB;
+  info.rd = 12;
+  info.rs1 = 13;
+  info.rs2 = 14;
+  jit_->Emit(info);
+
+  info.op = OpCode::kRv32;
+  info.token = InstToken::REMUW;
+  info.rd = 15;
+  info.rs1 = 16;
+  info.rs2 = 17;
+  cpu_->reg_file_.xregs[16] = 0xf1234567;
+  cpu_->reg_file_.xregs[17] = 0;
+  jit_->Emit(info);
+
+  info.token = InstToken::ADDW;
+  info.rd = 18;
+  info.rs1 = 19;
+  info.rs2 = 20;
+  cpu_->reg_file_.xregs[19] = 0xefffffff;
+  cpu_->reg_file_.xregs[20] = 0x1;
+  jit_->Emit(info);
+
   jit_->EmitEpilog();
 
   rv64_emulator::jit::Func_t fn;
@@ -104,4 +128,7 @@ TEST_F(JitTest, Emit) {
   ASSERT_EQ(cpu_->reg_file_.xregs[4], UINT64_MAX);
   ASSERT_EQ(cpu_->reg_file_.xregs[7], 4);
   ASSERT_EQ(cpu_->reg_file_.xregs[10], 11 - 111);
+  ASSERT_EQ(cpu_->reg_file_.xregs[12], -1);
+  ASSERT_EQ(cpu_->reg_file_.xregs[15], 0xfffffffff1234567);
+  ASSERT_EQ(cpu_->reg_file_.xregs[18], 0xfffffffff0000000);
 }
