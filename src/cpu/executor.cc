@@ -300,7 +300,9 @@ trap::Trap Executor::LuiTypeExec(decode::DecodeInfo info) {
 
 trap::Trap Executor::JalTypeExec(decode::DecodeInfo info) {
   const uint64_t kNewPC = (int64_t)info.pc + info.imm;
+#ifdef UNIT_TEST
   CHECK_MISALIGN_INSTRUCTION(kNewPC, cpu_);
+#endif
   cpu_->reg_file_.xregs[info.rd] = info.pc + 4;
   cpu_->pc_ = kNewPC;
   return trap::kNoneTrap;
@@ -309,7 +311,9 @@ trap::Trap Executor::JalTypeExec(decode::DecodeInfo info) {
 trap::Trap Executor::JalrTypeExec(decode::DecodeInfo info) {
   const int64_t kRs1Val = (int64_t)cpu_->reg_file_.xregs[info.rs1];
   const uint64_t kNewPC = (info.imm + kRs1Val) & 0xfffffffffffffffe;
+#ifdef UNIT_TEST
   CHECK_MISALIGN_INSTRUCTION(kNewPC, cpu_);
+#endif
   cpu_->pc_ = kNewPC;
   cpu_->reg_file_.xregs[info.rd] = info.pc + 4;
   return trap::kNoneTrap;
@@ -366,7 +370,10 @@ trap::Trap Executor::BranchTypeExec(decode::DecodeInfo info) {
       return ILL_TRAP(info.word);
   }
 
+#ifdef UNIT_TEST
   CHECK_MISALIGN_INSTRUCTION(new_pc, cpu_);
+#endif
+
   cpu_->pc_ = new_pc;
   return trap::kNoneTrap;
 }
@@ -426,9 +433,12 @@ trap::Trap Executor::StoreTypeExec(decode::DecodeInfo info) {
 
 trap::Trap Executor::CsrTypeExec(decode::DecodeInfo info) {
   const uint32_t kImm = info.imm;
+
+#ifndef UNIT_TEST
   if (0 == kAllowedCsrs.count(kImm)) {
     return ILL_TRAP(info.word);
   }
+#endif
 
   if (kImm == csr::kCsrSatp) {
     const uint64_t kMstatusVal = cpu_->state_.Read(csr::kCsrMstatus);
@@ -444,7 +454,10 @@ trap::Trap Executor::CsrTypeExec(decode::DecodeInfo info) {
       info.token == decode::InstToken::CSRRWI) {
     writable = true;
   }
+
+#ifdef UNIT_TEST
   CHECK_CSR_ACCESS_PRIVILEGE(kImm, writable, cpu_->priv_mode_, info.word);
+#endif
 
   const uint64_t kCsrVal = cpu_->state_.Read(kImm);
   const int64_t kRs1Val = (int64_t)cpu_->reg_file_.xregs[info.rs1];

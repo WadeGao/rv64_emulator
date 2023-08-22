@@ -46,8 +46,7 @@ constexpr uint64_t kTvecReg[] = {
 uint32_t hart_id = 0;
 
 CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
-    : clock_(0),
-      instret_(0),
+    : instret_(0),
       pc_(0),
       hart_id_(hart_id++),
       priv_mode_(PrivilegeMode::kMachine),
@@ -59,7 +58,6 @@ CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
 }
 
 void CPU::Reset() {
-  clock_ = 0;
   instret_ = 0;
   priv_mode_ = PrivilegeMode::kMachine;
   pc_ = 0;
@@ -227,9 +225,6 @@ trap::Trap CPU::TickOperate() {
 }
 
 void CPU::Tick(bool meip, bool seip, bool msip, bool mtip, bool update) {
-  // pre exec
-  state_.Write(csr::kCsrMCycle, ++clock_);
-
   if (update) {
     uint64_t mip_val = state_.Read(csr::kCsrMip);
     auto* mip_desc = reinterpret_cast<csr::MipDesc*>(&mip_val);

@@ -79,7 +79,6 @@ class CPU {
   uint64_t GetInstret() const;
 
  private:
-  uint64_t clock_;
   uint64_t instret_;
 
   std::unique_ptr<executor::Executor> executor_;

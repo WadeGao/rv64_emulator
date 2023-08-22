@@ -73,16 +73,6 @@ int main(int argc, char* argv[]) {
 
   auto bus = std::make_shared<rv64_emulator::device::bus::Bus>();
   bus->MountDevice({
-      .base = kDramBaseAddr,
-      .size = kDramSize,
-      .dev = std::move(dram),
-  });
-  bus->MountDevice({
-      .base = kUartBase,
-      .size = kUartAddrSpaceRange,
-      .dev = std::move(uart),
-  });
-  bus->MountDevice({
       .base = kClintBase,
       .size = kClintAddrSpaceRange,
       .dev = std::move(clint),
@@ -91,6 +81,16 @@ int main(int argc, char* argv[]) {
       .base = kPlicBase,
       .size = kPlicAddrSpaceRange,
       .dev = std::move(plic),
+  });
+  bus->MountDevice({
+      .base = kUartBase,
+      .size = kUartAddrSpaceRange,
+      .dev = std::move(uart),
+  });
+  bus->MountDevice({
+      .base = kDramBaseAddr,
+      .size = kDramSize,
+      .dev = std::move(dram),
   });
 
   std::thread uart_input_thread(UartInput, raw_uart);

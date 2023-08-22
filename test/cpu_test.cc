@@ -48,14 +48,14 @@ class CpuTest : public testing::Test {
 
     auto bus = std::make_shared<rv64_emulator::device::bus::Bus>();
     bus->MountDevice({
-        .base = kDramBaseAddr,
-        .size = kDramSize,
-        .dev = std::move(dram),
-    });
-    bus->MountDevice({
         .base = kClintBase,
         .size = kClintAddrSpaceRange,
         .dev = std::move(clint),
+    });
+    bus->MountDevice({
+        .base = kDramBaseAddr,
+        .size = kDramSize,
+        .dev = std::move(dram),
     });
 
     auto sv39 = std::make_unique<rv64_emulator::mmu::Sv39>(bus);

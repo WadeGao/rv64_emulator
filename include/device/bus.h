@@ -1,6 +1,6 @@
 #pragma once
 
-#include <list>
+#include <forward_list>
 #include <memory>
 
 #include "device/mmio.hpp"
@@ -17,12 +17,12 @@ class Bus : public MmioDevice {
   void Reset() override;
 
  private:
-  std::list<MmioDeviceNode> device_;
+  std::forward_list<MmioDeviceNode> device_;
 
-  std::list<MmioDeviceNode>::const_iterator GetDeviceByRangeImpl(
+  std::forward_list<MmioDeviceNode>::const_iterator GetDeviceByRangeImpl(
       uint64_t addr) const;
-  std::list<MmioDeviceNode>::iterator GetDeviceByRange(uint64_t addr);
-  std::list<MmioDeviceNode>::const_iterator GetDeviceByRange(
+  std::forward_list<MmioDeviceNode>::iterator GetDeviceByRange(uint64_t addr);
+  std::forward_list<MmioDeviceNode>::const_iterator GetDeviceByRange(
       uint64_t addr) const;
 };
 
