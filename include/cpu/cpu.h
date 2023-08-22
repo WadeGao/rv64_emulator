@@ -33,7 +33,7 @@ enum class PrivilegeMode {
 template <typename T, uint32_t N>
 class RegGroup {
  public:
-  using value_type = typename std::remove_const_t<std::remove_reference_t<T>>;
+  using value_type = typename std::decay_t<T>;
   using reference = value_type&;
   using const_reference = const value_type&;
   static_assert(std::is_floating_point_v<value_type> ||
@@ -63,6 +63,7 @@ class RegFile {
 class CPU {
  public:
   uint64_t pc_;
+  uint64_t instret_;
   uint32_t hart_id_;
   csr::State state_;
   RegFile reg_file_;
@@ -79,8 +80,6 @@ class CPU {
   uint64_t GetInstret() const;
 
  private:
-  uint64_t instret_;
-
   std::unique_ptr<executor::Executor> executor_;
   std::unique_ptr<mmu::Mmu> mmu_;
 

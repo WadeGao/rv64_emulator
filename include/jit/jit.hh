@@ -33,15 +33,9 @@ class JitEmitter {
   bool EmitAuipc(cpu::decode::DecodeInfo& info);
   bool EmitImm(cpu::decode::DecodeInfo& info);
   bool EmitReg32(cpu::decode::DecodeInfo& info);
+  bool EmitJal(cpu::decode::DecodeInfo& info);
+  bool EmitJalr(cpu::decode::DecodeInfo& info);
 
-  /**
-   * @brief emit corresponding a64 reg instruction by token
-   *
-   * @param rd
-   * @param rs1
-   * @param rs2
-   * @param token
-   */
   void SelectA64RegInstruction(const asmjit::arm::GpX& rd,
                                const asmjit::arm::GpX& rs1,
                                const asmjit::arm::GpX& rs2,

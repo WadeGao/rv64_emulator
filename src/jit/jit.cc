@@ -16,6 +16,9 @@ namespace rv64_emulator::jit {
 using cpu::decode::InstToken;
 
 constexpr uint64_t kXregBias = offsetof(cpu::CPU, reg_file_.xregs);
+constexpr uint64_t kPcBias = offsetof(cpu::CPU, pc_);
+constexpr uint64_t kInstretBias = offsetof(cpu::CPU, instret_);
+
 constexpr int32_t kRv64ToA64Map[32] = {
     [0] = static_cast<int32_t>(asmjit::arm::Gp::Id::kIdZr),
     [1] = 8,    // ra -> x8
@@ -96,8 +99,10 @@ void JitEmitter::EmitProlog() {
   as_->str(asmjit::a64::regs::x30,
            asmjit::arm::ptr(asmjit::a64::regs::sp, sizeof(uint64_t) * 30));
 
-  // map risc-v regs to arm64 reg
+  // set up cpu base addr to x29
   as_->mov(asmjit::a64::regs::x29, cpu_);
+
+  // map risc-v regs to arm64 reg
   for (uint32_t i = 0; i < 32; i++) {
     if (kRv64ToA64Map[i] < 0) {
       continue;
@@ -674,6 +679,55 @@ bool JitEmitter::EmitImm(cpu::decode::DecodeInfo& info) {
   return true;
 }
 
+bool JitEmitter::EmitJal(cpu::decode::DecodeInfo& info) {
+  const uint64_t kNewPC = (int64_t)info.pc + info.imm;
+
+  // +────────+  <- old sp
+  // | padding|
+  // +────────+
+  // |   x0   |
+  // +────────+  <- new sp
+
+  // alloc stack space
+  as_->sub(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 16);
+
+  // save old x0
+  as_->str(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp));
+
+  // update pc
+  as_->mov(asmjit::a64::regs::x0, kNewPC);
+  as_->str(asmjit::a64::regs::x0,
+           asmjit::arm::ptr(asmjit::a64::regs::x29, kPcBias));
+
+  // restore x0
+  as_->ldr(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp));
+
+  // store link addr to risc-v rd
+  if (info.rd != 0) {
+    int32_t a64_rd = A64Reg(info.rd);
+    if (a64_rd >= 0) {
+      as_->mov(asmjit::arm::GpX(a64_rd), info.pc + info.size);
+    } else {
+      // save old x0
+      as_->str(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp));
+
+      // store link addr
+      as_->mov(asmjit::a64::regs::x0, info.pc + info.size);
+      as_->str(asmjit::a64::regs::x0, XRegToMem(info.rd));
+
+      // restore x0
+      as_->ldr(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp));
+    }
+  }
+
+  // free stack space
+  as_->add(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 16);
+
+  return true;
+}
+
+bool JitEmitter::EmitJalr(cpu::decode::DecodeInfo& info) {}
+
 bool JitEmitter::Emit(cpu::decode::DecodeInfo& info) {
   if (info.op == cpu::decode::OpCode::kUndef ||
       info.token == InstToken::UNKNOWN) {
@@ -696,6 +750,12 @@ bool JitEmitter::Emit(cpu::decode::DecodeInfo& info) {
       break;
     case cpu::decode::OpCode::kRv32:
       ret = EmitReg32(info);
+      break;
+    case cpu::decode::OpCode::kJal:
+      ret = EmitJal(info);
+      break;
+    case cpu::decode::OpCode::kJalr:
+      ret = EmitJalr(info);
       break;
     default:
       break;

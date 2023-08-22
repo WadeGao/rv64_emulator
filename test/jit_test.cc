@@ -113,6 +113,14 @@ TEST_F(JitTest, Emit) {
   cpu_->reg_file_.xregs[20] = 0x1;
   jit_->Emit(info);
 
+  info.op = OpCode::kJal;
+  info.token = InstToken::JAL;
+  info.rd = 19;
+  info.pc = 0x1234;
+  info.imm = 0x45678;
+  info.size = 4;
+  jit_->Emit(info);
+
   jit_->EmitEpilog();
 
   rv64_emulator::jit::Func_t fn;
@@ -123,6 +131,7 @@ TEST_F(JitTest, Emit) {
   for (uint32_t i = 0; i < 32; i++) {
     fmt::print("x{}: {}\n", i, cpu_->reg_file_.xregs[i]);
   }
+  fmt::print("pc: {}\n", cpu_->pc_);
 
   ASSERT_EQ(cpu_->reg_file_.xregs[1], 0);
   ASSERT_EQ(cpu_->reg_file_.xregs[4], UINT64_MAX);
@@ -131,4 +140,6 @@ TEST_F(JitTest, Emit) {
   ASSERT_EQ(cpu_->reg_file_.xregs[12], -1);
   ASSERT_EQ(cpu_->reg_file_.xregs[15], 0xfffffffff1234567);
   ASSERT_EQ(cpu_->reg_file_.xregs[18], 0xfffffffff0000000);
+  ASSERT_EQ(cpu_->pc_, 0x1234 + 0x45678);
+  ASSERT_EQ(cpu_->reg_file_.xregs[19], 0x1234 + 4);
 }

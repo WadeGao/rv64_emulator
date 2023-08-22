@@ -303,8 +303,8 @@ trap::Trap Executor::JalTypeExec(decode::DecodeInfo info) {
 #ifdef UNIT_TEST
   CHECK_MISALIGN_INSTRUCTION(kNewPC, cpu_);
 #endif
-  cpu_->reg_file_.xregs[info.rd] = info.pc + 4;
   cpu_->pc_ = kNewPC;
+  cpu_->reg_file_.xregs[info.rd] = info.pc + info.size;
   return trap::kNoneTrap;
 }
 
@@ -315,7 +315,7 @@ trap::Trap Executor::JalrTypeExec(decode::DecodeInfo info) {
   CHECK_MISALIGN_INSTRUCTION(kNewPC, cpu_);
 #endif
   cpu_->pc_ = kNewPC;
-  cpu_->reg_file_.xregs[info.rd] = info.pc + 4;
+  cpu_->reg_file_.xregs[info.rd] = info.pc + info.size;
   return trap::kNoneTrap;
 }
 
@@ -332,7 +332,7 @@ trap::Trap Executor::BranchTypeExec(decode::DecodeInfo info) {
   const int64_t kRs2Val = (int64_t)kU64Rs2Val;
   const int64_t kImm = info.imm;
 
-  uint64_t new_pc = info.pc + 4;
+  uint64_t new_pc = info.pc + info.size;
   const uint64_t kPredictedPC = info.pc + kImm;
 
   switch (info.token) {
@@ -507,7 +507,7 @@ trap::Trap Executor::ECallExec(decode::DecodeInfo info) {
       break;
   }
 
-  return MAKE_TRAP(etype, info.pc + 4);
+  return MAKE_TRAP(etype, info.pc + info.size);
 }
 
 trap::Trap Executor::SfenceVmaExec(decode::DecodeInfo info) {
@@ -597,7 +597,9 @@ trap::Trap Executor::SystemTypeExec(decode::DecodeInfo info) {
       ret = ECallExec(info);
       break;
     case decode::InstToken::WFI:
+#ifdef UNIT_TEST
       // cpu_->state_.SetWfi(true);
+#endif
       break;
     case decode::InstToken::SFENCE_VMA:
       ret = SfenceVmaExec(info);
