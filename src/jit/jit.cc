@@ -680,7 +680,21 @@ bool JitEmitter::EmitImm(cpu::decode::DecodeInfo& info) {
 }
 
 bool JitEmitter::EmitJal(cpu::decode::DecodeInfo& info) {
+  int32_t a64_rd = A64Reg(info.rd);
   const uint64_t kNewPC = (int64_t)info.pc + info.imm;
+
+  if (a64_rd >= 0) {
+    auto gpx_rd = asmjit::arm::GpX(a64_rd);
+
+    // update pc
+    as_->mov(gpx_rd, kNewPC);
+    as_->str(gpx_rd, asmjit::arm::ptr(asmjit::a64::regs::x29, kPcBias));
+
+    // save link addr
+    as_->mov(gpx_rd, info.pc + info.size);
+
+    return true;
+  }
 
   // +────────+  <- old sp
   // | padding|
@@ -699,26 +713,12 @@ bool JitEmitter::EmitJal(cpu::decode::DecodeInfo& info) {
   as_->str(asmjit::a64::regs::x0,
            asmjit::arm::ptr(asmjit::a64::regs::x29, kPcBias));
 
+  // store link addr
+  as_->mov(asmjit::a64::regs::x0, info.pc + info.size);
+  as_->str(asmjit::a64::regs::x0, XRegToMem(info.rd));
+
   // restore x0
   as_->ldr(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp));
-
-  // store link addr to risc-v rd
-  if (info.rd != 0) {
-    int32_t a64_rd = A64Reg(info.rd);
-    if (a64_rd >= 0) {
-      as_->mov(asmjit::arm::GpX(a64_rd), info.pc + info.size);
-    } else {
-      // save old x0
-      as_->str(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp));
-
-      // store link addr
-      as_->mov(asmjit::a64::regs::x0, info.pc + info.size);
-      as_->str(asmjit::a64::regs::x0, XRegToMem(info.rd));
-
-      // restore x0
-      as_->ldr(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp));
-    }
-  }
 
   // free stack space
   as_->add(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 16);
@@ -726,7 +726,72 @@ bool JitEmitter::EmitJal(cpu::decode::DecodeInfo& info) {
   return true;
 }
 
-bool JitEmitter::EmitJalr(cpu::decode::DecodeInfo& info) {}
+bool JitEmitter::EmitJalr(cpu::decode::DecodeInfo& info) {
+  int32_t a64_rd = A64Reg(info.rd);
+  int32_t a64_rs1 = A64Reg(info.rs1);
+
+  if (a64_rd >= 0 && a64_rs1 >= 0) {
+    auto gpx_rd = asmjit::arm::GpX(a64_rd);
+    auto gpx_rs1 = asmjit::arm::GpX(a64_rs1);
+
+    // calc new pc
+    as_->mov(gpx_rd, info.imm);
+    as_->add(gpx_rd, gpx_rd, gpx_rs1);
+    as_->and_(gpx_rd, gpx_rd, 0xfffffffffffffffe);
+
+    // save new pc
+    as_->str(gpx_rd, asmjit::arm::ptr(asmjit::a64::regs::x29, kPcBias));
+
+    // save link addr
+    as_->mov(gpx_rd, info.pc + info.size);
+
+    return true;
+  }
+
+  // +────────+ <- old sp
+  // |   x1   |
+  // +────────+
+  // |   x0   |
+  // +────────+ <- new sp
+
+  // alloc stack space
+  as_->sub(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 16);
+
+  if (a64_rs1 < 0) {
+    as_->str(asmjit::a64::regs::x1, asmjit::arm::ptr(asmjit::a64::regs::sp, 8));
+    as_->ldr(asmjit::a64::regs::x1, XRegToMem(info.rs1));
+  }
+  if (a64_rd < 0) {
+    as_->str(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp));
+    as_->ldr(asmjit::a64::regs::x0, XRegToMem(info.rd));
+  }
+
+  asmjit::arm::GpX gpx_rd =
+      a64_rd < 0 ? asmjit::a64::regs::x0 : asmjit::arm::GpX(a64_rd);
+  asmjit::arm::GpX gpx_rs1 =
+      a64_rs1 < 0 ? asmjit::a64::regs::x1 : asmjit::arm::GpX(a64_rs1);
+
+  as_->mov(gpx_rd, info.imm);
+  as_->add(gpx_rd, gpx_rd, gpx_rs1);
+  as_->and_(gpx_rd, gpx_rd, 0xfffffffffffffffe);
+
+  as_->str(gpx_rd, asmjit::arm::ptr(asmjit::a64::regs::x29, kPcBias));
+
+  as_->mov(gpx_rd, info.pc + info.size);
+
+  if (a64_rd < 0) {
+    as_->str(gpx_rd, XRegToMem(info.rd));
+    as_->ldr(gpx_rd, asmjit::arm::ptr(asmjit::a64::regs::sp));
+  }
+  if (a64_rs1 < 0) {
+    as_->ldr(gpx_rs1, asmjit::arm::ptr(asmjit::a64::regs::sp, 8));
+  }
+
+  // free stack space
+  as_->add(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 16);
+
+  return true;
+}
 
 bool JitEmitter::Emit(cpu::decode::DecodeInfo& info) {
   if (info.op == cpu::decode::OpCode::kUndef ||

@@ -54,7 +54,7 @@ TEST_F(UartTest, StoreTxBuffer) {
     ASSERT_EQ(c, uart_->Getc());
   }
 
-  ASSERT_EQ(EOF, uart_->Getc());
+  ASSERT_EQ(static_cast<char>(EOF), uart_->Getc());
 }
 
 TEST_F(UartTest, StoreControlRstTx) {

@@ -68,7 +68,7 @@ TEST_F(JitTest, Emit) {
   cpu_->reg_file_.xregs[3] = 100;
   jit_->Emit(info);
 
-  info.rd = 4;
+  info.rd = 2;
   info.rs1 = 5;
   info.rs2 = 6;
   cpu_->reg_file_.xregs[5] = -5;
@@ -121,6 +121,26 @@ TEST_F(JitTest, Emit) {
   info.size = 4;
   jit_->Emit(info);
 
+  info.op = OpCode::kJalr;
+  info.token = InstToken::JALR;
+  info.rd = 20;
+  info.rs1 = 21;
+  info.pc = 0x1234;
+  info.imm = 0x45678;
+  info.size = 4;
+  cpu_->reg_file_.xregs[info.rs1] = 0x1234567890abcdef;
+  jit_->Emit(info);
+
+  info.op = OpCode::kJalr;
+  info.token = InstToken::JALR;
+  info.rd = 3;
+  info.rs1 = 4;
+  info.pc = 0x1234;
+  info.imm = 0xabcde;
+  info.size = 4;
+  cpu_->reg_file_.xregs[info.rs1] = 0x1234567890abcdef;
+  jit_->Emit(info);
+
   jit_->EmitEpilog();
 
   rv64_emulator::jit::Func_t fn;
@@ -129,17 +149,19 @@ TEST_F(JitTest, Emit) {
   fn();
 
   for (uint32_t i = 0; i < 32; i++) {
-    fmt::print("x{}: {}\n", i, cpu_->reg_file_.xregs[i]);
+    fmt::print("x{}: {:#018x}\n", i, cpu_->reg_file_.xregs[i]);
   }
-  fmt::print("pc: {}\n", cpu_->pc_);
+  fmt::print("pc: {:#018x}\n", cpu_->pc_);
 
   ASSERT_EQ(cpu_->reg_file_.xregs[1], 0);
-  ASSERT_EQ(cpu_->reg_file_.xregs[4], UINT64_MAX);
+  ASSERT_EQ(cpu_->reg_file_.xregs[2], UINT64_MAX);
   ASSERT_EQ(cpu_->reg_file_.xregs[7], 4);
   ASSERT_EQ(cpu_->reg_file_.xregs[10], 11 - 111);
   ASSERT_EQ(cpu_->reg_file_.xregs[12], -1);
   ASSERT_EQ(cpu_->reg_file_.xregs[15], 0xfffffffff1234567);
   ASSERT_EQ(cpu_->reg_file_.xregs[18], 0xfffffffff0000000);
-  ASSERT_EQ(cpu_->pc_, 0x1234 + 0x45678);
   ASSERT_EQ(cpu_->reg_file_.xregs[19], 0x1234 + 4);
+  ASSERT_EQ(cpu_->reg_file_.xregs[20], 0x1234 + 4);
+  ASSERT_EQ(cpu_->pc_, 0x1234567890b68acc);
+  ASSERT_EQ(cpu_->reg_file_.xregs[3], 0x1234 + 4);
 }
