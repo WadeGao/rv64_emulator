@@ -35,6 +35,7 @@ class JitEmitter {
   bool EmitReg32(cpu::decode::DecodeInfo& info);
   bool EmitJal(cpu::decode::DecodeInfo& info);
   bool EmitJalr(cpu::decode::DecodeInfo& info);
+  bool EmitImm32(cpu::decode::DecodeInfo& info);
 
   void SelectA64RegInstruction(const asmjit::arm::GpX& rd,
                                const asmjit::arm::GpX& rs1,
@@ -48,6 +49,10 @@ class JitEmitter {
   void SelectA64Reg32Instruction(const asmjit::arm::GpW& wd,
                                  const asmjit::arm::GpW& ws1,
                                  const asmjit::arm::GpW& ws2,
+                                 cpu::decode::InstToken token);
+
+  void SelectA64Imm32Instruction(const asmjit::arm::GpW& wd,
+                                 const asmjit::arm::GpW& ws1, int32_t imm,
                                  cpu::decode::InstToken token);
 };
 

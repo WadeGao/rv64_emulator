@@ -793,6 +793,90 @@ bool JitEmitter::EmitJalr(cpu::decode::DecodeInfo& info) {
   return true;
 }
 
+void JitEmitter::SelectA64Imm32Instruction(const asmjit::arm::GpW& wd,
+                                           const asmjit::arm::GpW& ws1,
+                                           int32_t imm,
+                                           cpu::decode::InstToken token) {
+  switch (token) {
+    case InstToken::ADDIW:
+      as_->mov(wd, imm);
+      as_->add(wd, ws1, wd);
+      break;
+    case InstToken::SLLIW:
+      as_->mov(wd, imm);
+      as_->lsl(wd, ws1, wd);
+      break;
+    case InstToken::SRLIW:
+      as_->mov(wd, imm);
+      as_->lsr(wd, ws1, wd);
+      break;
+    case InstToken::SRAIW:
+      as_->mov(wd, imm);
+      as_->asr(wd, ws1, wd);
+      break;
+    default:
+      return;
+  }
+
+  as_->sxtw(asmjit::arm::GpX(wd.id()), wd);
+}
+
+bool JitEmitter::EmitImm32(cpu::decode::DecodeInfo& info) {
+  if (info.rd == 0) {
+    return true;
+  }
+
+  int32_t a64_rd = A64Reg(info.rd);
+  int32_t a64_rs1 = A64Reg(info.rs1);
+
+  // all in arm64 reg
+  if (a64_rd >= 0 && a64_rs1 >= 0) {
+    SelectA64Imm32Instruction(asmjit::arm::GpW(a64_rd),
+                              asmjit::arm::GpW(a64_rs1), info.imm, info.token);
+    return true;
+  }
+
+  // +────────+  <- old sp
+  // |   x1   |
+  // +────────+
+  // |   x0   |
+  // +────────+  <- new sp
+
+  // alloc stack space
+  as_->sub(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 16);
+
+  if (a64_rs1 < 0) {
+    as_->str(asmjit::a64::regs::x1, asmjit::arm::ptr(asmjit::a64::regs::sp, 8));
+    as_->ldr(asmjit::a64::regs::x1, XRegToMem(info.rs1));
+  }
+
+  if (a64_rd < 0) {
+    as_->str(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp));
+
+    SelectA64Imm32Instruction(
+        asmjit::a64::regs::w0,
+        a64_rs1 < 0 ? asmjit::a64::regs::w1 : asmjit::arm::GpW(a64_rs1),
+        info.imm, info.token);
+    as_->str(asmjit::a64::regs::x0, XRegToMem(info.rd));
+
+    as_->ldr(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp));
+  } else {
+    SelectA64Imm32Instruction(
+        asmjit::arm::GpW(a64_rd),
+        a64_rs1 < 0 ? asmjit::a64::regs::w1 : asmjit::arm::GpW(a64_rs1),
+        info.imm, info.token);
+  }
+
+  if (a64_rs1 < 0) {
+    as_->ldr(asmjit::a64::regs::x1, asmjit::arm::ptr(asmjit::a64::regs::sp, 8));
+  }
+
+  // free stack space
+  as_->add(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 16);
+
+  return true;
+}
+
 bool JitEmitter::Emit(cpu::decode::DecodeInfo& info) {
   if (info.op == cpu::decode::OpCode::kUndef ||
       info.token == InstToken::UNKNOWN) {
@@ -821,6 +905,9 @@ bool JitEmitter::Emit(cpu::decode::DecodeInfo& info) {
       break;
     case cpu::decode::OpCode::kJalr:
       ret = EmitJalr(info);
+      break;
+    case cpu::decode::OpCode::kImm32:
+      ret = EmitImm32(info);
       break;
     default:
       break;
