@@ -27,6 +27,9 @@ class JitEmitter {
 
  private:
   cpu::CPU* cpu_;
+  uint64_t delta_instret_;
+
+  void CommitInstret();
   void EmitMov(uint32_t rv_rd, uint32_t rv_rs);
   bool EmitReg(cpu::decode::DecodeInfo& info);
   bool EmitLui(cpu::decode::DecodeInfo& info);

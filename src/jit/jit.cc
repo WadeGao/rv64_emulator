@@ -82,7 +82,7 @@ asmjit::arm::Mem __attribute__((always_inline)) XRegToMem(uint32_t rv_reg) {
   return asmjit::arm::ptr(asmjit::a64::regs::x29, kXregBias + (rv_reg << 3));
 }
 
-JitEmitter::JitEmitter(cpu::CPU* cpu) : cpu_(cpu) {
+JitEmitter::JitEmitter(cpu::CPU* cpu) : cpu_(cpu), delta_instret_(0) {
   code_.init(rt_.environment());
   as_ = std::make_unique<asmjit::a64::Assembler>(&code_);
 }
@@ -112,6 +112,8 @@ void JitEmitter::EmitProlog() {
 }
 
 void JitEmitter::EmitEpilog() {
+  CommitInstret();
+
   // write arm64 reg to risc-v reg
   for (uint32_t i = 0; i < 32; i++) {
     if (kRv64ToA64Map[i] < 0) {
@@ -877,6 +879,34 @@ bool JitEmitter::EmitImm32(cpu::decode::DecodeInfo& info) {
   return true;
 }
 
+void JitEmitter::CommitInstret() {
+  // alloc stack space
+  as_->sub(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 16);
+
+  // save x0 x1
+  as_->stp(asmjit::a64::regs::x0, asmjit::a64::regs::x1,
+           asmjit::arm::ptr(asmjit::a64::regs::sp));
+
+  // prepare operands
+  as_->mov(asmjit::a64::regs::x0, delta_instret_);
+  as_->ldr(asmjit::a64::regs::x1,
+           asmjit::arm::ptr(asmjit::a64::regs::x29, kInstretBias));
+  as_->add(asmjit::a64::regs::x0, asmjit::a64::regs::x0, asmjit::a64::regs::x1);
+
+  // save new instret
+  as_->str(asmjit::a64::regs::x0,
+           asmjit::arm::ptr(asmjit::a64::regs::x29, kInstretBias));
+
+  // restore x0 x1
+  as_->ldp(asmjit::a64::regs::x0, asmjit::a64::regs::x1,
+           asmjit::arm::ptr(asmjit::a64::regs::sp));
+
+  // free stack space
+  as_->add(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 16);
+
+  delta_instret_ = 0;
+}
+
 bool JitEmitter::Emit(cpu::decode::DecodeInfo& info) {
   if (info.op == cpu::decode::OpCode::kUndef ||
       info.token == InstToken::UNKNOWN) {
@@ -912,6 +942,7 @@ bool JitEmitter::Emit(cpu::decode::DecodeInfo& info) {
     default:
       break;
   }
+  ++delta_instret_;
   return ret;
 }
 

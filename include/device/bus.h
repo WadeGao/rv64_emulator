@@ -17,13 +17,12 @@ class Bus : public MmioDevice {
   void Reset() override;
 
  private:
-  std::forward_list<MmioDeviceNode> device_;
+  using Nodes = std::forward_list<MmioDeviceNode>;
+  Nodes device_;
 
-  std::forward_list<MmioDeviceNode>::const_iterator GetDeviceByRangeImpl(
-      uint64_t addr) const;
-  std::forward_list<MmioDeviceNode>::iterator GetDeviceByRange(uint64_t addr);
-  std::forward_list<MmioDeviceNode>::const_iterator GetDeviceByRange(
-      uint64_t addr) const;
+  Nodes::const_iterator GetDeviceByRangeImpl(uint64_t addr) const;
+  Nodes::iterator GetDeviceByRange(uint64_t addr);
+  Nodes::const_iterator GetDeviceByRange(uint64_t addr) const;
 };
 
 }  // namespace rv64_emulator::device::bus

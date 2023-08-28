@@ -166,6 +166,7 @@ TEST_F(JitTest, Emit) {
     fmt::print("x{}: {:#018x}\n", i, cpu_->reg_file_.xregs[i]);
   }
   fmt::print("pc: {:#018x}\n", cpu_->pc_);
+  fmt::print("instret: {:#018x}\n", cpu_->instret_);
 
   ASSERT_EQ(cpu_->reg_file_.xregs[1], 0);
   ASSERT_EQ(cpu_->reg_file_.xregs[2], UINT64_MAX);

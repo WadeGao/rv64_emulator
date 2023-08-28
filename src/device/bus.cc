@@ -11,8 +11,7 @@ void Bus::MountDevice(MmioDeviceNode node) {
   device_.emplace_front(std::move(node));
 }
 
-std::forward_list<MmioDeviceNode>::const_iterator Bus::GetDeviceByRangeImpl(
-    uint64_t addr) const {
+Bus::Nodes::const_iterator Bus::GetDeviceByRangeImpl(uint64_t addr) const {
   for (auto iter = device_.cbegin(); iter != device_.cend(); iter++) {
     if (iter->base <= addr && addr < iter->base + iter->size) {
       return iter;
@@ -21,16 +20,14 @@ std::forward_list<MmioDeviceNode>::const_iterator Bus::GetDeviceByRangeImpl(
   return device_.cend();
 }
 
-std::forward_list<MmioDeviceNode>::iterator Bus::GetDeviceByRange(
-    uint64_t addr) {
+Bus::Nodes::iterator Bus::GetDeviceByRange(uint64_t addr) {
   auto citer = GetDeviceByRangeImpl(addr);
   auto res = device_.begin();
   std::advance(res, std::distance<decltype(citer)>(res, citer));
   return res;
 }
 
-std::forward_list<MmioDeviceNode>::const_iterator Bus::GetDeviceByRange(
-    const uint64_t addr) const {
+Bus::Nodes::const_iterator Bus::GetDeviceByRange(const uint64_t addr) const {
   return GetDeviceByRangeImpl(addr);
 }
 
