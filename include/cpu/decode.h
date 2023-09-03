@@ -22,7 +22,7 @@ enum class OpCode : uint8_t {
   kAmo = 0b0101111
 };
 
-enum class InstToken {
+enum class InstToken : int32_t {
   UNKNOWN = -1,
   LUI,
   AUIPC,
@@ -917,16 +917,20 @@ using AmoTypeDesc = struct AmoTypeDesc {
 };
 
 struct DecodeInfo {
-  uint32_t word;  // instruction word
-  uint64_t pc;    // instruction addr
-  uint8_t size;   // instruction size
+  uint32_t word;
   OpCode op;
   uint8_t rd;
   uint8_t rs1;
   uint8_t rs2;
-  uint8_t mem_size;
+
+  uint64_t pc;
+
   int32_t imm;
   InstToken token;
+
+  uint8_t size;
+  uint8_t mem_size;
+  uint8_t br_target;  // is current inst a br target or not
 
   DecodeInfo(uint32_t inst_word, uint64_t addr);
 };

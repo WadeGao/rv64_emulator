@@ -401,12 +401,10 @@ trap::Trap Executor::LoadTypeExec(decode::DecodeInfo info) {
       val = (int64_t)(int32_t)(uint32_t)data;
       break;
     case decode::InstToken::LD:
-      val = (int64_t)data;
-      break;
     case decode::InstToken::LBU:
     case decode::InstToken::LHU:
     case decode::InstToken::LWU:
-      val = (int64_t)(uint64_t)data;
+      val = data;
       break;
     default:
       return ILL_TRAP(info.word);

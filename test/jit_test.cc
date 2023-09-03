@@ -155,6 +155,25 @@ TEST_F(JitTest, Emit) {
   cpu_->reg_file_.xregs[info.rs1] = 0xffffffff70abcdef;
   jit_->Emit(info);
 
+  info.op = OpCode::kLoad;
+  info.token = InstToken::LD;
+  info.rd = 23;
+  info.rs1 = 24;
+  cpu_->reg_file_.xregs[info.rs1] = 0x80000000;
+  info.imm = 8;
+  info.mem_size = 8;
+  constexpr uint64_t kDWord = 0x1234567890abcdef;
+  cpu_->Store(kDramBaseAddr + info.imm, sizeof(uint64_t),
+              reinterpret_cast<const uint8_t*>(&kDWord));
+
+  jit_->Emit(info);
+
+  info.rd = 4;
+  info.imm = 0;
+  cpu_->Store(kDramBaseAddr + info.imm, sizeof(uint64_t),
+              reinterpret_cast<const uint8_t*>(&kDWord));
+  jit_->Emit(info);
+
   jit_->EmitEpilog();
 
   rv64_emulator::jit::Func_t fn;
@@ -181,4 +200,6 @@ TEST_F(JitTest, Emit) {
   ASSERT_EQ(cpu_->reg_file_.xregs[3], 0x1234 + 4);
   ASSERT_EQ(cpu_->reg_file_.xregs[21], 0xffffffff90abd8ab);
   ASSERT_EQ(cpu_->reg_file_.xregs[22], 0x70abcdef + 0xabc);
+  ASSERT_EQ(cpu_->reg_file_.xregs[23], kDWord);
+  ASSERT_EQ(cpu_->reg_file_.xregs[4], kDWord);
 }

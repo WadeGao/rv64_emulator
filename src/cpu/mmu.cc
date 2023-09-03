@@ -163,8 +163,7 @@ Sv39TlbEntry* Sv39::GetTlbEntry(SatpDesc satp, uint64_t vaddr) {
   // cache miss, now walk the page table
   Sv39PageTableEntry pte;
   uint64_t out_size;
-  bool success = PageTableWalk(satp, vaddr, &pte, &out_size);
-  if (!success) {
+  if (!PageTableWalk(satp, vaddr, &pte, &out_size)) {
     return nullptr;
   }
 

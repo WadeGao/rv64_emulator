@@ -64,8 +64,9 @@ static InstToken GetToken(uint32_t word) {
 DecodeInfo::DecodeInfo(uint32_t inst_word, uint64_t addr)
     : word(inst_word),
       pc(addr),
+      token(GetToken(inst_word)),
       size(!(inst_word & 0b11) ? 2 : 4),
-      token(GetToken(inst_word)) {
+      br_target(0) {
   const auto kCommDesc = *reinterpret_cast<const RTypeDesc*>(&word);
   op = static_cast<OpCode>(kCommDesc.opcode);
   rd = kCommDesc.rd;
@@ -156,8 +157,7 @@ uint8_t GetShamt(ITypeDesc desc, bool is_rv32) {
   constexpr uint32_t kShamtImm64Mask = 0x3f;
   constexpr uint32_t kShamtImm32Mask = 0x1f;
   const uint32_t kShamtMask = is_rv32 ? kShamtImm32Mask : kShamtImm64Mask;
-  const uint8_t kShamt = static_cast<uint8_t>(desc.imm & kShamtMask);
-  return kShamt;
+  return static_cast<uint8_t>(desc.imm & kShamtMask);
 }
 
 }  // namespace rv64_emulator::cpu::decode

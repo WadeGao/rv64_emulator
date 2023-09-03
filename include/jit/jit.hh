@@ -7,8 +7,10 @@
 #include "asmjit/src/asmjit/arm/armoperand.h"
 #include "asmjit/src/asmjit/core/codeholder.h"
 #include "asmjit/src/asmjit/core/jitruntime.h"
+#include "asmjit/src/asmjit/core/operand.h"
 #include "cpu/cpu.h"
 #include "cpu/decode.h"
+#include "cpu/trap.h"
 
 namespace rv64_emulator::jit {
 
@@ -28,8 +30,13 @@ class JitEmitter {
  private:
   cpu::CPU* cpu_;
   uint64_t delta_instret_;
+  cpu::trap::Trap exit_trap_;
+
+  asmjit::Label epilog_tag_;
 
   void CommitInstret();
+  void SaveVolatileA64Reg();
+  void RestoreVolatileA64Reg();
   void EmitMov(uint32_t rv_rd, uint32_t rv_rs);
   bool EmitReg(cpu::decode::DecodeInfo& info);
   bool EmitLui(cpu::decode::DecodeInfo& info);
@@ -39,6 +46,7 @@ class JitEmitter {
   bool EmitJal(cpu::decode::DecodeInfo& info);
   bool EmitJalr(cpu::decode::DecodeInfo& info);
   bool EmitImm32(cpu::decode::DecodeInfo& info);
+  bool EmitLoad(cpu::decode::DecodeInfo& info);
 
   void SelectA64RegInstruction(const asmjit::arm::GpX& rd,
                                const asmjit::arm::GpX& rs1,
@@ -57,6 +65,10 @@ class JitEmitter {
   void SelectA64Imm32Instruction(const asmjit::arm::GpW& wd,
                                  const asmjit::arm::GpW& ws1, int32_t imm,
                                  cpu::decode::InstToken token);
+
+  void SelectSignExtendInstruction(cpu::decode::InstToken token,
+                                   const asmjit::arm::GpX& rd,
+                                   const asmjit::arm::GpW& ws);
 };
 
 }  // namespace rv64_emulator::jit

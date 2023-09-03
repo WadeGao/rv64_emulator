@@ -63,9 +63,7 @@ void CPU::Reset() {
   pc_ = 0;
 
   reg_file_.Reset();
-
   mmu_->Reset();
-  // dlb_.Reset();
   state_.Reset();
 }
 

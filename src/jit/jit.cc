@@ -10,6 +10,7 @@
 #include "asmjit/src/asmjit/core/archcommons.h"
 #include "asmjit/src/asmjit/core/operand.h"
 #include "cpu/cpu.h"
+#include "cpu/trap.h"
 
 namespace rv64_emulator::jit {
 
@@ -19,7 +20,7 @@ constexpr uint64_t kXregBias = offsetof(cpu::CPU, reg_file_.xregs);
 constexpr uint64_t kPcBias = offsetof(cpu::CPU, pc_);
 constexpr uint64_t kInstretBias = offsetof(cpu::CPU, instret_);
 
-constexpr int32_t kRv64ToA64Map[32] = {
+constexpr int8_t kRv64ToA64Map[32] = {
     [0] = static_cast<int32_t>(asmjit::arm::Gp::Id::kIdZr),
     [1] = 8,    // ra -> x8
     [2] = 18,   // sp -> x18
@@ -53,6 +54,15 @@ constexpr int32_t kRv64ToA64Map[32] = {
     [30] = 14,  // t5 -> x14
     [31] = 15,  // t6 -> x15
 };
+
+constexpr int8_t kA64ToRv64Map[32] = {
+    [0] = 10,  [1] = 11,  [2] = 12,  [3] = 13,  [4] = 14,  [5] = 15,  [6] = 16,
+    [7] = 17,  [8] = 1,   [9] = 5,   [10] = 6,  [11] = 7,  [12] = 28, [13] = 29,
+    [14] = 30, [15] = 31, [16] = 8,  [17] = 9,  [18] = 2,  [19] = 18, [20] = 19,
+    [21] = 20, [22] = 21, [23] = 22, [24] = 23, [25] = 24, [26] = 25, [27] = 26,
+    [28] = 27, [29] = -1, [30] = -1, [31] = -1,
+};
+
 /*
 +───────────+───────────+────────────────────────────────────+────────+
 | Register  | ABI Name  | Description                        | Saver  |
@@ -82,7 +92,27 @@ asmjit::arm::Mem __attribute__((always_inline)) XRegToMem(uint32_t rv_reg) {
   return asmjit::arm::ptr(asmjit::a64::regs::x29, kXregBias + (rv_reg << 3));
 }
 
-JitEmitter::JitEmitter(cpu::CPU* cpu) : cpu_(cpu), delta_instret_(0) {
+uint64_t MmuLoad(cpu::CPU* p, uint64_t addr, uint64_t size,
+                 cpu::trap::Trap* t) {
+  uint64_t val = 0;
+  *t = p->Load(addr, size, reinterpret_cast<uint8_t*>(&val));
+  return val;
+}
+
+void JitEmitter::SaveVolatileA64Reg() {
+  for (int i = 0; i <= 18; i++) {
+    as_->str(asmjit::arm::GpX(i), XRegToMem(kA64ToRv64Map[i]));
+  }
+}
+
+void JitEmitter::RestoreVolatileA64Reg() {
+  for (int i = 0; i <= 18; i++) {
+    as_->ldr(asmjit::arm::GpX(i), XRegToMem(kA64ToRv64Map[i]));
+  }
+}
+
+JitEmitter::JitEmitter(cpu::CPU* cpu)
+    : cpu_(cpu), delta_instret_(0), exit_trap_(cpu::trap::kNoneTrap) {
   code_.init(rt_.environment());
   as_ = std::make_unique<asmjit::a64::Assembler>(&code_);
 }
@@ -112,6 +142,8 @@ void JitEmitter::EmitProlog() {
 }
 
 void JitEmitter::EmitEpilog() {
+  as_->bind(epilog_tag_);
+
   CommitInstret();
 
   // write arm64 reg to risc-v reg
@@ -907,6 +939,123 @@ void JitEmitter::CommitInstret() {
   delta_instret_ = 0;
 }
 
+void JitEmitter::SelectSignExtendInstruction(cpu::decode::InstToken token,
+                                             const asmjit::arm::GpX& rd,
+                                             const asmjit::arm::GpW& ws) {
+  switch (token) {
+    case InstToken::LB:
+      as_->sxtb(rd, ws);
+      break;
+    case InstToken::LH:
+      as_->sxth(rd, ws);
+      break;
+    case InstToken::LW:
+      as_->sxtw(rd, ws);
+      break;
+    default:  // LD LBU LHU LWU and others
+      break;
+  }
+}
+
+bool JitEmitter::EmitLoad(cpu::decode::DecodeInfo& info) {
+  asmjit::Label fail = as_->newLabel();
+  asmjit::Label end = as_->newLabel();
+
+  int32_t a64_rd = A64Reg(info.rd);
+  int32_t a64_rs1 = A64Reg(info.rs1);
+
+  SaveVolatileA64Reg();
+  // +───────────────+  <- old sp
+  // |    mem val    |
+  // +───────────────+
+  // | type == kNone |
+  // +───────────────+
+  // |      x30      |
+  // +───────────────+
+  // |      x29      |
+  // +───────────────+  <- new sp
+
+  // alloc stack space
+  as_->sub(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 32);
+
+  // save x29 x30
+  as_->stp(asmjit::a64::regs::x29, asmjit::a64::regs::x30,
+           asmjit::arm::ptr(asmjit::a64::regs::sp));
+
+  // cpu*, addr, size, trap*
+
+  // prepare addr first, because x0 may be overwrite if prepare cpu* first
+  if (a64_rs1 < 0) {
+    as_->ldr(asmjit::a64::regs::x1, XRegToMem(info.rs1));
+  } else {
+    as_->mov(asmjit::a64::regs::x1, asmjit::arm::GpX(a64_rs1));
+  }
+  as_->mov(asmjit::a64::regs::x2, info.imm);
+  as_->add(asmjit::a64::regs::x1, asmjit::a64::regs::x1, asmjit::a64::regs::x2);
+
+  // prepare first arg
+  as_->mov(asmjit::a64::regs::x0, asmjit::a64::regs::x29);
+  // prepare third arg
+  as_->mov(asmjit::a64::regs::x2, info.mem_size);
+  // prepare forth arg
+  as_->mov(asmjit::a64::regs::x3, &exit_trap_);
+
+  as_->bl(MmuLoad);
+
+  // store mem val to stack
+  as_->str(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp, 24));
+  // load trap.type in w0
+  as_->mov(asmjit::a64::regs::x0, &exit_trap_);
+  as_->ldr(asmjit::a64::regs::w0, asmjit::arm::ptr(asmjit::a64::regs::x0));
+  // load kNone in w1
+  as_->mov(asmjit::a64::regs::w1, cpu::trap::TrapType::kNone);
+  // tell if trap.type == kNone
+  as_->sub(asmjit::a64::regs::w0, asmjit::a64::regs::w0, asmjit::a64::regs::w1);
+  as_->str(asmjit::a64::regs::w0, asmjit::arm::ptr(asmjit::a64::regs::sp, 16));
+
+  // now x0 - x18 not changed compared with the beginning
+  RestoreVolatileA64Reg();
+
+  // restore x29 x30
+  as_->ldp(asmjit::a64::regs::x29, asmjit::a64::regs::x30,
+           asmjit::arm::ptr(asmjit::a64::regs::sp));
+
+  /*************************************/
+  // load (traptype - kNone) into w0
+  as_->ldr(asmjit::a64::regs::w0, asmjit::arm::ptr(asmjit::a64::regs::sp, 16));
+  as_->cbnz(asmjit::a64::regs::w0, fail);
+
+  // load mem val into a64 x0
+  as_->ldr(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp, 24));
+  // sign extend to int64_t
+  SelectSignExtendInstruction(info.token, asmjit::a64::regs::x0,
+                              asmjit::a64::regs::w0);
+  // write through into rv reg
+  as_->str(asmjit::a64::regs::x0, XRegToMem(info.rd));
+  // now recover x0
+  as_->ldr(asmjit::a64::regs::x0, XRegToMem(kA64ToRv64Map[0]));
+  // free stack space
+  as_->add(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 32);
+
+  if (a64_rd >= 0) {
+    // map modified rv64 reg to a64 reg
+    as_->ldr(asmjit::arm::GpX(a64_rd), XRegToMem(info.rd));
+  }
+  as_->b(end);
+
+  // tag fail
+  as_->bind(fail);
+  // now recover x0
+  as_->ldr(asmjit::a64::regs::x0, XRegToMem(kA64ToRv64Map[0]));
+  // free stack space
+  as_->add(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 32);
+  as_->b(epilog_tag_);
+
+  as_->bind(end);
+
+  return true;
+}
+
 bool JitEmitter::Emit(cpu::decode::DecodeInfo& info) {
   if (info.op == cpu::decode::OpCode::kUndef ||
       info.token == InstToken::UNKNOWN) {
@@ -938,6 +1087,9 @@ bool JitEmitter::Emit(cpu::decode::DecodeInfo& info) {
       break;
     case cpu::decode::OpCode::kImm32:
       ret = EmitImm32(info);
+      break;
+    case cpu::decode::OpCode::kLoad:
+      ret = EmitLoad(info);
       break;
     default:
       break;
