@@ -1000,7 +1000,10 @@ bool JitEmitter::EmitLoad(cpu::decode::DecodeInfo& info) {
   // prepare forth arg
   as_->mov(asmjit::a64::regs::x3, &exit_trap_);
 
-  as_->bl(MmuLoad);
+  // use x5 for blr, rather bl
+  // relative addr range of bl: 128MB
+  as_->mov(asmjit::a64::regs::x4, MmuLoad);
+  as_->blr(asmjit::a64::regs::x4);
 
   // store mem val to stack
   as_->str(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp, 24));

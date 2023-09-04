@@ -188,7 +188,7 @@ TEST_F(JitTest, Emit) {
   fmt::print("instret: {:#018x}\n", cpu_->instret_);
 
   ASSERT_EQ(cpu_->reg_file_.xregs[1], 0);
-  ASSERT_EQ(cpu_->reg_file_.xregs[2], UINT64_MAX);
+  ASSERT_EQ(cpu_->reg_file_.xregs[2], 0xffffffffffffffff);
   ASSERT_EQ(cpu_->reg_file_.xregs[7], 4);
   ASSERT_EQ(cpu_->reg_file_.xregs[10], 11 - 111);
   ASSERT_EQ(cpu_->reg_file_.xregs[12], -1);
