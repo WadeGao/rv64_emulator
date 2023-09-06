@@ -20,9 +20,7 @@ class Bus : public MmioDevice {
   using Nodes = std::forward_list<MmioDeviceNode>;
   Nodes device_;
 
-  Nodes::const_iterator GetDeviceByRangeImpl(uint64_t addr) const;
   Nodes::iterator GetDeviceByRange(uint64_t addr);
-  Nodes::const_iterator GetDeviceByRange(uint64_t addr) const;
 };
 
 }  // namespace rv64_emulator::device::bus

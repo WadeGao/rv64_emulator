@@ -1012,13 +1012,12 @@ bool JitEmitter::EmitLoad(cpu::decode::DecodeInfo& info) {
 
   // store mem val to stack
   as_->str(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp, 24));
-  // load trap.type in w0
+
+  // tell if trap.type == kNone
   as_->mov(asmjit::a64::regs::x0, &exit_trap_);
   as_->ldr(asmjit::a64::regs::w0, asmjit::arm::ptr(asmjit::a64::regs::x0));
-  // load kNone in w1
-  as_->mov(asmjit::a64::regs::w1, cpu::trap::TrapType::kNone);
-  // tell if trap.type == kNone
-  as_->sub(asmjit::a64::regs::w0, asmjit::a64::regs::w0, asmjit::a64::regs::w1);
+  as_->sub(asmjit::a64::regs::w0, asmjit::a64::regs::w0,
+           cpu::trap::TrapType::kNone);
   as_->str(asmjit::a64::regs::w0, asmjit::arm::ptr(asmjit::a64::regs::sp, 16));
 
   // now x0 - x18, fp lr not changed compared with the beginning
@@ -1064,7 +1063,6 @@ bool JitEmitter::EmitStore(cpu::decode::DecodeInfo& info) {
   asmjit::Label fail = as_->newLabel();
   asmjit::Label end = as_->newLabel();
 
-  int32_t a64_rd = A64Reg(info.rd);
   int32_t a64_rs1 = A64Reg(info.rs1);
   int32_t a64_rs2 = A64Reg(info.rs2);
 
@@ -1107,15 +1105,12 @@ bool JitEmitter::EmitStore(cpu::decode::DecodeInfo& info) {
     as_->mov(asmjit::a64::regs::x1, info.imm);
     as_->add(asmjit::a64::regs::x0, asmjit::a64::regs::x0,
              asmjit::a64::regs::x1);
-    as_->str(asmjit::a64::regs::x0,
-             asmjit::arm::ptr(asmjit::a64::regs::sp, 16));
   } else {
     as_->mov(asmjit::a64::regs::x0, info.imm);
     as_->add(asmjit::a64::regs::x0, asmjit::a64::regs::x0,
              asmjit::arm::GpX(a64_rs1));
-    as_->str(asmjit::a64::regs::x0,
-             asmjit::arm::ptr(asmjit::a64::regs::sp, 16));
   }
+  as_->str(asmjit::a64::regs::x0, asmjit::arm::ptr(asmjit::a64::regs::sp, 16));
 
   // cpu*, addr, size, data, trap*
   // prepare first arg
@@ -1133,13 +1128,11 @@ bool JitEmitter::EmitStore(cpu::decode::DecodeInfo& info) {
   as_->mov(asmjit::a64::regs::x5, MmuStore);
   as_->blr(asmjit::a64::regs::x5);
 
-  // load trap.type in w0
+  // tell if trap.type == kNone
   as_->mov(asmjit::a64::regs::x0, &exit_trap_);
   as_->ldr(asmjit::a64::regs::w0, asmjit::arm::ptr(asmjit::a64::regs::x0));
-  // load kNone in w1
-  as_->mov(asmjit::a64::regs::w1, cpu::trap::TrapType::kNone);
-  // tell if trap.type == kNone
-  as_->sub(asmjit::a64::regs::w0, asmjit::a64::regs::w0, asmjit::a64::regs::w1);
+  as_->sub(asmjit::a64::regs::w0, asmjit::a64::regs::w0,
+           cpu::trap::TrapType::kNone);
   as_->str(asmjit::a64::regs::w0, asmjit::arm::ptr(asmjit::a64::regs::sp, 32));
 
   // now x0 - x18, fp lr not changed compared with the beginning

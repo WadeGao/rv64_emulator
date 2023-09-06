@@ -36,18 +36,16 @@ using cpu::PrivilegeMode;
     return k##step##AccessTrap;                                         \
   }
 
-uint64_t MapVirtualAddress(const Sv39TlbEntry* entry, uint64_t vaddr) {
-  constexpr uint64_t kOffsetBits[4] = {
-      [0] = 0,  // invalid
-      [1] = 12,
-      [2] = 21,
-      [3] = 30,
-  };
-  const uint64_t kBits = kOffsetBits[entry->page_size];
-  return entry->ppn + vaddr % (1 << kBits);
+uint64_t __attribute__((always_inline))
+MapVirtualAddress(const Sv39TlbEntry* entry, uint64_t vaddr) {
+  uint64_t bits = entry->page_size;
+  bits = (bits + 3) + (bits << 3);
+  bits = (1ULL << bits);
+  return entry->ppn + vaddr % bits;
 }
 
-uint64_t GetPpnByPageTableEntry(const Sv39PageTableEntry* entry) {
+uint64_t __attribute__((always_inline))
+GetPpnByPageTableEntry(const Sv39PageTableEntry* entry) {
   const Sv39VirtualAddress kPpnDesc = {
       .offset = 0,
       .vpn_0 = entry->ppn_0,
@@ -59,14 +57,12 @@ uint64_t GetPpnByPageTableEntry(const Sv39PageTableEntry* entry) {
   return *reinterpret_cast<const uint64_t*>(&kPpnDesc);
 }
 
-uint64_t GetTlbTag(uint64_t vaddr, uint64_t page_size) {
-  static constexpr uint64_t kMasks[4] = {
-      [0] = 0xffffffffffffffff,  // invalid
-      [1] = 0xfffffffffffff000,
-      [2] = 0xffffffffffe00000,
-      [3] = 0xffffffffc0000000,
-  };
-  return vaddr & kMasks[page_size];
+uint64_t __attribute__((always_inline))
+GetTlbTag(uint64_t vaddr, uint64_t page_size) {
+  uint64_t bits = page_size;
+  bits = (bits + 3) + (bits << 3);
+  bits = UINT64_MAX << bits;
+  return vaddr & bits;
 }
 
 Sv39::Sv39(std::shared_ptr<Bus>& bus) : index_(0), bus_(bus) {

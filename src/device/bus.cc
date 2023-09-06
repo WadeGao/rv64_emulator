@@ -11,24 +11,13 @@ void Bus::MountDevice(MmioDeviceNode node) {
   device_.emplace_front(std::move(node));
 }
 
-Bus::Nodes::const_iterator Bus::GetDeviceByRangeImpl(uint64_t addr) const {
-  for (auto iter = device_.cbegin(); iter != device_.cend(); iter++) {
+Bus::Nodes::iterator Bus::GetDeviceByRange(uint64_t addr) {
+  for (auto iter = device_.begin(); iter != device_.end(); iter++) {
     if (iter->base <= addr && addr < iter->base + iter->size) {
       return iter;
     }
   }
-  return device_.cend();
-}
-
-Bus::Nodes::iterator Bus::GetDeviceByRange(uint64_t addr) {
-  auto citer = GetDeviceByRangeImpl(addr);
-  auto res = device_.begin();
-  std::advance(res, std::distance<decltype(citer)>(res, citer));
-  return res;
-}
-
-Bus::Nodes::const_iterator Bus::GetDeviceByRange(const uint64_t addr) const {
-  return GetDeviceByRangeImpl(addr);
+  return device_.end();
 }
 
 bool Bus::Load(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
