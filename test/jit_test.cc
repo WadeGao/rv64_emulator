@@ -7,6 +7,7 @@
 #include "cpu/cpu.h"
 #include "cpu/decode.h"
 #include "cpu/mmu.h"
+#include "cpu/trap.h"
 #include "device/bus.h"
 #include "device/dram.h"
 #include "fmt/core.h"
@@ -159,7 +160,7 @@ TEST_F(JitTest, Emit) {
   info.token = InstToken::LD;
   info.rd = 23;
   info.rs1 = 24;
-  cpu_->reg_file_.xregs[info.rs1] = 0x80000000;
+  cpu_->reg_file_.xregs[info.rs1] = kDramBaseAddr;
   info.imm = 8;
   info.mem_size = 8;
   constexpr uint64_t kDWord = 0x1234567890abcdef;
@@ -174,6 +175,24 @@ TEST_F(JitTest, Emit) {
               reinterpret_cast<const uint8_t*>(&kDWord));
   jit_->Emit(info);
 
+  info.op = OpCode::kStore;
+  info.token = InstToken::SD;
+  info.rs1 = 24;
+  info.imm = 16;
+  cpu_->reg_file_.xregs[info.rs1] = kDramBaseAddr;
+  info.rs2 = 25;
+  constexpr uint64_t kStoreDWord = 0xfedcba0987654321;
+  cpu_->reg_file_.xregs[info.rs2] = kStoreDWord;
+  jit_->Emit(info);
+
+  // test invalid store
+  info.rs1 = 26;
+  cpu_->reg_file_.xregs[info.rs1] = 0;
+  info.imm = 16;
+  info.rs2 = 27;
+  cpu_->reg_file_.xregs[info.rs2] = kStoreDWord;
+  jit_->Emit(info);
+
   jit_->EmitEpilog();
 
   rv64_emulator::jit::Func_t fn;
@@ -186,7 +205,10 @@ TEST_F(JitTest, Emit) {
   }
   fmt::print("pc: {:#018x}\n", cpu_->pc_);
   fmt::print("instret: {:#018x}\n", cpu_->instret_);
+  fmt::print("type: {}, val: {}\n", static_cast<int>(jit_->exit_trap_.type),
+             jit_->exit_trap_.val);
 
+  ASSERT_NE(jit_->exit_trap_.type, rv64_emulator::cpu::trap::TrapType::kNone);
   ASSERT_EQ(cpu_->reg_file_.xregs[1], 0);
   ASSERT_EQ(cpu_->reg_file_.xregs[2], 0xffffffffffffffff);
   ASSERT_EQ(cpu_->reg_file_.xregs[7], 4);
@@ -202,4 +224,10 @@ TEST_F(JitTest, Emit) {
   ASSERT_EQ(cpu_->reg_file_.xregs[22], 0x70abcdef + 0xabc);
   ASSERT_EQ(cpu_->reg_file_.xregs[23], kDWord);
   ASSERT_EQ(cpu_->reg_file_.xregs[4], kDWord);
+
+  uint64_t store_validator = 0;
+  cpu_->Load(kDramBaseAddr + 16, sizeof(kStoreDWord),
+             reinterpret_cast<uint8_t*>(&store_validator));
+
+  ASSERT_EQ(kStoreDWord, store_validator);
 }

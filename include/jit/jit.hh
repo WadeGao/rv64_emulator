@@ -47,6 +47,7 @@ class JitEmitter {
   bool EmitJalr(cpu::decode::DecodeInfo& info);
   bool EmitImm32(cpu::decode::DecodeInfo& info);
   bool EmitLoad(cpu::decode::DecodeInfo& info);
+  bool EmitStore(cpu::decode::DecodeInfo& info);
 
   void SelectA64RegInstruction(const asmjit::arm::GpX& rd,
                                const asmjit::arm::GpX& rs1,

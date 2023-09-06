@@ -99,6 +99,11 @@ uint64_t MmuLoad(cpu::CPU* p, uint64_t addr, uint64_t size,
   return val;
 }
 
+void MmuStore(cpu::CPU* p, uint64_t addr, uint64_t size, uint64_t data,
+              cpu::trap::Trap* t) {
+  *t = p->Store(addr, size, reinterpret_cast<const uint8_t*>(&data));
+}
+
 void JitEmitter::SaveVolatileA64Reg() {
   for (int i = 0; i <= 18; i++) {
     as_->str(asmjit::arm::GpX(i), XRegToMem(kA64ToRv64Map[i]));
@@ -1000,7 +1005,7 @@ bool JitEmitter::EmitLoad(cpu::decode::DecodeInfo& info) {
   // prepare forth arg
   as_->mov(asmjit::a64::regs::x3, &exit_trap_);
 
-  // use x5 for blr, rather bl
+  // use x4 for blr, rather bl
   // relative addr range of bl: 128MB
   as_->mov(asmjit::a64::regs::x4, MmuLoad);
   as_->blr(asmjit::a64::regs::x4);
@@ -1016,14 +1021,11 @@ bool JitEmitter::EmitLoad(cpu::decode::DecodeInfo& info) {
   as_->sub(asmjit::a64::regs::w0, asmjit::a64::regs::w0, asmjit::a64::regs::w1);
   as_->str(asmjit::a64::regs::w0, asmjit::arm::ptr(asmjit::a64::regs::sp, 16));
 
-  // now x0 - x18 not changed compared with the beginning
+  // now x0 - x18, fp lr not changed compared with the beginning
   RestoreVolatileA64Reg();
-
-  // restore x29 x30
   as_->ldp(asmjit::a64::regs::x29, asmjit::a64::regs::x30,
            asmjit::arm::ptr(asmjit::a64::regs::sp));
 
-  /*************************************/
   // load (traptype - kNone) into w0
   as_->ldr(asmjit::a64::regs::w0, asmjit::arm::ptr(asmjit::a64::regs::sp, 16));
   as_->cbnz(asmjit::a64::regs::w0, fail);
@@ -1040,8 +1042,8 @@ bool JitEmitter::EmitLoad(cpu::decode::DecodeInfo& info) {
   // free stack space
   as_->add(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 32);
 
+  // map modified rv64 reg to a64 reg
   if (a64_rd >= 0) {
-    // map modified rv64 reg to a64 reg
     as_->ldr(asmjit::arm::GpX(a64_rd), XRegToMem(info.rd));
   }
   as_->b(end);
@@ -1055,7 +1057,115 @@ bool JitEmitter::EmitLoad(cpu::decode::DecodeInfo& info) {
   as_->b(epilog_tag_);
 
   as_->bind(end);
+  return true;
+}
 
+bool JitEmitter::EmitStore(cpu::decode::DecodeInfo& info) {
+  asmjit::Label fail = as_->newLabel();
+  asmjit::Label end = as_->newLabel();
+
+  int32_t a64_rd = A64Reg(info.rd);
+  int32_t a64_rs1 = A64Reg(info.rs1);
+  int32_t a64_rs2 = A64Reg(info.rs2);
+
+  SaveVolatileA64Reg();
+  // +───────────────+  <- old sp
+  // |    padding    |
+  // +───────────────+
+  // | type == kNone |
+  // +───────────────+
+  // |      data     |
+  // +───────────────+
+  // |      addr     |
+  // +───────────────+
+  // |      x30      |
+  // +───────────────+
+  // |      x29      |
+  // +───────────────+  <- new sp
+
+  // alloc stack space
+  as_->sub(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 48);
+
+  // save x29 x30
+  as_->stp(asmjit::a64::regs::x29, asmjit::a64::regs::x30,
+           asmjit::arm::ptr(asmjit::a64::regs::sp));
+
+  // prepare data and save it on stack
+  if (a64_rs2 < 0) {
+    as_->ldr(asmjit::a64::regs::x0, XRegToMem(info.rs2));
+    as_->str(asmjit::a64::regs::x0,
+             asmjit::arm::ptr(asmjit::a64::regs::sp, 24));
+    as_->ldr(asmjit::a64::regs::x0, XRegToMem(kA64ToRv64Map[0]));
+  } else {
+    as_->str(asmjit::arm::GpX(a64_rs2),
+             asmjit::arm::ptr(asmjit::a64::regs::sp, 24));
+  }
+
+  // prepare addr and save it on stack
+  if (a64_rs1 < 0) {
+    as_->ldr(asmjit::a64::regs::x0, XRegToMem(info.rs1));
+    as_->mov(asmjit::a64::regs::x1, info.imm);
+    as_->add(asmjit::a64::regs::x0, asmjit::a64::regs::x0,
+             asmjit::a64::regs::x1);
+    as_->str(asmjit::a64::regs::x0,
+             asmjit::arm::ptr(asmjit::a64::regs::sp, 16));
+  } else {
+    as_->mov(asmjit::a64::regs::x0, info.imm);
+    as_->add(asmjit::a64::regs::x0, asmjit::a64::regs::x0,
+             asmjit::arm::GpX(a64_rs1));
+    as_->str(asmjit::a64::regs::x0,
+             asmjit::arm::ptr(asmjit::a64::regs::sp, 16));
+  }
+
+  // cpu*, addr, size, data, trap*
+  // prepare first arg
+  as_->mov(asmjit::a64::regs::x0, asmjit::a64::regs::x29);
+  // prepare second arg
+  as_->ldr(asmjit::a64::regs::x1, asmjit::arm::ptr(asmjit::a64::regs::sp, 16));
+  // prepare third arg
+  as_->mov(asmjit::a64::regs::x2, info.mem_size);
+  // prepare fourth arg
+  as_->ldr(asmjit::a64::regs::x3, asmjit::arm::ptr(asmjit::a64::regs::sp, 24));
+  // prepare fifth arg
+  as_->mov(asmjit::a64::regs::x4, &exit_trap_);
+
+  // prepare function addr and call
+  as_->mov(asmjit::a64::regs::x5, MmuStore);
+  as_->blr(asmjit::a64::regs::x5);
+
+  // load trap.type in w0
+  as_->mov(asmjit::a64::regs::x0, &exit_trap_);
+  as_->ldr(asmjit::a64::regs::w0, asmjit::arm::ptr(asmjit::a64::regs::x0));
+  // load kNone in w1
+  as_->mov(asmjit::a64::regs::w1, cpu::trap::TrapType::kNone);
+  // tell if trap.type == kNone
+  as_->sub(asmjit::a64::regs::w0, asmjit::a64::regs::w0, asmjit::a64::regs::w1);
+  as_->str(asmjit::a64::regs::w0, asmjit::arm::ptr(asmjit::a64::regs::sp, 32));
+
+  // now x0 - x18, fp lr not changed compared with the beginning
+  RestoreVolatileA64Reg();
+  as_->ldp(asmjit::a64::regs::x29, asmjit::a64::regs::x30,
+           asmjit::arm::ptr(asmjit::a64::regs::sp));
+
+  // load (traptype - kNone) into w0
+  as_->ldr(asmjit::a64::regs::w0, asmjit::arm::ptr(asmjit::a64::regs::sp, 32));
+  as_->cbnz(asmjit::a64::regs::w0, fail);
+
+  // now recover x0
+  as_->ldr(asmjit::a64::regs::x0, XRegToMem(kA64ToRv64Map[0]));
+  // free stack space
+  as_->add(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 48);
+  as_->b(end);
+
+  // tag fail
+  as_->bind(fail);
+  // now recover x0
+  as_->ldr(asmjit::a64::regs::x0, XRegToMem(kA64ToRv64Map[0]));
+  // free stack space
+  as_->add(asmjit::a64::regs::sp, asmjit::a64::regs::sp, 48);
+  as_->b(epilog_tag_);
+
+  as_->bind(end);
   return true;
 }
 
@@ -1093,6 +1203,9 @@ bool JitEmitter::Emit(cpu::decode::DecodeInfo& info) {
       break;
     case cpu::decode::OpCode::kLoad:
       ret = EmitLoad(info);
+      break;
+    case cpu::decode::OpCode::kStore:
+      ret = EmitStore(info);
       break;
     default:
       break;
