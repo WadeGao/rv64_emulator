@@ -1,15 +1,16 @@
 #pragma once
 
-#include <forward_list>
 #include <memory>
 
 #include "device/mmio.hpp"
 
 namespace rv64_emulator::device::bus {
 
+constexpr uint64_t kMaxMmioDevicesNum = 16;
+
 class Bus : public MmioDevice {
  public:
-  Bus() = default;
+  Bus();
   void MountDevice(MmioDeviceNode node);
 
   bool Load(uint64_t addr, uint64_t bytes, uint8_t* buffer) override;
@@ -17,10 +18,10 @@ class Bus : public MmioDevice {
   void Reset() override;
 
  private:
-  using Nodes = std::forward_list<MmioDeviceNode>;
-  Nodes device_;
+  uint64_t dev_cnt_;
+  MmioDeviceNode device_[kMaxMmioDevicesNum];
 
-  Nodes::iterator GetDeviceByRange(uint64_t addr);
+  int64_t GetDeviceByRange(uint64_t addr);
 };
 
 }  // namespace rv64_emulator::device::bus

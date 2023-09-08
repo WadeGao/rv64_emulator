@@ -77,7 +77,7 @@ using Sv39PhysicalAddress = struct Sv39PhysicalAddress {
   uint64_t blank : 8;
 };
 
-constexpr uint64_t kTlbSize = 32;
+constexpr uint64_t kTlbSize = 2;
 
 class Sv39 {
  public:
@@ -87,9 +87,14 @@ class Sv39 {
   bool Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer);
   void FlushTlb(uint64_t vaddr, uint64_t asid);
   void Reset();
+  void PrintStatistic();
+  ~Sv39();
 
  private:
   uint64_t index_;
+  uint64_t cache_hit_;
+  uint64_t cache_miss_;
+
   Sv39TlbEntry tlb_[kTlbSize];
   std::shared_ptr<Bus> bus_;
 
