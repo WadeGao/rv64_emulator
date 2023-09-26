@@ -100,7 +100,7 @@ int main(int argc, char* argv[]) {
   cpu1->pc_ = kDramBaseAddr;
 
   while (true) {
-    raw_clint->Tick();
+    raw_clint->UpdateMtime();
     raw_plic->UpdateExt(1, raw_uart->Irq());
     cpu1->Tick(raw_plic->GetInterrupt(0), raw_plic->GetInterrupt(1),
                raw_clint->MachineSoftwareIrq(0), raw_clint->MachineTimerIrq(0),

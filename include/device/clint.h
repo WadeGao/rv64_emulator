@@ -23,6 +23,7 @@ class Clint : public MmioDevice {
   bool MachineSoftwareIrq(uint64_t hart_id);
 
   void Tick();
+  void UpdateMtime();
 
  private:
   uint64_t harts_;

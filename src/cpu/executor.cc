@@ -30,12 +30,12 @@
 
 #define BREAK_TRAP(val) MAKE_TRAP(trap::TrapType::kBreakpoint, (val))
 
-#define CHECK_MISALIGN_INSTRUCTION(pc, proc)     \
-  using rv64_emulator::libs::util::CheckPcAlign; \
-  auto isa = (proc)->state_.Read(csr::kCsrMisa); \
-  bool align = CheckPcAlign((pc), isa);          \
-  if (!align) {                                  \
-    return INSTR_MISALIGN_TRAP((pc));            \
+#define CHECK_MISALIGN_INSTRUCTION(pc, proc)       \
+  using rv64_emulator::libs::util::CheckPcAlign;   \
+  auto isa = (proc) -> state_.Read(csr::kCsrMisa); \
+  bool align = CheckPcAlign((pc), isa);            \
+  if (!align) {                                    \
+    return INSTR_MISALIGN_TRAP((pc));              \
   }
 
 #define CHECK_CSR_ACCESS_PRIVILEGE(index, write, mode, word) \
@@ -64,7 +64,7 @@ const std::unordered_set<uint64_t> kAllowedCsrs = {
     csr::kCsrSepc,       csr::kCsrSie,      csr::kCsrSip,
     csr::kCsrSstatus,    csr::kCsrStval,    csr::kCsrStvec,
     csr::kCsrTdata1,     csr::kCsrTselect,  csr::kCsrMconfigPtr,
-    csr::kCsrScounteren, csr::kCsrSscratch,
+    csr::kCsrScounteren, csr::kCsrSscratch, csr::kCsrTime,
 };
 
 void Executor::SetProcessor(CPU* cpu) { cpu_ = cpu; }
@@ -447,6 +447,10 @@ trap::Trap Executor::CsrTypeExec(decode::DecodeInfo info) {
     }
   }
 
+  if (kImm == csr::kCsrTime) {
+    cpu_->state_.Write(kImm, libs::util::ReadGuestTimeStamp());
+  }
+
   bool writable = info.rs1 != 0;
   if (info.token == decode::InstToken::CSRRW ||
       info.token == decode::InstToken::CSRRWI) {
@@ -484,7 +488,9 @@ trap::Trap Executor::CsrTypeExec(decode::DecodeInfo info) {
   }
 
   cpu_->reg_file_.xregs[info.rd] = kCsrVal;
-  cpu_->state_.Write(kImm, new_csr_val);
+  if (writable) {
+    cpu_->state_.Write(kImm, new_csr_val);
+  }
   return trap::kNoneTrap;
 }
 

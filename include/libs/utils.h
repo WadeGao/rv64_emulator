@@ -43,5 +43,7 @@ class RandomGenerator {
   T min_, max_;
 };
 
+uint64_t ReadGuestTimeStamp();
+
 }  // namespace libs::util
 }  // namespace rv64_emulator

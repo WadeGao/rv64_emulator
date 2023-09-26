@@ -20,6 +20,7 @@
 #include "elfio/elfio_segment.hpp"
 #include "fmt/color.h"
 #include "fmt/core.h"
+#include "fmt/format.h"
 #include "gtest/gtest.h"
 #include "libs/utils.h"
 
@@ -34,17 +35,9 @@ class CpuTest : public testing::Test {
   }
 
   void SetUp() override {
-    poweron_.store(true);
     auto dram = std::make_unique<rv64_emulator::device::dram::DRAM>(kDramSize);
     auto clint = std::make_unique<rv64_emulator::device::clint::Clint>(1);
     raw_clint_ = clint.get();
-    // auto tmp = raw_clint_;
-    oscillator_ = std::thread([this]() {
-      while (poweron_.load()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        raw_clint_->Tick();
-      }
-    });
 
     auto bus = std::make_shared<rv64_emulator::device::bus::Bus>();
     bus->MountDevice({
@@ -64,15 +57,10 @@ class CpuTest : public testing::Test {
     cpu_ = std::move(cpu);
   }
 
-  void TearDown() override {
-    poweron_.store(false);
-    oscillator_.join();
-  }
+  void TearDown() override {}
 
-  std::atomic<bool> poweron_ = false;
   std::unique_ptr<rv64_emulator::cpu::CPU> cpu_;
   rv64_emulator::device::clint::Clint* raw_clint_;
-  std::thread oscillator_;
 };
 
 constexpr uint64_t kMaxInstructions = 100000;

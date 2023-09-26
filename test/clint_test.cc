@@ -171,8 +171,6 @@ TEST_F(ClintTest, Reset) {
   // clear
   clint_->Reset();
 
-  // check val=0 after Reset
-  ASSERT_EQ(clint_->mtime_, 0);
   for (uint64_t i = 0; i < clint_->harts_; i++) {
     ASSERT_EQ(clint_->msip_[i], 0);
     ASSERT_EQ(clint_->mtimecmp_[i], 0);
@@ -181,10 +179,11 @@ TEST_F(ClintTest, Reset) {
 
 TEST_F(ClintTest, Tick) {
   const uint16_t kMax = rg.Get(1, UINT16_MAX);
+  const uint64_t kOrigin = clint_->mtime_;
   for (uint16_t i = 0; i < kMax; i++) {
     clint_->Tick();
   }
-  ASSERT_EQ(clint_->mtime_, kMax);
+  ASSERT_EQ(clint_->mtime_ - kOrigin, kMax);
 }
 
 TEST_F(ClintTest, TimerIrq) {
