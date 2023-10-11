@@ -121,7 +121,7 @@ uint64_t __attribute__((always_inline)) ReadHostTimeStamp() {
 
 #ifdef __x86_64__
   uint32_t low, high;
-  asm volatile("rdtscp" : "=a"(low), "=d"(high));
+  asm volatile("rdtsc" : "=a"(low), "=d"(high));
   counter = ((uint64_t)high << 32) | low;
 #endif
 
@@ -135,8 +135,8 @@ uint64_t __attribute__((always_inline)) ReadFreq() {
 #endif
 
 #ifdef __x86_64__
-  // TODO(Wade) add x86 get freq
-  freq = kMtimeFreq;
+  // TODO(Wade) add x86 get freq code. now use a fixed num
+  freq = 2500000000;
 #endif
   return freq;
 }
