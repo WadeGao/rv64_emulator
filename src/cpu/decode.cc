@@ -65,7 +65,8 @@ DecodeInfo::DecodeInfo(uint32_t inst_word, uint64_t addr)
     : word(inst_word),
       pc(addr),
       token(GetToken(inst_word)),
-      size(!(inst_word & 0b11) ? 2 : 4),
+      // size(!(inst_word & 0b11) ? 2 : 4),
+      size(4),
       br_target(0) {
   const auto kCommDesc = *reinterpret_cast<const RTypeDesc*>(&word);
   op = static_cast<OpCode>(kCommDesc.opcode);

@@ -102,13 +102,6 @@ TrapType InterruptBitsToTrap(uint64_t bits) {
   return TrapType::kNone;
 }
 
-bool CheckPcAlign(uint64_t pc, uint64_t isa) {
-  using rv64_emulator::cpu::csr::MisaDesc;
-  const auto kMisaDesc = *reinterpret_cast<const MisaDesc*>(&isa);
-  const uint64_t kAlignBytes = kMisaDesc.C ? 2 : 4;
-  return (pc & (kAlignBytes - 1)) == 0;
-}
-
 float GetMips(decltype(std::chrono::high_resolution_clock::now()) start,
               uint64_t insret_cnt) {
   const auto kEnd = std::chrono::high_resolution_clock::now();
@@ -123,7 +116,7 @@ uint64_t __attribute__((always_inline)) ReadHostTimeStamp() {
   uint64_t counter = 0;
 
 #ifdef __aarch64__
-  asm volatile("mrs %0, cntpct_el0" : "=r"(counter));
+  asm volatile("mrs %0, cntvct_el0" : "=r"(counter));
 #endif
 
 #ifdef __x86_64__
@@ -134,6 +127,7 @@ uint64_t __attribute__((always_inline)) ReadHostTimeStamp() {
 
   return counter;
 }
+
 uint64_t __attribute__((always_inline)) ReadFreq() {
   uint64_t freq = 0;
 #ifdef __aarch64__
@@ -153,9 +147,8 @@ double __attribute__((always_inline)) GetFreqDivCoeff() {
   return rate;
 }
 
-static double freq_div_coeff = GetFreqDivCoeff();
-
 uint64_t __attribute__((always_inline)) ReadGuestTimeStamp() {
+  static double freq_div_coeff = GetFreqDivCoeff();
   uint64_t host_ts = ReadHostTimeStamp();
   uint64_t guest_ts = (host_ts * freq_div_coeff);
   return guest_ts;

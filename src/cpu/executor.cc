@@ -30,12 +30,11 @@
 
 #define BREAK_TRAP(val) MAKE_TRAP(trap::TrapType::kBreakpoint, (val))
 
-#define CHECK_MISALIGN_INSTRUCTION(pc, proc)       \
-  using rv64_emulator::libs::util::CheckPcAlign;   \
-  auto isa = (proc) -> state_.Read(csr::kCsrMisa); \
-  bool align = CheckPcAlign((pc), isa);            \
-  if (!align) {                                    \
-    return INSTR_MISALIGN_TRAP((pc));              \
+#define CHECK_MISALIGN_INSTR(pc, proc, c_enable) \
+  using rv64_emulator::libs::util::CheckPcAlign; \
+  bool align = CheckPcAlign<c_enable>((pc));     \
+  if (!align) {                                  \
+    return INSTR_MISALIGN_TRAP((pc));            \
   }
 
 #define CHECK_CSR_ACCESS_PRIVILEGE(index, write, mode, word) \
@@ -301,7 +300,7 @@ trap::Trap Executor::LuiTypeExec(decode::DecodeInfo info) {
 trap::Trap Executor::JalTypeExec(decode::DecodeInfo info) {
   const uint64_t kNewPC = (int64_t)info.pc + info.imm;
 #ifdef UNIT_TEST
-  CHECK_MISALIGN_INSTRUCTION(kNewPC, cpu_);
+  CHECK_MISALIGN_INSTR(kNewPC, cpu_, false);
 #endif
   cpu_->pc_ = kNewPC;
   cpu_->reg_file_.xregs[info.rd] = info.pc + info.size;
@@ -312,7 +311,7 @@ trap::Trap Executor::JalrTypeExec(decode::DecodeInfo info) {
   const int64_t kRs1Val = (int64_t)cpu_->reg_file_.xregs[info.rs1];
   const uint64_t kNewPC = (info.imm + kRs1Val) & 0xfffffffffffffffe;
 #ifdef UNIT_TEST
-  CHECK_MISALIGN_INSTRUCTION(kNewPC, cpu_);
+  CHECK_MISALIGN_INSTR(kNewPC, cpu_, false);
 #endif
   cpu_->pc_ = kNewPC;
   cpu_->reg_file_.xregs[info.rd] = info.pc + info.size;
@@ -371,7 +370,7 @@ trap::Trap Executor::BranchTypeExec(decode::DecodeInfo info) {
   }
 
 #ifdef UNIT_TEST
-  CHECK_MISALIGN_INSTRUCTION(new_pc, cpu_);
+  CHECK_MISALIGN_INSTR(new_pc, cpu_, false);
 #endif
 
   cpu_->pc_ = new_pc;

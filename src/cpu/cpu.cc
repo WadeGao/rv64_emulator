@@ -180,13 +180,13 @@ void CPU::HandleInterrupt(uint64_t inst_addr) {
 }
 
 trap::Trap CPU::Fetch(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
-  const uint64_t kMisaVal = state_.Read(csr::kCsrMisa);
-  if (!libs::util::CheckPcAlign(addr, kMisaVal)) {
-    return {
-        .type = trap::TrapType::kInstructionAddressMisaligned,
-        .val = addr,
-    };
-  }
+  // const uint64_t kMisaVal = state_.Read(csr::kCsrMisa);
+  // if (!libs::util::CheckPcAlign(addr, kMisaVal)) {
+  //   return {
+  //       .type = trap::TrapType::kInstructionAddressMisaligned,
+  //       .val = addr,
+  //   };
+  // }
 
   return mmu_->Fetch(addr, bytes, buffer);
 }

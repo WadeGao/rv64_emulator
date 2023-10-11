@@ -243,19 +243,19 @@ void Mmu::FlushTlb(uint64_t vaddr, uint64_t asid) {
 }
 
 Trap Mmu::Fetch(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
-  if (bytes == 4 && addr % 4 == 2) {
-    const Trap kTrap1 = Fetch(addr, 2, buffer);
-    if (kTrap1.type != cpu::trap::TrapType::kNone) {
-      return kTrap1;
-    }
+  // if (bytes == 4 && addr % 4 == 2) {
+  //   const Trap kTrap1 = Fetch(addr, 2, buffer);
+  //   if (kTrap1.type != cpu::trap::TrapType::kNone) {
+  //     return kTrap1;
+  //   }
 
-    const Trap kTrap2 = Fetch(addr + 2, 2, buffer + 2);
-    if (kTrap2.type != cpu::trap::TrapType::kNone) {
-      return MAKE_TRAP(kTrap2.type, addr);
-    }
+  //   const Trap kTrap2 = Fetch(addr + 2, 2, buffer + 2);
+  //   if (kTrap2.type != cpu::trap::TrapType::kNone) {
+  //     return MAKE_TRAP(kTrap2.type, addr);
+  //   }
 
-    return cpu::trap::kNoneTrap;
-  }
+  //   return cpu::trap::kNoneTrap;
+  // }
 
   const uint64_t kSatpVal = cpu_->state_.Read(cpu::csr::kCsrSatp);
   const SatpDesc kSatpDesc = *reinterpret_cast<const SatpDesc*>(&kSatpVal);
