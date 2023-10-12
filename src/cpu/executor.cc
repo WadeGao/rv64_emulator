@@ -555,28 +555,27 @@ trap::Trap Executor::MRetExec(decode::DecodeInfo info) {
 }
 
 trap::Trap Executor::SRetExec(decode::DecodeInfo info) {
-  const uint64_t kOriginSstatusVal = cpu_->state_.Read(csr::kCsrSstatus);
-  const auto kOriginSsDesc =
-      *reinterpret_cast<const csr::MstatusDesc*>(&kOriginSstatusVal);
+  const uint64_t kOriginMsVal = cpu_->state_.Read(csr::kCsrMstatus);
+  const auto kOldMsDesc =
+      *reinterpret_cast<const csr::MstatusDesc*>(&kOriginMsVal);
 
   // 当TSR=1时，尝试在s模式下执行SRET将引发非法的指令异常
-  if (cpu_->priv_mode_ < PrivilegeMode::kSupervisor || kOriginSsDesc.tsr) {
+  if (cpu_->priv_mode_ < PrivilegeMode::kSupervisor || kOldMsDesc.tsr) {
     return ILL_TRAP(info.word);
   }
 
-  csr::MstatusDesc new_status_desc = kOriginSsDesc;
-  new_status_desc.spp = 0;
-  new_status_desc.spie = 1;
-  new_status_desc.sie = kOriginSsDesc.spie;
-  new_status_desc.mprv =
-      (static_cast<PrivilegeMode>(kOriginSsDesc.spp) < PrivilegeMode::kMachine)
+  csr::MstatusDesc new_ms_desc = kOldMsDesc;
+  new_ms_desc.spp = 0;
+  new_ms_desc.spie = 1;
+  new_ms_desc.sie = kOldMsDesc.spie;
+  new_ms_desc.mprv =
+      (static_cast<PrivilegeMode>(kOldMsDesc.spp) < PrivilegeMode::kMachine)
           ? 0
-          : kOriginSsDesc.mprv;
+          : kOldMsDesc.mprv;
 
-  const uint64_t kNewSstatusVal =
-      *reinterpret_cast<const uint64_t*>(&new_status_desc);
-  cpu_->state_.Write(csr::kCsrSstatus, kNewSstatusVal);
-  cpu_->priv_mode_ = static_cast<PrivilegeMode>(kOriginSsDesc.spp);
+  const uint64_t kNewMsVal = *reinterpret_cast<const uint64_t*>(&new_ms_desc);
+  cpu_->state_.Write(csr::kCsrMstatus, kNewMsVal);
+  cpu_->priv_mode_ = static_cast<PrivilegeMode>(kOldMsDesc.spp);
   cpu_->pc_ = cpu_->state_.Read(csr::kCsrSepc);
 
   return trap::kNoneTrap;
