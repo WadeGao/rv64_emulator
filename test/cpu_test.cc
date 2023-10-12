@@ -141,6 +141,8 @@ TEST_F(CpuTest, Wfi) {
   const uint32_t kWfiWord = 0x10500073;
   cpu_->Store(kDramBaseAddr, sizeof(uint32_t),
               reinterpret_cast<const uint8_t*>(&kWfiWord));
+  // Wfi doesn't trap when TW=0.
+  cpu_->state_.Write(rv64_emulator::cpu::csr::kCsrMstatus, 0x200000);
   cpu_->pc_ = kDramBaseAddr;
   cpu_->Tick();
   ASSERT_EQ(kDramBaseAddr + 4, cpu_->pc_);

@@ -438,10 +438,9 @@ trap::Trap Executor::CsrTypeExec(decode::DecodeInfo info) {
 #endif
 
   if (kImm == csr::kCsrSatp) {
-    const uint64_t kMstatusVal = cpu_->state_.Read(csr::kCsrMstatus);
-    const auto kMstatusDesc =
-        *reinterpret_cast<const csr::MstatusDesc*>(&kMstatusVal);
-    if (cpu_->priv_mode_ == PrivilegeMode::kSupervisor && kMstatusDesc.tvm) {
+    const uint64_t kMsVal = cpu_->state_.Read(csr::kCsrMstatus);
+    const auto kMsDesc = *reinterpret_cast<const csr::MstatusDesc*>(&kMsVal);
+    if (cpu_->priv_mode_ == PrivilegeMode::kSupervisor && kMsDesc.tvm) {
       return ILL_TRAP(info.word);
     }
   }
@@ -555,9 +554,9 @@ trap::Trap Executor::MRetExec(decode::DecodeInfo info) {
 }
 
 trap::Trap Executor::SRetExec(decode::DecodeInfo info) {
-  const uint64_t kOriginMsVal = cpu_->state_.Read(csr::kCsrMstatus);
+  const uint64_t kOldMsVal = cpu_->state_.Read(csr::kCsrMstatus);
   const auto kOldMsDesc =
-      *reinterpret_cast<const csr::MstatusDesc*>(&kOriginMsVal);
+      *reinterpret_cast<const csr::MstatusDesc*>(&kOldMsVal);
 
   // 当TSR=1时，尝试在s模式下执行SRET将引发非法的指令异常
   if (cpu_->priv_mode_ < PrivilegeMode::kSupervisor || kOldMsDesc.tsr) {
@@ -598,11 +597,13 @@ trap::Trap Executor::SystemTypeExec(decode::DecodeInfo info) {
     case decode::InstToken::ECALL:
       ret = ECallExec(info);
       break;
-    case decode::InstToken::WFI:
-#ifdef UNIT_TEST
-      // cpu_->state_.SetWfi(true);
-#endif
-      break;
+    case decode::InstToken::WFI: {
+      const uint64_t kMsVal = cpu_->state_.Read(csr::kCsrMstatus);
+      const auto kMsDesc = *reinterpret_cast<const csr::MstatusDesc*>(&kMsVal);
+      if (kMsDesc.tw) {
+        cpu_->state_.SetWfi(true);
+      }
+    } break;
     case decode::InstToken::SFENCE_VMA:
       ret = SfenceVmaExec(info);
       break;
