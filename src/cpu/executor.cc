@@ -47,8 +47,14 @@
     return ILL_TRAP((word));                                 \
   }
 
-namespace rv64_emulator::cpu::executor {
+#define GET_MSTATUS_DESC(proc)                                                \
+  ({                                                                          \
+    const uint64_t kMsVal = (proc)->state_.Read(csr::kCsrMstatus);            \
+    const auto kMsDesc = *reinterpret_cast<const csr::MstatusDesc*>(&kMsVal); \
+    kMsDesc;                                                                  \
+  })
 
+namespace rv64_emulator::cpu::executor {
 using rv64_emulator::cpu::decode::OpCode;
 using rv64_emulator::libs::arithmetic::MulUint64Hi;
 
@@ -438,8 +444,7 @@ trap::Trap Executor::CsrTypeExec(decode::DecodeInfo info) {
 #endif
 
   if (kImm == csr::kCsrSatp) {
-    const uint64_t kMsVal = cpu_->state_.Read(csr::kCsrMstatus);
-    const auto kMsDesc = *reinterpret_cast<const csr::MstatusDesc*>(&kMsVal);
+    const auto kMsDesc = GET_MSTATUS_DESC(cpu_);
     if (cpu_->priv_mode_ == PrivilegeMode::kSupervisor && kMsDesc.tvm) {
       return ILL_TRAP(info.word);
     }
@@ -513,11 +518,9 @@ trap::Trap Executor::ECallExec(decode::DecodeInfo info) {
 }
 
 trap::Trap Executor::SfenceVmaExec(decode::DecodeInfo info) {
-  const uint64_t kMstatusVal = cpu_->state_.Read(csr::kCsrMstatus);
-  const auto kMstatusDesc =
-      *reinterpret_cast<const csr::MstatusDesc*>(&kMstatusVal);
+  const auto kMsDesc = GET_MSTATUS_DESC(cpu_);
   if (cpu_->priv_mode_ < PrivilegeMode::kSupervisor ||
-      (cpu_->priv_mode_ == PrivilegeMode::kSupervisor && kMstatusDesc.tvm)) {
+      (cpu_->priv_mode_ == PrivilegeMode::kSupervisor && kMsDesc.tvm)) {
     return ILL_TRAP(info.word);
   }
 
@@ -528,26 +531,23 @@ trap::Trap Executor::SfenceVmaExec(decode::DecodeInfo info) {
 }
 
 trap::Trap Executor::MRetExec(decode::DecodeInfo info) {
-  const uint64_t kOriginMstatusVal = cpu_->state_.Read(csr::kCsrMstatus);
-  const auto kOriginMstatusDesc =
-      *reinterpret_cast<const csr::MstatusDesc*>(&kOriginMstatusVal);
+  const auto kOldMsDesc = GET_MSTATUS_DESC(cpu_);
   if (cpu_->priv_mode_ < PrivilegeMode::kMachine) {
     return ILL_TRAP(info.word);
   }
 
-  csr::MstatusDesc new_mstatus_desc = kOriginMstatusDesc;
-  new_mstatus_desc.mpp = 0;
-  new_mstatus_desc.mpie = 1;
-  new_mstatus_desc.mie = kOriginMstatusDesc.mpie;
-  new_mstatus_desc.mprv = (static_cast<PrivilegeMode>(kOriginMstatusDesc.mpp) <
-                                   PrivilegeMode::kMachine
-                               ? 0
-                               : kOriginMstatusDesc.mprv);
+  csr::MstatusDesc new_ms_desc = kOldMsDesc;
+  new_ms_desc.mpp = 0;
+  new_ms_desc.mpie = 1;
+  new_ms_desc.mie = kOldMsDesc.mpie;
+  new_ms_desc.mprv =
+      (static_cast<PrivilegeMode>(kOldMsDesc.mpp) < PrivilegeMode::kMachine
+           ? 0
+           : kOldMsDesc.mprv);
 
-  const uint64_t kNewMstatusVal =
-      *reinterpret_cast<const uint64_t*>(&new_mstatus_desc);
-  cpu_->state_.Write(csr::kCsrMstatus, kNewMstatusVal);
-  cpu_->priv_mode_ = static_cast<PrivilegeMode>(kOriginMstatusDesc.mpp);
+  const uint64_t kNewMsVal = *reinterpret_cast<const uint64_t*>(&new_ms_desc);
+  cpu_->state_.Write(csr::kCsrMstatus, kNewMsVal);
+  cpu_->priv_mode_ = static_cast<PrivilegeMode>(kOldMsDesc.mpp);
   cpu_->pc_ = cpu_->state_.Read(csr::kCsrMepc);
 
   return trap::kNoneTrap;
@@ -598,8 +598,7 @@ trap::Trap Executor::SystemTypeExec(decode::DecodeInfo info) {
       ret = ECallExec(info);
       break;
     case decode::InstToken::WFI: {
-      const uint64_t kMsVal = cpu_->state_.Read(csr::kCsrMstatus);
-      const auto kMsDesc = *reinterpret_cast<const csr::MstatusDesc*>(&kMsVal);
+      const auto kMsDesc = GET_MSTATUS_DESC(cpu_);
       if (kMsDesc.tw) {
         cpu_->state_.SetWfi(true);
       }
