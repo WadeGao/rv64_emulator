@@ -113,12 +113,8 @@ $ ./build/unittest
 ```
 
 Then the unittest results will be shown on terminal.
+![](docs/images/unittest.png)
 
-Please note that to ensure the successful booting of the Linux kernel, access to certain csr registers has been disabled. Additionally, there are no actual external interrupts present, so the following official testcases will fail:
-- `CpuTest.Wfi`
-- `test/elf/rv64mi-p-illegal`
-- `test/elf/rv64mi-p-zicntr`
-- `test/elf/rv64mi-p-breakpoint`
 
 #### Code coverage report
 The code coverage rate is about 96.3%. Run the following command if report is needed:
