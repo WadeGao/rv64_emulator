@@ -8,6 +8,7 @@
 #include <string>
 #include <tuple>
 
+#include "conf.h"
 #include "cpu/cpu.h"
 #include "cpu/csr.h"
 #include "cpu/trap.h"
@@ -15,11 +16,9 @@
 #include "error_code.h"
 #include "fmt/core.h"
 
-namespace rv64_emulator {
+namespace rv64_emulator::libs::util {
 
 using cpu::CPU;
-
-namespace libs::util {
 
 void LoadElf(const ELFIO::elfio& reader, CPU* cpu) {
   std::string err_msg = reader.validate();
@@ -103,13 +102,6 @@ TrapType InterruptBitsToTrap(uint64_t bits) {
   return TrapType::kNone;
 }
 
-bool CheckPcAlign(uint64_t pc, uint64_t isa) {
-  using rv64_emulator::cpu::csr::MisaDesc;
-  const auto kMisaDesc = *reinterpret_cast<const MisaDesc*>(&isa);
-  const uint64_t kAlignBytes = kMisaDesc.C ? 2 : 4;
-  return (pc & (kAlignBytes - 1)) == 0;
-}
-
 float GetMips(decltype(std::chrono::high_resolution_clock::now()) start,
               uint64_t insret_cnt) {
   const auto kEnd = std::chrono::high_resolution_clock::now();
@@ -120,5 +112,46 @@ float GetMips(decltype(std::chrono::high_resolution_clock::now()) start,
   return kMips;
 }
 
-}  // namespace libs::util
-}  // namespace rv64_emulator
+uint64_t __attribute__((always_inline)) ReadHostTimeStamp() {
+  uint64_t counter = 0;
+
+#ifdef __aarch64__
+  asm volatile("mrs %0, cntvct_el0" : "=r"(counter));
+#endif
+
+#ifdef __x86_64__
+  uint32_t low, high;
+  asm volatile("rdtsc" : "=a"(low), "=d"(high));
+  counter = ((uint64_t)high << 32) | low;
+#endif
+
+  return counter;
+}
+
+uint64_t __attribute__((always_inline)) ReadFreq() {
+  uint64_t freq = 0;
+#ifdef __aarch64__
+  asm volatile("mrs %0, cntfrq_el0" : "=r"(freq));
+#endif
+
+#ifdef __x86_64__
+  // TODO(Wade) add x86 get freq code. now use a fixed num
+  freq = 2500000000;
+#endif
+  return freq;
+}
+
+double __attribute__((always_inline)) GetFreqDivCoeff() {
+  uint64_t host_freq = ReadFreq();
+  double rate = kMtimeFreq / (host_freq * 1.0);
+  return rate;
+}
+
+uint64_t __attribute__((always_inline)) ReadGuestTimeStamp() {
+  static double freq_div_coeff = GetFreqDivCoeff();
+  uint64_t host_ts = ReadHostTimeStamp();
+  uint64_t guest_ts = (host_ts * freq_div_coeff);
+  return guest_ts;
+}
+
+}  // namespace rv64_emulator::libs::util

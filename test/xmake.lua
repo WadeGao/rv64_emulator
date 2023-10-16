@@ -1,7 +1,6 @@
 target("unit_test")
     if is_mode("debug") then
         add_cxxflags("-g")
-        add_defines("DEBUG")
     end
     if is_mode("coverage") then
         add_cflags("-O3 -fprofile-arcs -ftest-coverage")
@@ -18,4 +17,6 @@ target("unit_test")
     add_files("**.cc")
     add_files("$(projectdir)/src/**.cc|rv64_emulator.cc")
     add_deps("gtest")
+    add_deps("asmjit")
     add_defines("FMT_HEADER_ONLY")
+    add_defines("UNIT_TEST")

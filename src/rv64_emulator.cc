@@ -73,16 +73,6 @@ int main(int argc, char* argv[]) {
 
   auto bus = std::make_shared<rv64_emulator::device::bus::Bus>();
   bus->MountDevice({
-      .base = kDramBaseAddr,
-      .size = kDramSize,
-      .dev = std::move(dram),
-  });
-  bus->MountDevice({
-      .base = kUartBase,
-      .size = kUartAddrSpaceRange,
-      .dev = std::move(uart),
-  });
-  bus->MountDevice({
       .base = kClintBase,
       .size = kClintAddrSpaceRange,
       .dev = std::move(clint),
@@ -92,6 +82,16 @@ int main(int argc, char* argv[]) {
       .size = kPlicAddrSpaceRange,
       .dev = std::move(plic),
   });
+  bus->MountDevice({
+      .base = kUartBase,
+      .size = kUartAddrSpaceRange,
+      .dev = std::move(uart),
+  });
+  bus->MountDevice({
+      .base = kDramBaseAddr,
+      .size = kDramSize,
+      .dev = std::move(dram),
+  });
 
   std::thread uart_input_thread(UartInput, raw_uart);
 
@@ -100,7 +100,7 @@ int main(int argc, char* argv[]) {
   cpu1->pc_ = kDramBaseAddr;
 
   while (true) {
-    raw_clint->Tick();
+    raw_clint->UpdateMtime();
     raw_plic->UpdateExt(1, raw_uart->Irq());
     cpu1->Tick(raw_plic->GetInterrupt(0), raw_plic->GetInterrupt(1),
                raw_clint->MachineSoftwareIrq(0), raw_clint->MachineTimerIrq(0),

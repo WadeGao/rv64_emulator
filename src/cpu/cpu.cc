@@ -10,8 +10,6 @@
 #include "cpu/executor.h"
 #include "cpu/mmu.h"
 #include "cpu/trap.h"
-#include "fmt/core.h"
-#include "fmt/format.h"
 #include "libs/arithmetic.h"
 #include "libs/utils.h"
 
@@ -48,8 +46,7 @@ constexpr uint64_t kTvecReg[] = {
 uint32_t hart_id = 0;
 
 CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
-    : clock_(0),
-      instret_(0),
+    : instret_(0),
       pc_(0),
       hart_id_(hart_id++),
       priv_mode_(PrivilegeMode::kMachine),
@@ -61,15 +58,12 @@ CPU::CPU(std::unique_ptr<mmu::Mmu> mmu)
 }
 
 void CPU::Reset() {
-  clock_ = 0;
   instret_ = 0;
   priv_mode_ = PrivilegeMode::kMachine;
   pc_ = 0;
 
   reg_file_.Reset();
-
   mmu_->Reset();
-  // dlb_.Reset();
   state_.Reset();
 }
 
@@ -186,13 +180,13 @@ void CPU::HandleInterrupt(uint64_t inst_addr) {
 }
 
 trap::Trap CPU::Fetch(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
-  const uint64_t kMisaVal = state_.Read(csr::kCsrMisa);
-  if (!libs::util::CheckPcAlign(addr, kMisaVal)) {
-    return {
-        .type = trap::TrapType::kInstructionAddressMisaligned,
-        .val = addr,
-    };
-  }
+  // const uint64_t kMisaVal = state_.Read(csr::kCsrMisa);
+  // if (!libs::util::CheckPcAlign(addr, kMisaVal)) {
+  //   return {
+  //       .type = trap::TrapType::kInstructionAddressMisaligned,
+  //       .val = addr,
+  //   };
+  // }
 
   return mmu_->Fetch(addr, bytes, buffer);
 }
@@ -229,9 +223,6 @@ trap::Trap CPU::TickOperate() {
 }
 
 void CPU::Tick(bool meip, bool seip, bool msip, bool mtip, bool update) {
-  // pre exec
-  state_.Write(csr::kCsrMCycle, ++clock_);
-
   if (update) {
     uint64_t mip_val = state_.Read(csr::kCsrMip);
     auto* mip_desc = reinterpret_cast<csr::MipDesc*>(&mip_val);
@@ -256,26 +247,6 @@ void CPU::Tick() { Tick(false, false, false, false, false); }
 
 void CPU::FlushTlb(uint64_t vaddr, uint64_t asid) {
   mmu_->FlushTlb(vaddr, asid);
-}
-
-void CPU::DumpRegs() const {
-  // Application Binary Interface registers
-  const char* abi[] = {
-      "zero", "ra", "sp", "gp", "tp",  "t0",  "t1", "t2", "s0", "s1", "a0",
-      "a1",   "a2", "a3", "a4", "a5",  "a6",  "a7", "s2", "s3", "s4", "s5",
-      "s6",   "s7", "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6",
-  };
-
-  constexpr int kBiasTable[4] = {0, 8, 16, 24};
-
-  for (int i = 0; i < 8; i++) {
-    for (const auto kBias : kBiasTable) {
-      const int kIndex = i + kBias;
-      fmt::print("{:>28}", fmt::format("{}: {:#018x}", abi[kIndex],
-                                       reg_file_.xregs[kIndex]));
-    }
-    fmt::print("\n");
-  }
 }
 
 uint64_t CPU::GetInstret() const { return instret_; }

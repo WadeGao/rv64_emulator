@@ -7,3 +7,6 @@
 [submodule "third_party/gtest_parallel"]
 	path = third_party/gtest_parallel
 	url = https://github.com/google/gtest-parallel.git
+[submodule "third_party/asmjit"]
+	path = third_party/asmjit
+	url = https://github.com/asmjit/asmjit.git

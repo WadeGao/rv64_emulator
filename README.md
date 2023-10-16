@@ -54,7 +54,7 @@ _**Step 2: Building riscv-gnu-toolchain**_
 
 Assume that the customized toolchain will be installed to `/data/riscv-gnu-toolchains`
 ```
-$ sudo apt install autoconf automake autotools-dev curl libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc zlib1g-dev
+$ sudo apt install autoconf automake autotools-dev curl libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc zlib1g-dev libexpat1-dev
 $ git clone https://github.com/riscv/riscv-gnu-toolchain.git
 $ cd riscv-gnu-toolchain
 $ git rm qemu
@@ -113,12 +113,8 @@ $ ./build/unittest
 ```
 
 Then the unittest results will be shown on terminal.
+![](docs/images/unittest.png)
 
-Please note that to ensure the successful booting of the Linux kernel, access to certain csr registers has been disabled. Additionally, there are no actual external interrupts present, so the following official testcases will fail:
-- `CpuTest.Wfi`
-- `test/elf/rv64mi-p-illegal`
-- `test/elf/rv64mi-p-zicntr`
-- `test/elf/rv64mi-p-breakpoint`
 
 #### Code coverage report
 The code coverage rate is about 96.3%. Run the following command if report is needed:

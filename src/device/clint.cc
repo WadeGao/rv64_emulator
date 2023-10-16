@@ -5,10 +5,17 @@
 #include <cstring>
 #include <vector>
 
+#include "libs/utils.h"
+
 namespace rv64_emulator::device::clint {
 
+using libs::util::ReadGuestTimeStamp;
+
 Clint::Clint(uint64_t harts)
-    : harts_(harts), mtime_(0), mtimecmp_(harts, 0), msip_(harts, 0) {}
+    : harts_(harts),
+      mtime_(ReadGuestTimeStamp()),
+      mtimecmp_(harts, 0),
+      msip_(harts, 0) {}
 
 bool Clint::Load(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
   uint8_t* start_addr = nullptr;
@@ -56,7 +63,7 @@ bool Clint::Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer) {
 }
 
 void Clint::Reset() {
-  mtime_ = 0;
+  mtime_ = ReadGuestTimeStamp();
   std::fill(mtimecmp_.begin(), mtimecmp_.end(), 0);
   std::fill(msip_.begin(), msip_.end(), 0);
 }
@@ -70,5 +77,7 @@ bool Clint::MachineSoftwareIrq(const uint64_t hart_id) {
 }
 
 void Clint::Tick() { mtime_++; }
+
+void Clint::UpdateMtime() { mtime_ = ReadGuestTimeStamp(); }
 
 }  // namespace rv64_emulator::device::clint

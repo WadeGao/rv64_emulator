@@ -33,7 +33,7 @@ enum class PrivilegeMode {
 template <typename T, uint32_t N>
 class RegGroup {
  public:
-  using value_type = typename std::remove_const_t<std::remove_reference_t<T>>;
+  using value_type = typename std::decay_t<T>;
   using reference = value_type&;
   using const_reference = const value_type&;
   static_assert(std::is_floating_point_v<value_type> ||
@@ -48,25 +48,6 @@ class RegGroup {
   value_type reg_[N] = {0};
 };
 
-/*
-+───────────+───────────+────────────────────────────────────+────────+
-| Register  | ABI Name  | Description                        | Saver  |
-+───────────+───────────+────────────────────────────────────+────────+
-| x0        | zero      | Hard-wired zero                    |  ----  |
-| x1        | ra        | Return address                     | Caller |
-| x2        | sp        | Stack pointer                      | Callee |
-| x3        | gp        | Global pointer                     |  ----  |
-| x4        | tp        | Thread pointer                     |  ----  |
-| x5        | t0        | Temporary/alternate link register  | Caller |
-| x6 - 7    | t1 - 2    | Temporaries                        | Caller |
-| x8        | s0/fp     | Saved register/frame pointer       | Callee |
-| x9        | s1        | Saved registers                    | Callee |
-| x10 - 11  | a0 - 1    | Function args/return values        | Caller |
-| x12 - 17  | a2 - 7    | Function args                      | Caller |
-| x18 - 27  | s2 - 11   | Saved registers                    | Callee |
-| x28 - 31  | t3 - 6    | Temporaries                        | Caller |
-+───────────+───────────+────────────────────────────────────+────────+
-*/
 class RegFile {
  public:
   RegGroup<uint64_t, 32> xregs;
@@ -82,6 +63,7 @@ class RegFile {
 class CPU {
  public:
   uint64_t pc_;
+  uint64_t instret_;
   uint32_t hart_id_;
   csr::State state_;
   RegFile reg_file_;
@@ -95,14 +77,9 @@ class CPU {
   void Tick(bool meip, bool seip, bool msip, bool mtip, bool update);
   void Tick();
   void FlushTlb(uint64_t vaddr, uint64_t asid);
-  void DumpRegs() const;
-
   uint64_t GetInstret() const;
 
  private:
-  uint64_t clock_;
-  uint64_t instret_;
-
   std::unique_ptr<executor::Executor> executor_;
   std::unique_ptr<mmu::Mmu> mmu_;
 

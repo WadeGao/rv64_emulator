@@ -22,7 +22,6 @@ bool CheckSectionExist(const ELFIO::elfio& reader, const char* name,
 
 uint64_t TrapToMask(TrapType t);
 TrapType InterruptBitsToTrap(uint64_t bits);
-bool CheckPcAlign(uint64_t pc, uint64_t isa);
 float GetMips(decltype(std::chrono::high_resolution_clock::now()) start,
               uint64_t insret_cnt);
 
@@ -42,6 +41,16 @@ class RandomGenerator {
   std::uniform_int_distribution<std::mt19937::result_type> dis_;
   T min_, max_;
 };
+
+uint64_t ReadGuestTimeStamp();
+
+template <bool CEnable = false>
+bool CheckPcAlign(uint64_t pc) {
+  if constexpr (CEnable) {
+    return (pc & (2 - 1)) == 0;
+  }
+  return (pc & (4 - 1)) == 0;
+}
 
 }  // namespace libs::util
 }  // namespace rv64_emulator

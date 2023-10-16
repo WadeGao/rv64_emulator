@@ -8,6 +8,7 @@
 #include "cpu/csr.h"
 #include "cpu/trap.h"
 #include "device/bus.h"
+#include "fmt/core.h"
 
 namespace rv64_emulator::mmu {
 
@@ -36,59 +37,66 @@ using cpu::PrivilegeMode;
     return k##step##AccessTrap;                                         \
   }
 
-uint64_t MapVirtualAddress(const Sv39TlbEntry* entry, uint64_t vaddr) {
-  constexpr uint64_t kOffsetBits[4] = {
-      [0] = 0,  // invalid
-      [1] = 12,
-      [2] = 21,
-      [3] = 30,
-  };
-  const uint64_t kBits = kOffsetBits[entry->page_size];
-  return entry->ppn + vaddr % (1 << kBits);
+uint64_t __attribute__((always_inline))
+MapVirtualAddress(const Sv39TlbEntry* entry, uint64_t vaddr) {
+  uint64_t bits = entry->page_size * 9;
+  bits = (8ULL << bits);
+  return entry->ppn + vaddr % bits;
 }
 
-uint64_t GetPpnByPageTableEntry(const Sv39PageTableEntry* entry) {
-  const Sv39VirtualAddress kPpnDesc = {
+uint64_t __attribute__((always_inline))
+GetPpnByPageTableEntry(Sv39PageTableEntry entry) {
+  Sv39VirtualAddress tmp = {
       .offset = 0,
-      .vpn_0 = entry->ppn_0,
-      .vpn_1 = entry->ppn_1,
-      .vpn_2 = entry->ppn_2,
+      .vpn_0 = entry.ppn_0,
+      .vpn_1 = entry.ppn_1,
+      .vpn_2 = entry.ppn_2,
       .blank = 0,
   };
 
-  return *reinterpret_cast<const uint64_t*>(&kPpnDesc);
+  return *reinterpret_cast<const uint64_t*>(&tmp);
 }
 
-uint64_t GetTlbTag(uint64_t vaddr, uint64_t page_size) {
-  static constexpr uint64_t kMasks[4] = {
-      [0] = 0xffffffffffffffff,  // invalid
-      [1] = 0xfffffffffffff000,
-      [2] = 0xffffffffffe00000,
-      [3] = 0xffffffffc0000000,
-  };
-  return vaddr & kMasks[page_size];
+uint64_t __attribute__((always_inline))
+GetTlbTag(uint64_t vaddr, uint64_t page_size) {
+  // tag = vaddr >> (9 * pg_sz + 3)
+  // use some tricks to reduce data dependency
+  uint64_t bits = page_size * 9;
+  vaddr >>= 3;
+  return vaddr >> bits;
 }
 
-Sv39::Sv39(std::shared_ptr<Bus>& bus) : index_(0), bus_(bus) {
+Sv39::Sv39(std::shared_ptr<Bus>& bus)
+    : index_(0), cache_hit_(0), cache_miss_(0), bus_(bus) {
   memset(tlb_, 0, sizeof(tlb_));
 }
 
-Sv39TlbEntry* Sv39::LookUpTlb(SatpDesc satp, uint64_t vaddr) {
-  Sv39TlbEntry* res = nullptr;
+Sv39::~Sv39() { PrintStatistic(); }
 
+void Sv39::PrintStatistic() {
+  if (cache_hit_ + cache_miss_ > 0) {
+    float hit_rate = (cache_hit_ * 1.0) / (cache_hit_ + cache_miss_) * 100;
+    fmt::print("======== Cache Statistics Start ========\n");
+    fmt::print("hit: {}\n", cache_hit_);
+    fmt::print("miss: {}\n", cache_miss_);
+    fmt::print("hit rate: {:.2f}%\n", hit_rate);
+    fmt::print("======== Cache Statistics End ========\n");
+  }
+}
+
+Sv39TlbEntry* Sv39::LookUpTlb(SatpDesc satp, uint64_t vaddr) {
   for (uint64_t i = 0; i < kTlbSize; i++) {
     Sv39TlbEntry* entry = tlb_ + i;
     if (entry->asid == satp.asid || entry->G) {
       if (entry->page_size > 0) {
         if (GetTlbTag(vaddr, entry->page_size) == entry->tag) {
-          res = entry;
-          break;
+          return tlb_ + i;
         }
       }
     }
   }
 
-  return res;
+  return nullptr;
 }
 
 bool Sv39::PageTableWalk(SatpDesc satp, uint64_t vaddr, Sv39PageTableEntry* pte,
@@ -157,19 +165,20 @@ Sv39TlbEntry* Sv39::GetTlbEntry(SatpDesc satp, uint64_t vaddr) {
 
   Sv39TlbEntry* tlb_entry = LookUpTlb(satp, vaddr);
   if (tlb_entry) {
+    cache_hit_++;
     return tlb_entry;
   }
 
   // cache miss, now walk the page table
+  cache_miss_++;
   Sv39PageTableEntry pte;
   uint64_t out_size;
-  bool success = PageTableWalk(satp, vaddr, &pte, &out_size);
-  if (!success) {
+  if (!PageTableWalk(satp, vaddr, &pte, &out_size)) {
     return nullptr;
   }
 
   tlb_[index_] = {
-      .ppn = GetPpnByPageTableEntry(&pte),
+      .ppn = GetPpnByPageTableEntry(pte),
       .tag = GetTlbTag(vaddr, out_size),
       .asid = satp.asid,
       .R = pte.R,
@@ -234,19 +243,19 @@ void Mmu::FlushTlb(uint64_t vaddr, uint64_t asid) {
 }
 
 Trap Mmu::Fetch(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
-  if (bytes == 4 && addr % 4 == 2) {
-    const Trap kTrap1 = Fetch(addr, 2, buffer);
-    if (kTrap1.type != cpu::trap::TrapType::kNone) {
-      return kTrap1;
-    }
+  // if (bytes == 4 && addr % 4 == 2) {
+  //   const Trap kTrap1 = Fetch(addr, 2, buffer);
+  //   if (kTrap1.type != cpu::trap::TrapType::kNone) {
+  //     return kTrap1;
+  //   }
 
-    const Trap kTrap2 = Fetch(addr + 2, 2, buffer + 2);
-    if (kTrap2.type != cpu::trap::TrapType::kNone) {
-      return MAKE_TRAP(kTrap2.type, addr);
-    }
+  //   const Trap kTrap2 = Fetch(addr + 2, 2, buffer + 2);
+  //   if (kTrap2.type != cpu::trap::TrapType::kNone) {
+  //     return MAKE_TRAP(kTrap2.type, addr);
+  //   }
 
-    return cpu::trap::kNoneTrap;
-  }
+  //   return cpu::trap::kNoneTrap;
+  // }
 
   const uint64_t kSatpVal = cpu_->state_.Read(cpu::csr::kCsrSatp);
   const SatpDesc kSatpDesc = *reinterpret_cast<const SatpDesc*>(&kSatpVal);
@@ -259,8 +268,8 @@ Trap Mmu::Fetch(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
       (kCurMode == PrivilegeMode::kMachine || kSatpDesc.mode == 0);
   // virtual addr load
   if (!kUsePhysAddr) {
-    CHECK_RANGE_PAGE_ALIGN(addr, bytes,
-                           cpu::trap::TrapType::kInstructionAddressMisaligned);
+    // CHECK_RANGE_PAGE_ALIGN(addr, bytes,
+    //                        cpu::trap::TrapType::kInstructionAddressMisaligned);
 
     const Sv39TlbEntry* kTlbEntry = sv39_->GetTlbEntry(kSatpDesc, addr);
     if (!kTlbEntry || !kTlbEntry->A || !kTlbEntry->X) {
@@ -292,15 +301,17 @@ Trap Mmu::Load(uint64_t addr, uint64_t bytes, uint8_t* buffer) {
 
   // virtual addr load
   if (!UsePhysAddr(kSatpDesc, kMstatusDesc)) {
-    CHECK_RANGE_PAGE_ALIGN(addr, bytes,
-                           cpu::trap::TrapType::kLoadAddressMisaligned);
+    // CHECK_RANGE_PAGE_ALIGN(addr, bytes,
+    //                        cpu::trap::TrapType::kLoadAddressMisaligned);
     const Sv39TlbEntry* kTlbEntry = sv39_->GetTlbEntry(kSatpDesc, addr);
     if (!kTlbEntry || !kTlbEntry->A ||
         (!kTlbEntry->R && !(kMstatusDesc.mxr && kTlbEntry->X))) {
       return MAKE_TRAP(cpu::trap::TrapType::kLoadPageFault, addr);
     }
-    CHECK_VIRTUAL_MEMORY_ACCESS_PRIVILEGE(cpu_->priv_mode_, kMstatusDesc,
-                                          kTlbEntry, addr, Load);
+    // if (unlikely(sv39_->check_permission_)) {
+    //   CHECK_VIRTUAL_MEMORY_ACCESS_PRIVILEGE(cpu_->priv_mode_, kMstatusDesc,
+    //                                         kTlbEntry, addr, Load);
+    // }
     addr = MapVirtualAddress(kTlbEntry, addr);
   }
 
@@ -321,16 +332,18 @@ Trap Mmu::Store(uint64_t addr, uint64_t bytes, const uint8_t* buffer) {
 
   // virtual addr store
   if (!UsePhysAddr(kSatpDesc, kMstatusDesc)) {
-    CHECK_RANGE_PAGE_ALIGN(addr, bytes,
-                           cpu::trap::TrapType::kStoreAddressMisaligned);
+    // CHECK_RANGE_PAGE_ALIGN(addr, bytes,
+    //                        cpu::trap::TrapType::kStoreAddressMisaligned);
     const Sv39TlbEntry* kTlbEntry = sv39_->GetTlbEntry(kSatpDesc, addr);
     // D 位在 C906 的硬件实现与 W 属性类似。
     // 当 D 位为 0 时，store 会触发 Page Fault
     if (!kTlbEntry || !kTlbEntry->A || !kTlbEntry->W || !kTlbEntry->D) {
       return MAKE_TRAP(cpu::trap::TrapType::kStorePageFault, addr);
     }
-    CHECK_VIRTUAL_MEMORY_ACCESS_PRIVILEGE(cpu_->priv_mode_, kMstatusDesc,
-                                          kTlbEntry, addr, Store);
+    // if (unlikely(sv39_->check_permission_)) {
+    // CHECK_VIRTUAL_MEMORY_ACCESS_PRIVILEGE(cpu_->priv_mode_, kMstatusDesc,
+    //                                       kTlbEntry, addr, Store);
+    // }
     addr = MapVirtualAddress(kTlbEntry, addr);
   }
 

@@ -22,7 +22,7 @@ enum class OpCode : uint8_t {
   kAmo = 0b0101111
 };
 
-enum class InstToken {
+enum class InstToken : int32_t {
   UNKNOWN = -1,
   LUI,
   AUIPC,
@@ -135,10 +135,31 @@ using InstDesc = struct InstDesc {
 
 constexpr InstDesc kInstTable[] = {
     {
-        .mask = 0x0000007f,
-        .signature = 0x00000037,
-        .name = "LUI",
-        .token = InstToken::LUI,
+        .mask = 0x0000707f,
+        .signature = 0x00000013,
+        .name = "ADDI",
+        .token = InstToken::ADDI,
+    },
+
+    {
+        .mask = 0x0000707f,
+        .signature = 0x00003003,
+        .name = "LD",
+        .token = InstToken::LD,
+    },
+
+    {
+        .mask = 0x0000707f,
+        .signature = 0x00003023,
+        .name = "SD",
+        .token = InstToken::SD,
+    },
+
+    {
+        .mask = 0x0000707f,
+        .signature = 0x00001063,
+        .name = "BNE",
+        .token = InstToken::BNE,
     },
 
     {
@@ -150,9 +171,37 @@ constexpr InstDesc kInstTable[] = {
 
     {
         .mask = 0x0000007f,
+        .signature = 0x00000037,
+        .name = "LUI",
+        .token = InstToken::LUI,
+    },
+
+    {
+        .mask = 0xfc00707f,
+        .signature = 0x00001013,
+        .name = "SLLI",
+        .token = InstToken::SLLI,
+    },
+
+    {
+        .mask = 0x0000707f,
+        .signature = 0x0000001b,
+        .name = "ADDIW",
+        .token = InstToken::ADDIW,
+    },
+
+    {
+        .mask = 0x0000007f,
         .signature = 0x0000006f,
         .name = "JAL",
         .token = InstToken::JAL,
+    },
+
+    {
+        .mask = 0xfe00707f,
+        .signature = 0x00000033,
+        .name = "ADD",
+        .token = InstToken::ADD,
     },
 
     {
@@ -167,13 +216,6 @@ constexpr InstDesc kInstTable[] = {
         .signature = 0x00000063,
         .name = "BEQ",
         .token = InstToken::BEQ,
-    },
-
-    {
-        .mask = 0x0000707f,
-        .signature = 0x00001063,
-        .name = "BNE",
-        .token = InstToken::BNE,
     },
 
     {
@@ -262,13 +304,6 @@ constexpr InstDesc kInstTable[] = {
 
     {
         .mask = 0x0000707f,
-        .signature = 0x00000013,
-        .name = "ADDI",
-        .token = InstToken::ADDI,
-    },
-
-    {
-        .mask = 0x0000707f,
         .signature = 0x00002013,
         .name = "SLTI",
         .token = InstToken::SLTI,
@@ -300,13 +335,6 @@ constexpr InstDesc kInstTable[] = {
         .signature = 0x00007013,
         .name = "ANDI",
         .token = InstToken::ANDI,
-    },
-
-    {
-        .mask = 0xfe00707f,
-        .signature = 0x00000033,
-        .name = "ADD",
-        .token = InstToken::ADD,
     },
 
     {
@@ -416,27 +444,6 @@ constexpr InstDesc kInstTable[] = {
     },
 
     {
-        .mask = 0x0000707f,
-        .signature = 0x00003003,
-        .name = "LD",
-        .token = InstToken::LD,
-    },
-
-    {
-        .mask = 0x0000707f,
-        .signature = 0x00003023,
-        .name = "SD",
-        .token = InstToken::SD,
-    },
-
-    {
-        .mask = 0xfc00707f,
-        .signature = 0x00001013,
-        .name = "SLLI",
-        .token = InstToken::SLLI,
-    },
-
-    {
         .mask = 0xfc00707f,
         .signature = 0x00005013,
         .name = "SRLI",
@@ -448,13 +455,6 @@ constexpr InstDesc kInstTable[] = {
         .signature = 0x40005013,
         .name = "SRAI",
         .token = InstToken::SRAI,
-    },
-
-    {
-        .mask = 0x0000707f,
-        .signature = 0x0000001b,
-        .name = "ADDIW",
-        .token = InstToken::ADDIW,
     },
 
     {
@@ -528,8 +528,6 @@ constexpr InstDesc kInstTable[] = {
         .name = "WFI",
         .token = InstToken::WFI,
     },
-
-    /*********** rv_zicsr instructions ***********/
 
     {
         .mask = 0x0000707f,
@@ -917,16 +915,20 @@ using AmoTypeDesc = struct AmoTypeDesc {
 };
 
 struct DecodeInfo {
-  uint32_t word;  // instruction word
-  uint64_t pc;    // instruction addr
-  uint8_t size;   // instruction size
+  uint32_t word;
   OpCode op;
   uint8_t rd;
   uint8_t rs1;
   uint8_t rs2;
-  uint8_t mem_size;
+
+  uint64_t pc;
+
   int32_t imm;
   InstToken token;
+
+  uint8_t size;
+  uint8_t mem_size;
+  uint8_t br_target;  // is current inst a br target or not
 
   DecodeInfo(uint32_t inst_word, uint64_t addr);
 };

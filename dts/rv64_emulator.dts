@@ -29,7 +29,7 @@
     L18: cpus {
         #address-cells = <1>;
         #size-cells = <0>;
-        timebase-frequency = <100000000>;
+        timebase-frequency = <10000000>;
         L4: cpu@0 {
             clock-frequency = <0>;
             compatible = "rv64_emulator", "riscv";
@@ -52,7 +52,7 @@
             riscv,pmpgranularity = <0>;
             riscv,pmpregions = <0>;
             status = "okay";
-            timebase-frequency = <100000000>;
+            timebase-frequency = <10000000>;
             tlb-split;
             L2: interrupt-controller {
                 #interrupt-cells = <1>;
@@ -63,7 +63,7 @@
     };
     L13: memory@80000000 {
         device_type = "memory";
-        reg = <0x80000000 0x10000000>;
+        reg = <0x80000000 0x4000000>;
     };
     L17: soc {
         #address-cells = <1>;
@@ -98,7 +98,7 @@
         };
         L0: subsystem_pbus_clock {
             #clock-cells = <0>;
-            clock-frequency = <100000000>;
+            clock-frequency = <10000000>;
             clock-output-names = "subsystem_pbus_clock";
             compatible = "fixed-clock";
         };

@@ -20,6 +20,7 @@
 #include "elfio/elfio_segment.hpp"
 #include "fmt/color.h"
 #include "fmt/core.h"
+#include "fmt/format.h"
 #include "gtest/gtest.h"
 #include "libs/utils.h"
 
@@ -34,28 +35,20 @@ class CpuTest : public testing::Test {
   }
 
   void SetUp() override {
-    poweron_.store(true);
     auto dram = std::make_unique<rv64_emulator::device::dram::DRAM>(kDramSize);
     auto clint = std::make_unique<rv64_emulator::device::clint::Clint>(1);
     raw_clint_ = clint.get();
-    // auto tmp = raw_clint_;
-    oscillator_ = std::thread([this]() {
-      while (poweron_.load()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        raw_clint_->Tick();
-      }
-    });
 
     auto bus = std::make_shared<rv64_emulator::device::bus::Bus>();
-    bus->MountDevice({
-        .base = kDramBaseAddr,
-        .size = kDramSize,
-        .dev = std::move(dram),
-    });
     bus->MountDevice({
         .base = kClintBase,
         .size = kClintAddrSpaceRange,
         .dev = std::move(clint),
+    });
+    bus->MountDevice({
+        .base = kDramBaseAddr,
+        .size = kDramSize,
+        .dev = std::move(dram),
     });
 
     auto sv39 = std::make_unique<rv64_emulator::mmu::Sv39>(bus);
@@ -64,15 +57,10 @@ class CpuTest : public testing::Test {
     cpu_ = std::move(cpu);
   }
 
-  void TearDown() override {
-    poweron_.store(false);
-    oscillator_.join();
-  }
+  void TearDown() override {}
 
-  std::atomic<bool> poweron_ = false;
   std::unique_ptr<rv64_emulator::cpu::CPU> cpu_;
   rv64_emulator::device::clint::Clint* raw_clint_;
-  std::thread oscillator_;
 };
 
 constexpr uint64_t kMaxInstructions = 100000;
@@ -153,6 +141,8 @@ TEST_F(CpuTest, Wfi) {
   const uint32_t kWfiWord = 0x10500073;
   cpu_->Store(kDramBaseAddr, sizeof(uint32_t),
               reinterpret_cast<const uint8_t*>(&kWfiWord));
+  // Wfi doesn't trap when TW=0.
+  cpu_->state_.Write(rv64_emulator::cpu::csr::kCsrMstatus, 0x200000);
   cpu_->pc_ = kDramBaseAddr;
   cpu_->Tick();
   ASSERT_EQ(kDramBaseAddr + 4, cpu_->pc_);
@@ -208,9 +198,6 @@ TEST_F(CpuTest, OfficalTests) {
     while (true) {
       cpu_->Tick(false, false, raw_clint_->MachineSoftwareIrq(0),
                  raw_clint_->MachineTimerIrq(0), true);
-#ifdef DEBUG
-      cpu_->DumpRegs();
-#endif
       uint8_t val = UINT8_MAX;
 
       const bool kSucc =
